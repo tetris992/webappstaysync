@@ -69,16 +69,16 @@ const processQueue = (error, token = null) => {
 };
 
 // refreshToken 함수: 토큰 갱신 API 호출
-export const refreshToken = async () => {
-  try {
-    const response = await api.post('/api/customer/refresh-token');
-    const { token } = response.data;
-    localStorage.setItem('customerToken', token);
-    return token;
-  } catch (error) {
-    throw new ApiError(401, '토큰 갱신 실패');
-  }
-};
+// export const refreshToken = async () => {
+//   try {
+//     const response = await api.post('/api/customer/refresh-token');
+//     const { token } = response.data;
+//     localStorage.setItem('customerToken', token);
+//     return token;
+//   } catch (error) {
+//     throw new ApiError(401, '토큰 갱신 실패');
+//   }
+// };
 
 // 응답 인터셉터: 401(토큰 만료) 및 403(CSRF 문제) 에러 처리
 api.interceptors.response.use(
@@ -107,16 +107,14 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const newToken = await refreshToken();
-        processQueue(null, newToken);
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return api(originalRequest);
-      } catch (err) {
-        processQueue(err, null);
+        console.log('[api.js] 401 Unauthorized, redirecting to login');
         localStorage.removeItem('customerToken');
         localStorage.removeItem('csrfToken');
         window.location.href = '/login';
         throw new ApiError(401, '토큰이 만료되었습니다. 다시 로그인해주세요.');
+      } catch (err) {
+        processQueue(err, null);
+        throw err;
       } finally {
         isRefreshing = false;
       }
@@ -211,11 +209,22 @@ export const fetchCustomerHotelSettings = async (hotelId) => {
     const response = await api.get('/api/customer/hotel-settings', {
       params: { hotelId },
     });
-    return response.data; // 반드시 .data 직접 반환
+    return response.data.data; // 반드시 .data 직접 반환
   } catch (error) {
     handleApiError(error, '고객용 호텔 설정 조회 실패');
   }
 };
+
+// export const fetchHotelSettings = async (hotelId) => {
+//   try {
+//     const response = await api.get('/api/hotel-settings', {
+//       params: { hotelId },
+//     });
+//     return response.data.data;
+//   } catch (error) {
+//     handleApiError(error, '호텔 설정 불러오기 실패');
+//   }
+// };
 
 export const fetchHotelPhotos = async (hotelId, category, subCategory) => {
   try {
@@ -239,11 +248,11 @@ export const fetchHotelAvailability = async (hotelId, checkIn, checkOut) => {
   }
 };
 
-export const createReservation = async (reservationData) => {
+export const createReservation = async (finalReservationData) => {
   try {
     const response = await api.post(
       '/api/customer/reservation',
-      reservationData
+      finalReservationData
     );
     return response.data;
   } catch (error) {
@@ -254,14 +263,23 @@ export const createReservation = async (reservationData) => {
 export const getReservationHistory = async () => {
   try {
     const response = await api.get('/api/customer/history');
-    const reservations = response.data.map((reservation) => ({
+    if (!response.data || typeof response.data !== 'object') {
+      throw new ApiError(500, 'Invalid response format');
+    }
+    if (!Array.isArray(response.data.history)) {
+      throw new ApiError(500, 'History is not an array');
+    }
+    const reservations = (response.data.history || []).map((reservation) => ({
       ...reservation,
       price: typeof reservation.price === 'number' ? reservation.price : 0,
       hotelName: reservation.hotelName || '알 수 없음',
       checkIn: reservation.checkIn || '',
       checkOut: reservation.checkOut || '',
     }));
-    return reservations;
+    return {
+      history: reservations,
+      totalVisits: response.data.totalVisits || 0,
+    };
   } catch (error) {
     handleApiError(error, '예약 히스토리 조회 실패');
   }

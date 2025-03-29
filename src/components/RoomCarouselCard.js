@@ -16,7 +16,7 @@ const roomPhotoMap = {
 const RoomCarouselCard = ({ roomInfo, price, stock, onSelect }) => {
   if (stock <= 0) return null;
 
-  const defaultPhoto = roomPhotoMap[roomInfo?.toLowerCase()] || '/assets/default-room.jpg';
+  const defaultPhoto = roomPhotoMap[roomInfo?.toLowerCase()] || '/assets/default-room1.jpg';
   const safePrice = typeof price === 'number' ? price : 0;
 
   return (
