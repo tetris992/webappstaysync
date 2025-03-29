@@ -11,7 +11,7 @@ import Register from './pages/Register';
 import ConnectSocial from './pages/ConnectSocial';
 import AuthCallback from './pages/AuthCallback';
 import { useAuth } from './contexts/AuthContext';
-import { fetchHotelSettings } from './api/api';
+import { fetchCustomerHotelSettings } from './api/api';
 
 function AppContent() {
   const { isAuthenticated, customer, logout } = useAuth();
@@ -20,7 +20,7 @@ function AppContent() {
 
   const loadHotelSettings = useCallback(async (hotelId) => {
     try {
-      const settings = await fetchHotelSettings(hotelId);
+      const settings = await fetchCustomerHotelSettings(hotelId);
       setHotelSettings(settings);
     } catch (error) {
       console.error('Failed to load hotel settings:', error);

@@ -23,6 +23,7 @@ const handleApiError = (error, defaultMessage) => {
 const getCustomerToken = () => localStorage.getItem('customerToken');
 const getCsrfToken = () => localStorage.getItem('csrfToken');
 
+// 요청 인터셉터: Authorization 및 CSRF 토큰 설정
 api.interceptors.request.use(
   async (config) => {
     console.log('[api.js] Request URL:', `${BASE_URL}${config.url}`);
@@ -67,10 +68,24 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+// refreshToken 함수: 토큰 갱신 API 호출
+export const refreshToken = async () => {
+  try {
+    const response = await api.post('/api/customer/refresh-token');
+    const { token } = response.data;
+    localStorage.setItem('customerToken', token);
+    return token;
+  } catch (error) {
+    throw new ApiError(401, '토큰 갱신 실패');
+  }
+};
+
+// 응답 인터셉터: 401(토큰 만료) 및 403(CSRF 문제) 에러 처리
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    // 401 에러 처리: 토큰 갱신 시도 후 재요청
     if (
       error.response?.status === 401 &&
       originalRequest.url !== '/api/customer/login' &&
@@ -92,18 +107,22 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        console.log('[api.js] 401 Unauthorized, redirecting to login');
+        const newToken = await refreshToken();
+        processQueue(null, newToken);
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return api(originalRequest);
+      } catch (err) {
+        processQueue(err, null);
         localStorage.removeItem('customerToken');
         localStorage.removeItem('csrfToken');
         window.location.href = '/login';
         throw new ApiError(401, '토큰이 만료되었습니다. 다시 로그인해주세요.');
-      } catch (err) {
-        processQueue(err, null);
-        throw err;
       } finally {
         isRefreshing = false;
       }
-    } else if (error.response?.status === 403 && !originalRequest._retry) {
+    }
+    // 403 에러 처리: CSRF 토큰 갱신 후 재요청
+    else if (error.response?.status === 403 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
         const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
@@ -186,14 +205,15 @@ export const fetchHotelList = async () => {
   }
 };
 
-export const fetchHotelSettings = async (hotelId) => {
+// 고객 전용 호텔설정 조회 API
+export const fetchCustomerHotelSettings = async (hotelId) => {
   try {
-    const response = await api.get('/api/hotel-settings', {
+    const response = await api.get('/api/customer/hotel-settings', {
       params: { hotelId },
     });
-    return response.data.data;
+    return response.data; // 반드시 .data 직접 반환
   } catch (error) {
-    handleApiError(error, '호텔 설정 불러오기 실패');
+    handleApiError(error, '고객용 호텔 설정 조회 실패');
   }
 };
 
@@ -221,7 +241,10 @@ export const fetchHotelAvailability = async (hotelId, checkIn, checkOut) => {
 
 export const createReservation = async (reservationData) => {
   try {
-    const response = await api.post('/api/customer/reservation', reservationData);
+    const response = await api.post(
+      '/api/customer/reservation',
+      reservationData
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, '예약 저장 실패');
@@ -231,8 +254,7 @@ export const createReservation = async (reservationData) => {
 export const getReservationHistory = async () => {
   try {
     const response = await api.get('/api/customer/history');
-    // 응답 데이터 검증 및 기본값 설정
-    const reservations = response.data.map(reservation => ({
+    const reservations = response.data.map((reservation) => ({
       ...reservation,
       price: typeof reservation.price === 'number' ? reservation.price : 0,
       hotelName: reservation.hotelName || '알 수 없음',
@@ -247,9 +269,9 @@ export const getReservationHistory = async () => {
 
 export const cancelReservation = async (reservationId) => {
   try {
-    const response = await api.post('/api/customer/reservation/cancel', {
-      reservationId,
-    });
+    const response = await api.delete(
+      `/api/customer/reservation/${reservationId}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, '예약 취소 실패');

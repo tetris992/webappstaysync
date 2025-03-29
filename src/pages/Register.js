@@ -1,5 +1,5 @@
 // webapp/src/pages/Register.js
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -18,19 +18,16 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { customerRegister } from '../api/api';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
+import PrivacyConsentModal from '../components/PrivacyConsentModal';
 
 const schema = yup.object().shape({
   name: yup.string().required('이름은 필수입니다.'),
   phoneNumber: yup
     .string()
-    .notRequired()
-    .matches(/^\d{10,11}$|^\d{3}-\d{3,4}-\d{4}$/, {
-      message: '전화번호는 10~11자리 숫자여야 합니다.',
-      excludeEmptyString: true,
-    }),
+    .matches(/^\d{10,11}$|^\d{3}-\d{3,4}-\d{4}$/, '전화번호는 10~11자리 숫자여야 합니다.')
+    .nullable(),
   email: yup
     .string()
-    .notRequired()
     .email('유효한 이메일 주소를 입력해주세요.')
     .nullable(),
   password: yup
@@ -40,9 +37,12 @@ const schema = yup.object().shape({
 });
 
 const Register = () => {
+  const [showConsentModal, setShowConsentModal] = useState(false); // 모달 열림 여부
+  const [agreed, setAgreed] = useState(false); // 모달에서 동의 완료 시 true
   const navigate = useNavigate();
   const toast = useToast();
   const { login } = useAuth();
+
   const {
     register,
     handleSubmit,
@@ -52,17 +52,34 @@ const Register = () => {
     resolver: yupResolver(schema),
   });
 
+  // 회원가입 폼 전송
   const onSubmit = async (data) => {
     try {
-      // 전화번호, 이메일 미입력 시 기본값 처리
+      // 최종 동의 확인
+      if (!agreed) {
+        toast({
+          title: '동의 필요',
+          description: '약관에 동의하셔야 회원가입이 가능합니다.',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      // 전화번호, 이메일 기본값 처리
       if (!data.phoneNumber) {
         data.phoneNumber = '01000000000';
       }
       if (!data.email) {
         data.email = `${data.name.replace(/\s/g, '')}@example.com`;
       }
+      // 백엔드로 동의 여부 전송
+      data.consentChecked = true;
+
+      // 회원가입 API 호출
       const response = await customerRegister(data);
-      // Mode B: 회원가입 후 받은 token, customer로 로그인 상태 갱신 (백엔드 재요청 없이)
+
+      // 로그인 처리
       await login(response.customer, response.token);
 
       toast({
@@ -84,11 +101,17 @@ const Register = () => {
     }
   };
 
+  // 전화번호 자동 포맷
   const handlePhoneNumberChange = (e) => {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 11) value = value.slice(0, 11);
     const formatted = formatPhoneNumber(value);
     setValue('phoneNumber', formatted, { shouldValidate: true });
+  };
+
+  // 모달에서 동의 완료 시
+  const handleConsentComplete = () => {
+    setAgreed(true);
   };
 
   return (
@@ -97,8 +120,10 @@ const Register = () => {
         <Text fontSize="3xl" fontWeight="bold" textAlign="center" color="gray.800">
           회원가입
         </Text>
+
         <form onSubmit={handleSubmit(onSubmit)}>
           <VStack spacing={4}>
+            {/* 이름 */}
             <FormControl isInvalid={!!errors.name}>
               <FormLabel color="gray.600">이름</FormLabel>
               <Input
@@ -109,8 +134,9 @@ const Register = () => {
               <FormErrorMessage>{errors.name?.message}</FormErrorMessage>
             </FormControl>
 
+            {/* 전화번호 */}
             <FormControl isInvalid={!!errors.phoneNumber}>
-              <FormLabel color="gray.600">전화번호 (선택)</FormLabel>
+              <FormLabel color="gray.600">전화번호</FormLabel>
               <Input
                 {...register('phoneNumber')}
                 placeholder="010-1234-5678"
@@ -120,8 +146,9 @@ const Register = () => {
               <FormErrorMessage>{errors.phoneNumber?.message}</FormErrorMessage>
             </FormControl>
 
+            {/* 이메일 */}
             <FormControl isInvalid={!!errors.email}>
-              <FormLabel color="gray.600">이메일 (선택)</FormLabel>
+              <FormLabel color="gray.600">이메일</FormLabel>
               <Input
                 {...register('email')}
                 placeholder="이메일 입력"
@@ -130,6 +157,7 @@ const Register = () => {
               <FormErrorMessage>{errors.email?.message}</FormErrorMessage>
             </FormControl>
 
+            {/* 비밀번호 */}
             <FormControl isInvalid={!!errors.password}>
               <FormLabel color="gray.600">비밀번호</FormLabel>
               <Input
@@ -141,6 +169,17 @@ const Register = () => {
               <FormErrorMessage>{errors.password?.message}</FormErrorMessage>
             </FormControl>
 
+            {/* 약관 보기 (모달 열기) */}
+            <Text
+              color="blue.500"
+              textDecoration="underline"
+              cursor="pointer"
+              onClick={() => setShowConsentModal(true)}
+            >
+              개인정보 이용 및 서비스 약관
+            </Text>
+
+            {/* 회원가입 버튼 */}
             <Button
               colorScheme="teal"
               type="submit"
@@ -153,6 +192,7 @@ const Register = () => {
             </Button>
           </VStack>
         </form>
+
         <Text textAlign="center" fontSize="xs" color="gray.500">
           이미 회원이신가요?{' '}
           <Button as={Link} to="/login" variant="link" colorScheme="blue" fontSize="xs">
@@ -160,6 +200,15 @@ const Register = () => {
           </Button>
         </Text>
       </VStack>
+
+      {/* 약관 모달 */}
+      {showConsentModal && (
+        <PrivacyConsentModal
+          isOpen={showConsentModal}
+          onClose={() => setShowConsentModal(false)}
+          onConsentComplete={handleConsentComplete}
+        />
+      )}
     </Container>
   );
 };
