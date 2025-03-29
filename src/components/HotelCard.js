@@ -1,5 +1,4 @@
 // webApp/src/components/HotelCard.js
-
 import React from 'react';
 import {
   Box,
@@ -13,7 +12,8 @@ import {
 
 const HotelCard = ({ hotel, onSelect }) => {
   const toast = useToast();
-  const defaultPhoto = '/assets/default-hotel.jpg';
+  const defaultPhoto = '/assets/default-hotel.jpg'; // 기본 이미지 경로
+  const fallbackPhoto = 'https://via.placeholder.com/300x150?text=Hotel+Image'; // 대체 이미지 URL
 
   // 다크 모드 대응 배경색
   const cardBg = useColorModeValue('white', 'gray.700');
@@ -38,10 +38,11 @@ const HotelCard = ({ hotel, onSelect }) => {
           w="100%"
           objectFit="cover"
           borderRadius="md"
-          onError={() => {
+          onError={(e) => {
+            e.target.src = fallbackPhoto; // 로딩 실패 시 대체 이미지로 전환
             toast({
               title: '이미지 로드 실패',
-              description: '호텔 이미지를 불러오지 못했습니다.',
+              description: '호텔 이미지를 불러오지 못했습니다. 대체 이미지를 표시합니다.',
               status: 'error',
               duration: 3000,
               isClosable: true,

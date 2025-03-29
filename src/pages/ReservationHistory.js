@@ -174,6 +174,13 @@ const ReservationHistory = () => {
               width="100%"
               position="relative"
               height="auto"
+              css={{
+                '&::-webkit-scrollbar': {
+                  display: 'none',
+                },
+                msOverflowStyle: 'none', // kebab-case 대신 camelCase로 수정
+                scrollbarWidth: 'none', // kebab-case 대신 camelCase로 수정
+              }}
             >
               <Flex
                 width="100%"
