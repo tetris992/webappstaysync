@@ -1,0 +1,52 @@
+name: Deploy DanJam House to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      - name: Use Node 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        continue-on-error: false
+
+      - name: Build
+        run: npm run build
+        env:
+          REACT_APP_API_BASE_URL: https://staysync.org:3003
+          NODE_ENV: production
+          CORS_ORIGIN: https://danjam.in,http://localhost:3000,http://localhost:3001
+
+      - name: Create 404.html
+        run: |
+          cp build/index.html build/404.html
+          echo "<base href=\"/\" />" >> build/404.html
+
+      - name: Create CNAME file
+        run: |
+          echo "DanJam.in" > build/CNAME
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          cname: DanJam.in
