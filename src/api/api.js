@@ -3,7 +3,9 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004';
+const BASE_URL =
+  process.env.REACT_APP_API_BASE_URL ||
+  (process.env.NODE_ENV === 'production' ? 'https://staysync.org' : 'http://localhost:3004');
 console.log('[api.js] BASE_URL:', BASE_URL);
 
 const api = axios.create({
