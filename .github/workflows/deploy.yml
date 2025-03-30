@@ -1,4 +1,4 @@
-name: Deploy DanJam House to GitHub Pages
+name: Deploy DanJam-In to GitHub Pages
 
 on:
   push:

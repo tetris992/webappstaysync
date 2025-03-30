@@ -1,7 +1,8 @@
 {
-  "name": "webappstaysync",
+  "name": "danjam",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://danjam.in",
   "dependencies": {
     "@chakra-ui/icons": "^2.0.19",
     "@chakra-ui/react": "^2.8.1",
@@ -17,7 +18,6 @@
     "axios-retry": "^4.5.0",
     "date-fns": "^3.6.0",
     "framer-motion": "^10.16.4",
-    "keyframes": "^2.3.0",
     "react": "^18.2.0",
     "react-datepicker": "^8.2.1",
     "react-dom": "^18.3.1",
