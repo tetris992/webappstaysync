@@ -31,7 +31,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          REACT_APP_API_BASE_URL: https://staysync.org:3003
+          REACT_APP_API_BASE_URL: https://staysync.org
           NODE_ENV: production
           CORS_ORIGIN: https://danjam.in,http://localhost:3000,http://localhost:3001
 
