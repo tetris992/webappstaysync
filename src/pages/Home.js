@@ -109,8 +109,8 @@ const Home = () => {
               onClick={handleLogout}
               w={{ base: '90%', sm: '80%', md: 'sm' }}
               size="md"
-              color="red.500"
-              borderColor="red.500"
+              color="red.400"
+              borderColor="red.200"
               _hover={{ bg: 'red.50' }}
             >
               로그아웃

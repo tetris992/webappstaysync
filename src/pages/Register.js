@@ -119,7 +119,7 @@ const Register = () => {
         borderRadius="lg"
         boxShadow="md"
       >
-        <VStack spacing={{ base: 3, md: 4 }} align="stretch">
+        <VStack spacing={{ base: 4, md: 5 }} align="stretch">
           <Text
             fontSize={{ base: '2xl', md: '3xl' }}
             fontWeight="bold"
@@ -129,7 +129,7 @@ const Register = () => {
           </Text>
 
           <form onSubmit={handleSubmit(onSubmit)}>
-            <VStack spacing={2}>
+            <VStack spacing={4}>
               <FormControl isInvalid={!!errors.name}>
                 <FormLabel>이름</FormLabel>
                 <Input {...register('name')} placeholder="이름 입력" />
@@ -166,6 +166,7 @@ const Register = () => {
                 color="blue.500"
                 textDecoration="underline"
                 cursor="pointer"
+                mt={{ base: 6, md: 8 }} 
                 onClick={() => setShowConsentModal(true)}
               >
                 개인정보 이용 및 서비스 약관
