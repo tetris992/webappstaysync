@@ -29,7 +29,7 @@ function AppContent() {
           {
             roomInfo: 'Standard',
             price: 100000,
-            photoLinks: ['/assets/default-room.jpg'],
+            photoLinks: ['/assets/default-room1.jpg'],
           },
         ],
       });
