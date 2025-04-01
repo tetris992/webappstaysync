@@ -1,22 +1,12 @@
 // webapp/src/pages/Home.js
-import React, { useState } from 'react';
-import {
-  Container,
-  VStack,
-  Text,
-  Button,
-  Box,
-  Image,
-  Spinner,
-} from '@chakra-ui/react';
+import React from 'react';
+import { Container, VStack, Text, Button, Box, Image } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const Home = () => {
   const navigate = useNavigate();
   const { customer, logout } = useAuth();
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-  const [isVideoError, setIsVideoError] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -66,61 +56,6 @@ const Home = () => {
         </Box>
 
         <VStack spacing={6} flex="1" justifyContent="center" align="center">
-          {/* 영상 삽입 */}
-          <Box
-            w="full"
-            maxW="sm"
-            borderRadius="md"
-            overflow="hidden"
-            boxShadow="0 4px 6px rgba(0, 0, 0, 0.1)" // 부드러운 그림자 효과
-            position="relative"
-          >
-            {!isVideoLoaded && !isVideoError && (
-              <Box
-                w="full"
-                h="200px"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                bg="gray.100"
-              >
-                <Spinner color="teal.500" />
-              </Box>
-            )}
-            {isVideoError ? (
-              <Image
-                src="/assets/welcome-video-placeholder.jpeg" // 대체 이미지 (제공된 영상 이미지)
-                alt="Welcome Video Placeholder"
-                w="full"
-                h="200px"
-                objectFit="cover"
-                borderRadius="md"
-              />
-            ) : (
-              <video
-                src="/assets/danjam.mp4" // MP4 영상 파일 경로
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="auto" // 영상 미리 로드
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  display: isVideoLoaded ? 'block' : 'none',
-                }}
-                onLoadedData={() => {
-                  console.log('Video loaded successfully');
-                  setIsVideoLoaded(true);
-                }}
-                onError={(e) => {
-                  console.error('Failed to load video:', e);
-                  setIsVideoError(true);
-                }}
-              />
-            )}
-          </Box>
-
           <Text
             fontSize={{ base: 'xl', md: '2xl' }}
             fontWeight="bold"
