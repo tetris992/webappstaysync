@@ -1,4 +1,3 @@
-// webapp/src/components/ReservationCard.js
 import React from 'react';
 import {
   Box,
@@ -18,7 +17,7 @@ const ReservationCard = ({ reservation, onCancel }) => {
     roomInfo = '정보 없음',
     checkIn,
     checkOut,
-    numDays, // 숙박 일수 추가
+    numDays,
     price,
     reservationStatus,
     isCancelled,
@@ -40,9 +39,7 @@ const ReservationCard = ({ reservation, onCancel }) => {
 
   return (
     <Box
-      display="flex"
-      justifyContent="center"
-      w="100%"
+      w="full"
       maxW="sm"
       mx="auto"
       borderWidth="1px"

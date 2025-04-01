@@ -1,4 +1,3 @@
-// webapp/src/pages/ReservationHistory.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,18 +11,17 @@ import {
   Flex,
   IconButton,
 } from '@chakra-ui/react';
-import { keyframes } from '@chakra-ui/system'; // keyframes를 @chakra-ui/system에서 import
+import { keyframes } from '@chakra-ui/system';
 import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import useSocket from '../hooks/useSocket';
 import ReservationCard from '../components/ReservationCard';
 import { getReservationHistory, cancelReservation } from '../api/api';
-import { motion } from 'framer-motion'; // 애니메이션 추가를 위해 framer-motion 사용
-import { useSwipeable } from 'react-swipeable'; // 스와이프 제스처 추가
+import { motion } from 'framer-motion';
+import { useSwipeable } from 'react-swipeable';
 
 const MotionBox = motion(Box);
 
-// 화살표 깜빡임 애니메이션
 const blink = keyframes`
   0% { opacity: 0.2; }
   50% { opacity: 0.5; }
@@ -44,10 +42,9 @@ const ReservationHistory = () => {
     try {
       setIsLoading(true);
       const response = await getReservationHistory();
-      // response는 { history: [...], totalVisits: number } 형태
       const sortedReservations = (response.history || []).sort(
         (a, b) => new Date(b.reservationDate) - new Date(a.reservationDate)
-      ); // 최신 예약이 먼저 오도록 정렬
+      );
       setReservations(sortedReservations);
       setTotalVisits(response.totalVisits || 0);
     } catch (error) {
@@ -111,7 +108,6 @@ const ReservationHistory = () => {
     };
   }, [socket, customer, toast, loadHistory]);
 
-  // 캐러셀 이동 핸들러
   const handlePrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
@@ -124,7 +120,6 @@ const ReservationHistory = () => {
     }
   };
 
-  // 스와이프 제스처 핸들러
   const handlers = useSwipeable({
     onSwipedLeft: () => handleNext(),
     onSwipedRight: () => handlePrev(),
@@ -132,9 +127,20 @@ const ReservationHistory = () => {
   });
 
   return (
-    <Container maxW="container.sm" py={6}>
-      <VStack spacing={4} align="stretch">
-        <Text fontSize="2xl" fontWeight="bold" color="teal.500" textAlign="center">
+    <Container
+      maxW="container.sm"
+      py={6}
+      minH="100vh"
+      display="flex"
+      flexDirection="column"
+    >
+      <VStack spacing={4} align="stretch" flex="1">
+        <Text
+          fontSize={{ base: '2xl', md: '3xl' }}
+          fontWeight="bold"
+          color="teal.500"
+          textAlign="center"
+        >
           예약 내역
         </Text>
         <Text fontSize="md" color="gray.600" textAlign="center">
@@ -149,8 +155,7 @@ const ReservationHistory = () => {
             예약 내역이 없습니다.
           </Text>
         ) : (
-          <Box position="relative">
-            {/* 왼쪽 화살표 */}
+          <Box position="relative" flex="1">
             {currentIndex > 0 && (
               <IconButton
                 icon={<ChevronLeftIcon />}
@@ -167,7 +172,6 @@ const ReservationHistory = () => {
                 aria-label="Previous reservation"
               />
             )}
-            {/* 캐러셀 컨테이너 */}
             <Box
               {...handlers}
               overflow="hidden"
@@ -175,11 +179,9 @@ const ReservationHistory = () => {
               position="relative"
               height="auto"
               css={{
-                '&::-webkit-scrollbar': {
-                  display: 'none',
-                },
-                msOverflowStyle: 'none', // kebab-case 대신 camelCase로 수정
-                scrollbarWidth: 'none', // kebab-case 대신 camelCase로 수정
+                '&::-webkit-scrollbar': { display: 'none' },
+                msOverflowStyle: 'none',
+                scrollbarWidth: 'none',
               }}
             >
               <Flex
@@ -197,7 +199,7 @@ const ReservationHistory = () => {
                     animate={{
                       opacity: 1,
                       x: 0,
-                      scale: currentIndex === idx ? 1.05 : 1, // 현재 카드 강조
+                      scale: currentIndex === idx ? 1.05 : 1,
                     }}
                     transition={{ duration: 0.5 }}
                   >
@@ -209,7 +211,6 @@ const ReservationHistory = () => {
                 ))}
               </Flex>
             </Box>
-            {/* 오른쪽 화살표 */}
             {currentIndex < reservations.length - 1 && (
               <IconButton
                 icon={<ChevronRightIcon />}
@@ -226,7 +227,6 @@ const ReservationHistory = () => {
                 aria-label="Next reservation"
               />
             )}
-            {/* 인디케이터 (Dot) */}
             <Flex justify="center" mt={2}>
               {reservations.map((_, idx) => (
                 <Box
@@ -242,7 +242,13 @@ const ReservationHistory = () => {
             </Flex>
           </Box>
         )}
-        <Button colorScheme="gray" variant="outline" onClick={() => navigate('/')} w="full">
+        <Button
+          colorScheme="gray"
+          variant="outline"
+          onClick={() => navigate('/')}
+          w="full"
+          size="md"
+        >
           홈으로 돌아가기
         </Button>
       </VStack>

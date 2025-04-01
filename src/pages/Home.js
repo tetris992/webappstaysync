@@ -1,6 +1,5 @@
-// webapp/src/pages/Home.js
 import React from 'react';
-import { Container, VStack, Text, Button, Box, Image } from '@chakra-ui/react';
+import { Container, VStack, Text, Button, Box, Image, Divider } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -16,110 +15,103 @@ const Home = () => {
   return (
     <Box
       minH="100vh"
-      bgGradient="linear(to-b, white, gray.100)" // 흰색에서 회색으로 부드러운 그라데이션
-      position="relative"
-      overflow="hidden"
+      bg="white"
+      display="flex"
+      flexDirection="column"
+      justifyContent="center"
+      alignItems="center"
     >
-      {/* 배경 이미지 */}
-      <Image
-        src="/assets/welcome-team.jpg" // 제공된 이미지를 assets 폴더에 저장 후 경로 지정
-        alt="Welcome Team"
-        position="absolute"
-        top="0"
-        left="0"
-        w="100%"
-        h="100%"
-        objectFit="cover"
-        opacity={0.3} // 이미지 투명도 조정으로 콘텐츠 가독성 확보
-        zIndex={0}
-      />
-
-      {/* 콘텐츠 */}
       <Container
-        maxW="container.md"
-        py={6}
+        maxW="container.sm"
+        py={{ base: 3, md: 4 }} // Match padding with UnifiedLogin.js
         minH="100vh"
         display="flex"
         flexDirection="column"
-        position="relative"
-        zIndex={1}
+        justifyContent="center"
       >
-        <Box textAlign="center" mb={4}>
+        <VStack spacing={{ base: 3, md: 4 }} flex="1" justifyContent="center" align="center">
+          {/* Title - Larger size */}
           <Text
-            fontSize={{ base: 'xl', md: '2xl' }}
+            fontSize={{ base: '2xl', md: '3xl' }} // Increased size: 2xl (24px) on base, 3xl (30px) on md
             fontWeight="bold"
+            textAlign="center"
             color="gray.800"
-            textShadow="0 2px 4px rgba(0, 0, 0, 0.1)" // 부드러운 조명 효과
           >
-            단잠 호텔 예약
+            단잠: 간편한 후불예약😴
           </Text>
-        </Box>
+          <Divider />
 
-        <VStack spacing={6} flex="1" justifyContent="center" align="center">
+          {/* Flower Image - Match button width */}
+          <Image
+            src="/assets/welcome-team.jpg"
+            alt="Welcome Image"
+            w={{ base: '90%', sm: '80%', md: 'sm' }} // Match button width
+            h={{ base: '250px', md: '300px' }} // Maintain aspect ratio
+            objectFit="cover"
+            borderRadius="md"
+            opacity={0.8}
+          />
+                      <Divider />
+
+          {/* Greeting */}
           <Text
             fontSize={{ base: 'xl', md: '2xl' }}
             fontWeight="bold"
             textAlign="center"
             color="gray.800"
-            textShadow="0 2px 4px rgba(0, 0, 0, 0.1)" // 부드러운 조명 효과
           >
-            반갑습니다{customer ? `, ${customer.name}님` : ''}!
+            반갑습니다{customer ? `, ${customer.name}님` : ''}😍
+            
           </Text>
           <Text
             fontSize={{ base: 'md', md: 'lg' }}
             textAlign="center"
             color="gray.600"
+            mb={{ base: 6, md: 8 }} // Increased spacing below the text
           >
             간편하게 호텔을 예약하고
             <br />내 예약 정보를 확인해 보세요.
+            
           </Text>
+
           <Button
-            colorScheme="teal"
-            bg="teal.500"
-            _hover={{ bg: 'teal.600' }}
+            variant="homeButton" // New variant: white background, black text, border by default
             onClick={() => navigate('/hotels')}
-            w="full"
-            size="lg"
-            boxShadow="0 4px 6px rgba(0, 0, 0, 0.1)" // 부드러운 그림자 효과
+            w={{ base: '90%', sm: '80%', md: 'sm' }} // Match width with UnifiedLogin.js
+            size="md"
           >
             호텔 목록 보기
           </Button>
           <Button
-            colorScheme="teal"
-            bg="teal.400"
-            _hover={{ bg: 'teal.500' }}
+            variant="homeButtonSecondary" // New variant with lighter brand color on hover
             onClick={() => navigate('/history')}
-            w="full"
-            size="lg"
-            boxShadow="0 4px 6px rgba(0, 0, 0, 0.1)" // 부드러운 그림자 효과
+            w={{ base: '90%', sm: '80%', md: 'sm' }}
+            size="md"
           >
             나의 예약 보기
           </Button>
           {!customer ? (
             <Button
-              colorScheme="teal"
               variant="outline"
               onClick={() => navigate('/login')}
-              w="full"
-              size="lg"
-              color="teal.500"
-              borderColor="teal.500"
-              _hover={{ bg: 'teal.50' }}
-              boxShadow="0 4px 6px rgba(0, 0, 0, 0.1)" // 부드러운 그림자 효과
+              w={{ base: '90%', sm: '80%', md: 'sm' }}
+              size="md"
+              color="brand.500"
+              borderColor="brand.500"
             >
               로그인 / 회원가입
             </Button>
+            
           ) : (
+            
             <Button
-              colorScheme="red"
               variant="outline"
               onClick={handleLogout}
-              w="full"
-              size="lg"
+              w={{ base: '90%', sm: '80%', md: 'sm' }}
+              size="md"
               color="red.500"
               borderColor="red.500"
               _hover={{ bg: 'red.50' }}
-              boxShadow="0 4px 6px rgba(0, 0, 0, 0.1)" // 부드러운 그림자 효과
             >
               로그아웃
             </Button>

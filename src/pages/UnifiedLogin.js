@@ -1,4 +1,3 @@
-// webapp/src/pages/UnifiedLogin.js
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -11,7 +10,7 @@ import {
   Text,
   FormControl,
   FormLabel,
-  FormErrorMessage, // 추가
+  FormErrorMessage,
   Input,
   Button,
   Divider,
@@ -156,142 +155,119 @@ const UnifiedLogin = () => {
       justify="center"
       align="center"
       minH="100vh"
-      bg="gray.50"
-      px={4}
+      px={{ base: 3, md: 4 }}
     >
       <Box
-        w="full"
-        maxW="sm"
-        p={6}
+        w={{ base: '95%', sm: '85%', md: 'sm' }}
+        p={{ base: 3, md: 4 }}
         bg="white"
         borderRadius="lg"
         boxShadow="md"
       >
-        <VStack spacing={4} align="stretch">
+        <VStack spacing={{ base: 3, md: 4 }} align="stretch">
           <Text
-            fontSize={{ base: 'xl', md: '2xl' }}
+            fontSize={{ base: '2xl', md: '2xl' }}
             fontWeight="bold"
-            color="gray.800"
             textAlign="center"
+            mb={{ base: 6, md: 8 }}
           >
             단잠: 편안한 숙박예약
           </Text>
 
           <form onSubmit={handleSubmit(onSubmit)}>
-            <VStack spacing={3}>
+            <VStack spacing={2}>
               <FormControl isInvalid={!!errors.phoneNumber}>
-                <FormLabel color="gray.600">전화번호</FormLabel>
+                <FormLabel>전화번호</FormLabel>
                 <Input
                   {...register('phoneNumber')}
                   placeholder="010-1234-5678"
                   onChange={handlePhoneNumberChange}
                   w="full"
-                  borderColor="gray.300"
-                  _focus={{
-                    borderColor: 'teal.500',
-                    boxShadow: '0 0 0 1px teal.500',
-                  }}
                 />
                 <FormErrorMessage>{errors.phoneNumber?.message}</FormErrorMessage>
               </FormControl>
               <FormControl isInvalid={!!errors.password}>
-                <FormLabel color="gray.600">비밀번호</FormLabel>
+                <FormLabel>비밀번호</FormLabel>
                 <Input
                   type="password"
                   {...register('password')}
                   placeholder="비밀번호 입력"
                   w="full"
-                  borderColor="gray.300"
-                  _focus={{
-                    borderColor: 'teal.500',
-                    boxShadow: '0 0 0 1px teal.500',
-                  }}
                 />
                 <FormErrorMessage>{errors.password?.message}</FormErrorMessage>
               </FormControl>
               <Button
-                colorScheme="teal"
+                variant="solid"
                 type="submit"
                 w="full"
                 isLoading={isSubmitting}
                 loadingText="처리 중..."
-                borderRadius="md"
-                bg="teal.500"
-                _hover={{ bg: 'teal.600' }}
+                size="md"
               >
                 로그인
               </Button>
             </VStack>
           </form>
 
-          <Text textAlign="center" fontSize="sm" color="gray.500">
+          <Text textAlign="center" fontSize="sm">
             회원이 아니신가요?{' '}
-            <Button
-              as={Link}
-              to="/register"
-              variant="link"
-              colorScheme="blue"
-              fontSize="sm"
-              _hover={{ textDecoration: 'none', bg: 'transparent' }}
-            >
+            <Button as={Link} to="/register" variant="link" fontSize="sm">
               회원가입
             </Button>
           </Text>
 
           <Divider />
-          <Text textAlign="center" fontSize="sm" color="gray.500">
+          <Text
+            textAlign="center"
+            fontSize="sm"
+            my={{ base: 6, md: 8 }} // Increased spacing above and below "OR"
+          >
             OR
           </Text>
 
-          <VStack spacing={2}>
+          <VStack spacing={3}>
             <Button
+              variant="kakao"
               w="full"
-              bg="#FEE500"
-              color="black"
               leftIcon={<Icon as={SiKakao} />}
               onClick={() => handleSocialLogin('kakao')}
-              _hover={{ bg: '#F7E600' }}
               isLoading={isSocialLoading}
               loadingText="카카오 로그인 중..."
+              size="md"
             >
               카카오로 계속하기
             </Button>
             <Button
+              variant="naver"
               w="full"
-              bg="#03C75A"
-              color="white"
               leftIcon={<Icon as={SiNaver} />}
               onClick={() => handleSocialLogin('naver')}
-              _hover={{ bg: '#02B050' }}
               isLoading={isSocialLoading}
               loadingText="네이버 로그인 중..."
+              size="md"
             >
               네이버로 계속하기
             </Button>
             <Button
+              variant="google"
               w="full"
-              variant="outline"
-              color="gray.800"
               leftIcon={<Icon as={FaGoogle} />}
               onClick={() => handleSocialLogin('google')}
-              _hover={{ bg: 'gray.100' }}
               isLoading={isSocialLoading}
               loadingText="구글 로그인 중..."
+              size="md"
             >
               구글로 계속하기
             </Button>
           </VStack>
 
-          <Text textAlign="center" fontSize="xs" color="gray.500">
+          <Text
+            textAlign="center"
+            fontSize="xs"
+            mt={{ base: 6, md: 8 }} // Increased spacing above the terms text
+          >
             이용약관 |{' '}
-            <Button
-              as={Link}
-              to="/privacy"
-              variant="link"
-              colorScheme="blue"
-              fontSize="xs"
-              _hover={{ textDecoration: 'none', bg: 'transparent' }}
-            >
+            <Button as={Link} to="/privacy" variant="link" fontSize="xs">
               개인정보처리방침
             </Button>
           </Text>

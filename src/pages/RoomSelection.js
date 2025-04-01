@@ -1,4 +1,3 @@
-// webapp/src/pages/RoomSelection.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -19,7 +18,6 @@ const RoomSelection = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // 오늘과 내일 날짜(YYYY-MM-DD 형식)로 기본값 설정
   const today = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
 
@@ -30,13 +28,11 @@ const RoomSelection = () => {
   const [hotelSettings, setHotelSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 숙박 일수 계산
   const numDays = differenceInCalendarDays(
     new Date(checkOut),
     new Date(checkIn)
   );
 
-  // 호텔 설정 로딩 (고객 전용 설정)
   useEffect(() => {
     const loadHotelSettings = async () => {
       try {
@@ -98,9 +94,7 @@ const RoomSelection = () => {
   };
 
   const handleSelectRoom = (roomInfo, perNightPrice) => {
-    // 숙박일수 계산: 체크아웃 - 체크인 (예: 오늘과 내일이면 1박)
     const numNights = differenceInCalendarDays(new Date(checkOut), new Date(checkIn));
-    // 총 가격 = 1박당 가격 × 숙박일수
     const totalPrice = perNightPrice * numNights;
     navigate('/confirm', {
       state: {
@@ -115,9 +109,19 @@ const RoomSelection = () => {
   };
 
   return (
-    <Container maxW="container.md" py={6}>
-      <VStack spacing={4} align="stretch">
-        <Text fontSize="2xl" fontWeight="bold" color="teal.500">
+    <Container
+      maxW="container.sm"
+      py={6}
+      minH="100vh"
+      display="flex"
+      flexDirection="column"
+    >
+      <VStack spacing={4} align="stretch" flex="1">
+        <Text
+          fontSize={{ base: '2xl', md: '3xl' }}
+          fontWeight="bold"
+          color="teal.500"
+        >
           {hotelSettings?.hotelName || '객실 선택'}
         </Text>
         <VStack spacing={2}>
@@ -126,20 +130,21 @@ const RoomSelection = () => {
             type="date"
             value={checkIn}
             onChange={(e) => setCheckIn(e.target.value)}
-            min={today} // 오늘 날짜 이후만 선택 가능
+            min={today}
           />
           <Text>체크아웃 날짜</Text>
           <Input
             type="date"
             value={checkOut}
             onChange={(e) => setCheckOut(e.target.value)}
-            min={format(addDays(new Date(checkIn), 1), 'yyyy-MM-dd')} // 체크인 다음 날 이후만 선택 가능
+            min={format(addDays(new Date(checkIn), 1), 'yyyy-MM-dd')}
           />
           <Button
             colorScheme="teal"
             onClick={handleCheckAvailability}
             w="full"
             isLoading={isLoading}
+            size="md"
           >
             이용 가능한 객실 조회
           </Button>
@@ -155,16 +160,16 @@ const RoomSelection = () => {
                 <RoomCarouselCard
                   key={room.roomInfo}
                   roomInfo={room.roomInfo}
-                  price={room.price} // 1박당 가격
+                  price={room.price}
                   stock={room.availableRooms}
-                  numDays={numDays} // 숙박 일수 전달
+                  numDays={numDays}
                   onSelect={() => handleSelectRoom(room.roomInfo, room.price)}
                 />
               ))}
             </SimpleGrid>
           )
         )}
-        <Button onClick={() => navigate('/')} colorScheme="gray" w="full">
+        <Button onClick={() => navigate('/')} colorScheme="gray" w="full" size="md">
           뒤로가기
         </Button>
       </VStack>
