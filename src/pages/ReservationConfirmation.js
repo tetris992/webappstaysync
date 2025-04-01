@@ -123,7 +123,7 @@ const ReservationConfirmation = () => {
           예약 확인
         </Text>
         <Image
-          src="/assets/default-room.jpg"
+          src="/assets/default-room1.jpg"
           alt={roomInfo}
           h="200px"
           w="100%"
