@@ -13,11 +13,12 @@ const roomPhotoMap = {
   single: '/assets/default-room8.jpg',
 };
 
-const RoomCarouselCard = ({ roomInfo, price, stock, onSelect }) => {
+const RoomCarouselCard = ({ roomInfo, price, stock, numDays, onSelect }) => {
   if (stock <= 0) return null;
 
   const defaultPhoto = roomPhotoMap[roomInfo?.toLowerCase()] || '/assets/default-room1.jpg';
   const safePrice = typeof price === 'number' ? price : 0;
+  const totalPrice = safePrice * (numDays || 1); // 총 가격 계산
 
   return (
     <Box borderWidth="1px" borderRadius="lg" overflow="hidden" shadow="md" bg="white">
@@ -25,6 +26,9 @@ const RoomCarouselCard = ({ roomInfo, price, stock, onSelect }) => {
       <Box p={4}>
         <Text fontSize="lg" fontWeight="bold">{roomInfo || '정보 없음'}</Text>
         <Text>{safePrice.toLocaleString()}원 / 박</Text>
+        <Text color="blue.500">
+          총 가격: {totalPrice.toLocaleString()}원 ({numDays || 1}박)
+        </Text>
         <Text color="gray.500">재고: {stock}개</Text>
         <Button mt={2} colorScheme="blue" size="sm" onClick={onSelect}>
           이 객실 선택
