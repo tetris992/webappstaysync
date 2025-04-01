@@ -6,9 +6,8 @@ import HotelList from './pages/HotelList';
 import RoomSelection from './pages/RoomSelection';
 import ReservationConfirmation from './pages/ReservationConfirmation';
 import ReservationHistory from './pages/ReservationHistory';
-import Login from './pages/Login';
+import UnifiedLogin from './pages/UnifiedLogin'; // 통합된 로그인 페이지
 import Register from './pages/Register';
-import ConnectSocial from './pages/ConnectSocial';
 import AuthCallback from './pages/AuthCallback';
 import { useAuth } from './contexts/AuthContext';
 import { fetchCustomerHotelSettings } from './api/api';
@@ -56,12 +55,8 @@ function AppContent() {
     <div style={{ minHeight: '100vh', background: '#f7fafc' }}>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<UnifiedLogin />} />
         <Route path="/register" element={<Register />} />
-        <Route
-          path="/connect-social"
-          element={isAuthenticated && customer ? <ConnectSocial /> : <Navigate to="/login" replace />}
-        />
         <Route path="/auth/:provider/callback" element={<AuthCallback />} />
         <Route
           path="/hotels"

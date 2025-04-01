@@ -1,28 +1,29 @@
-// webapp/src/pages/Login.js
+// webapp/src/pages/UnifiedLogin.js
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  Container,
+  Flex,
+  Box,
   VStack,
-  Input,
-  Button,
   Text,
   FormControl,
   FormLabel,
-  FormErrorMessage,
-  Icon,
+  FormErrorMessage, // 추가
+  Input,
+  Button,
+  Divider,
   useToast,
+  Icon,
 } from '@chakra-ui/react';
+import { SiKakao, SiNaver } from 'react-icons/si';
+import { FaGoogle } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { customerLogin, customerLoginSocial } from '../api/api';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
-import { SiKakao, SiNaver } from 'react-icons/si';
-import { FaGoogle } from 'react-icons/fa';
 
-// 일반 로그인에 필요한 스키마 (전화번호와 비밀번호)
 const schema = yup.object().shape({
   phoneNumber: yup
     .string()
@@ -34,13 +35,11 @@ const schema = yup.object().shape({
     .min(4, '비밀번호는 최소 4자 이상이어야 합니다.'),
 });
 
-const Login = () => {
+const UnifiedLogin = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const [isSocialLoading, setIsSocialLoading] = useState(false);
-  // 처음에는 소셜 로그인 옵션만 보여주고, 나중에 일반 로그인 폼을 보여주기 위한 상태
-  const [showNormalLogin, setShowNormalLogin] = useState(false);
 
   const {
     register,
@@ -51,14 +50,13 @@ const Login = () => {
     resolver: yupResolver(schema),
   });
 
-  // Kakao SDK 초기화 (소셜 로그인용)
   useEffect(() => {
     if (window.Kakao && !window.Kakao.isInitialized()) {
-      window.Kakao.init('YOUR_KAKAO_APP_KEY'); // 실제 키로 교체하세요.
+      window.Kakao.init(process.env.REACT_APP_KAKAO_APP_KEY || 'YOUR_KAKAO_APP_KEY');
+      console.log('Kakao SDK initialized');
     }
   }, []);
 
-  // 일반 로그인 처리 (phoneNumber와 password만 전송)
   const onSubmit = async (data) => {
     try {
       const response = await customerLogin({
@@ -85,7 +83,6 @@ const Login = () => {
     }
   };
 
-  // 전화번호 입력 시 숫자만 추출하여 포맷팅
   const handlePhoneNumberChange = (e) => {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 11) value = value.slice(0, 11);
@@ -93,7 +90,6 @@ const Login = () => {
     setValue('phoneNumber', formatted, { shouldValidate: true });
   };
 
-  // 소셜 로그인 처리 (카카오만 임시 구현)
   const handleSocialLogin = async (provider) => {
     setIsSocialLoading(true);
     try {
@@ -154,93 +150,35 @@ const Login = () => {
     }
   };
 
-  // "다음에 할께요" 버튼 클릭 시 일반 로그인 폼을 보여줌
-  const handleSkipSocial = () => {
-    setShowNormalLogin(true);
-  };
-
   return (
-    <Container
-      maxW="container.sm"
-      py={8}
-      bg="white"
-      borderRadius="lg"
-      boxShadow="lg"
-      sx={{
-        '@media (max-width: 480px)': { padding: '16px' },
-        '@media (max-width: 768px)': { padding: '20px' },
-      }}
+    <Flex
+      direction="column"
+      justify="center"
+      align="center"
+      minH="100vh"
+      bg="gray.50"
+      px={4}
     >
-      <VStack spacing={6} align="stretch">
-        <Text
-          fontSize={{ base: '1.5xl', md: '3xl' }}
-          fontWeight="bold"
-          textAlign="center"
-          color="gray.800"
-          w="full"
-        >
-          단잠 : 편안한 숙박예약
-        </Text>
+      <Box
+        w="full"
+        maxW="sm"
+        p={6}
+        bg="white"
+        borderRadius="lg"
+        boxShadow="md"
+      >
+        <VStack spacing={4} align="stretch">
+          <Text
+            fontSize={{ base: 'xl', md: '2xl' }}
+            fontWeight="bold"
+            color="gray.800"
+            textAlign="center"
+          >
+            단잠: 편안한 숙박예약
+          </Text>
 
-        {!showNormalLogin ? (
-          <>
-            <VStack spacing={3} align="stretch">
-              <Button
-                onClick={() => handleSocialLogin('kakao')}
-                bg="#FEE500"
-                color="black"
-                leftIcon={<Icon as={SiKakao} />}
-                iconSpacing={3}
-                _hover={{ bg: '#E4D100' }}
-                w="full"
-                borderRadius="md"
-                justifyContent="center"
-                isLoading={isSocialLoading}
-                loadingText="카카오 로그인 중..."
-              >
-                카카오로 계속하기
-              </Button>
-              <Button
-                onClick={() => handleSocialLogin('naver')}
-                bg="#03C75A"
-                color="white"
-                leftIcon={<Icon as={SiNaver} />}
-                iconSpacing={3}
-                _hover={{ bg: '#02B050' }}
-                w="full"
-                borderRadius="md"
-                justifyContent="center"
-                isLoading={isSocialLoading}
-                loadingText="네이버 로그인 중..."
-              >
-                네이버로 계속하기
-              </Button>
-              <Button
-                onClick={() => handleSocialLogin('google')}
-                bg="white"
-                color="black"
-                border="1px solid"
-                borderColor="gray.300"
-                leftIcon={<Icon as={FaGoogle} />}
-                iconSpacing={3}
-                _hover={{ bg: 'gray.100' }}
-                w="full"
-                borderRadius="md"
-                justifyContent="center"
-                isLoading={isSocialLoading}
-                loadingText="구글 로그인 중..."
-              >
-                구글로 계속하기
-              </Button>
-            </VStack>
-            <Button variant="link" colorScheme="blue" onClick={handleSkipSocial} w="full" _hover={{ textDecoration: 'none', bg: 'transparent' }}>
-              다음에 할께요
-            </Button>
-          </>
-        ) : (
-          // 일반 로그인 폼 표시
           <form onSubmit={handleSubmit(onSubmit)}>
-            <VStack spacing={4}>
+            <VStack spacing={3}>
               <FormControl isInvalid={!!errors.phoneNumber}>
                 <FormLabel color="gray.600">전화번호</FormLabel>
                 <Input
@@ -274,7 +212,6 @@ const Login = () => {
               <Button
                 colorScheme="teal"
                 type="submit"
-                mt={4}
                 w="full"
                 isLoading={isSubmitting}
                 loadingText="처리 중..."
@@ -286,17 +223,82 @@ const Login = () => {
               </Button>
             </VStack>
           </form>
-        )}
 
-        <Text textAlign="center" fontSize="xs" color="gray.500" w="full">
-          회원이 아니신가요?{' '}
-          <Button as={Link} to="/register" variant="link" colorScheme="blue" fontSize="xs" _hover={{ textDecoration: 'none', bg: 'transparent' }}>
-            회원가입
-          </Button>
-        </Text>
-      </VStack>
-    </Container>
+          <Text textAlign="center" fontSize="sm" color="gray.500">
+            회원이 아니신가요?{' '}
+            <Button
+              as={Link}
+              to="/register"
+              variant="link"
+              colorScheme="blue"
+              fontSize="sm"
+              _hover={{ textDecoration: 'none', bg: 'transparent' }}
+            >
+              회원가입
+            </Button>
+          </Text>
+
+          <Divider />
+          <Text textAlign="center" fontSize="sm" color="gray.500">
+            OR
+          </Text>
+
+          <VStack spacing={2}>
+            <Button
+              w="full"
+              bg="#FEE500"
+              color="black"
+              leftIcon={<Icon as={SiKakao} />}
+              onClick={() => handleSocialLogin('kakao')}
+              _hover={{ bg: '#F7E600' }}
+              isLoading={isSocialLoading}
+              loadingText="카카오 로그인 중..."
+            >
+              카카오로 계속하기
+            </Button>
+            <Button
+              w="full"
+              bg="#03C75A"
+              color="white"
+              leftIcon={<Icon as={SiNaver} />}
+              onClick={() => handleSocialLogin('naver')}
+              _hover={{ bg: '#02B050' }}
+              isLoading={isSocialLoading}
+              loadingText="네이버 로그인 중..."
+            >
+              네이버로 계속하기
+            </Button>
+            <Button
+              w="full"
+              variant="outline"
+              color="gray.800"
+              leftIcon={<Icon as={FaGoogle} />}
+              onClick={() => handleSocialLogin('google')}
+              _hover={{ bg: 'gray.100' }}
+              isLoading={isSocialLoading}
+              loadingText="구글 로그인 중..."
+            >
+              구글로 계속하기
+            </Button>
+          </VStack>
+
+          <Text textAlign="center" fontSize="xs" color="gray.500">
+            이용약관 |{' '}
+            <Button
+              as={Link}
+              to="/privacy"
+              variant="link"
+              colorScheme="blue"
+              fontSize="xs"
+              _hover={{ textDecoration: 'none', bg: 'transparent' }}
+            >
+              개인정보처리방침
+            </Button>
+          </Text>
+        </VStack>
+      </Box>
+    </Flex>
   );
 };
 
-export default Login;
+export default UnifiedLogin;
