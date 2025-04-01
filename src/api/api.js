@@ -1,4 +1,3 @@
-// webapp/src/api/api.js
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
@@ -24,6 +23,7 @@ const handleApiError = (error, defaultMessage) => {
 
 const getCustomerToken = () => localStorage.getItem('customerToken');
 const getCsrfToken = () => localStorage.getItem('csrfToken');
+const getCsrfTokenId = () => localStorage.getItem('csrfTokenId');
 
 // 요청 인터셉터: Authorization 및 CSRF 토큰 설정
 api.interceptors.request.use(
@@ -43,15 +43,28 @@ api.interceptors.request.use(
     const skipCsrf = config.skipCsrf || false;
 
     if (!isGetRequest && !isCsrfTokenRequest && !skipCsrf) {
-      try {
-        const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
-        config.headers['X-CSRF-Token'] = data.csrfToken;
-        localStorage.setItem('csrfToken', data.csrfToken);
-        console.log(`[api.js] Setting CSRF token: ${data.csrfToken}`);
-      } catch (error) {
-        console.error('[api.js] Failed to fetch CSRF token:', error);
-        throw new ApiError(403, 'CSRF 토큰을 가져오지 못했습니다.');
+      let csrfToken = getCsrfToken();
+      let csrfTokenId = getCsrfTokenId();
+      if (!csrfToken || !csrfTokenId) {
+        try {
+          const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
+          csrfToken = data.csrfToken;
+          csrfTokenId = data.tokenId;
+          localStorage.setItem('csrfToken', csrfToken);
+          localStorage.setItem('csrfTokenId', csrfTokenId);
+          console.log(
+            `[api.js] Setting CSRF token: ${csrfToken}, tokenId: ${csrfTokenId}`
+          );
+        } catch (error) {
+          console.error('[api.js] Failed to fetch CSRF token:', error);
+          throw new ApiError(403, 'CSRF 토큰을 가져오지 못했습니다.');
+        }
       }
+      config.headers['X-CSRF-Token'] = csrfToken;
+      config.headers['X-CSRF-Token-Id'] = csrfTokenId;
+      console.log(
+        `[api.js] Setting CSRF headers: X-CSRF-Token=${csrfToken}, X-CSRF-Token-Id=${csrfTokenId}`
+      );
     }
 
     return config;
@@ -69,18 +82,6 @@ const processQueue = (error, token = null) => {
   });
   failedQueue = [];
 };
-
-// refreshToken 함수: 토큰 갱신 API 호출
-// export const refreshToken = async () => {
-//   try {
-//     const response = await api.post('/api/customer/refresh-token');
-//     const { token } = response.data;
-//     localStorage.setItem('customerToken', token);
-//     return token;
-//   } catch (error) {
-//     throw new ApiError(401, '토큰 갱신 실패');
-//   }
-// };
 
 // 응답 인터셉터: 401(토큰 만료) 및 403(CSRF 문제) 에러 처리
 api.interceptors.response.use(
@@ -112,6 +113,7 @@ api.interceptors.response.use(
         console.log('[api.js] 401 Unauthorized, redirecting to login');
         localStorage.removeItem('customerToken');
         localStorage.removeItem('csrfToken');
+        localStorage.removeItem('csrfTokenId');
         window.location.href = '/login';
         throw new ApiError(401, '토큰이 만료되었습니다. 다시 로그인해주세요.');
       } catch (err) {
@@ -127,9 +129,13 @@ api.interceptors.response.use(
       try {
         const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
         localStorage.setItem('csrfToken', data.csrfToken);
+        localStorage.setItem('csrfTokenId', data.tokenId);
         originalRequest.headers['X-CSRF-Token'] = data.csrfToken;
+        originalRequest.headers['X-CSRF-Token-Id'] = data.tokenId;
         return api(originalRequest);
       } catch (retryError) {
+        localStorage.removeItem('csrfToken');
+        localStorage.removeItem('csrfTokenId');
         throw new ApiError(403, 'CSRF 토큰 갱신 실패');
       }
     }
@@ -217,17 +223,6 @@ export const fetchCustomerHotelSettings = async (hotelId) => {
   }
 };
 
-// export const fetchHotelSettings = async (hotelId) => {
-//   try {
-//     const response = await api.get('/api/hotel-settings', {
-//       params: { hotelId },
-//     });
-//     return response.data.data;
-//   } catch (error) {
-//     handleApiError(error, '호텔 설정 불러오기 실패');
-//   }
-// };
-
 export const fetchHotelPhotos = async (hotelId, category, subCategory) => {
   try {
     const response = await api.get('/api/hotel-settings/photos', {
@@ -313,9 +308,10 @@ export const logoutCustomer = async () => {
   } finally {
     localStorage.removeItem('customerToken');
     localStorage.removeItem('csrfToken');
+    localStorage.removeItem('csrfTokenId');
   }
 };
 
-export { getCustomerToken, getCsrfToken };
+export { getCustomerToken, getCsrfToken, getCsrfTokenId };
 
 export default api;
