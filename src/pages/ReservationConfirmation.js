@@ -12,7 +12,7 @@ import {
   Divider,
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
-import { createReservation } from '../api/api';
+import { createReservation, fetchCustomerHotelSettings } from '../api/api';
 import { differenceInCalendarDays, format } from 'date-fns';
 
 const ReservationConfirmation = () => {
@@ -21,24 +21,87 @@ const ReservationConfirmation = () => {
   const toast = useToast();
   const { customer } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [visitCount, setVisitCount] = useState(0); // Mock visit count for now
+  const [visitCount, setVisitCount] = useState(0);
+  const [hotelInfo, setHotelInfo] = useState(null);
+  const [reservationId, setReservationId] = useState('');
+  const [statusText, setStatusText] = useState(''); // 상태 텍스트 추가
+  const [formattedCheckIn, setFormattedCheckIn] = useState(''); // 조합된 체크인 시간
+  const [formattedCheckOut, setFormattedCheckOut] = useState(''); // 조합된 체크아웃 시간
 
-  const { hotelId, roomInfo, checkIn, checkOut, price, specialRequests } = state || {};
+  const { hotelId, roomInfo, checkIn, checkOut, price, specialRequests } =
+    state || {};
 
-  // Calculate the number of nights
-  const numNights = checkIn && checkOut 
-    ? differenceInCalendarDays(new Date(checkOut), new Date(checkIn))
-    : 1;
+  // 숙박 일수 계산
+  const numNights =
+    checkIn && checkOut
+      ? (() => {
+          const checkInDate = new Date(checkIn);
+          const checkOutDate = new Date(checkOut);
+          let nights = differenceInCalendarDays(checkOutDate, checkInDate);
+          return nights < 1 ? 1 : nights;
+        })()
+      : 1;
 
-  // Get the current date as the reservation date
-  const reservationDate = format(new Date(), 'yyyy-MM-dd');
+  const reservationDate = format(new Date(), 'yyyy-MM-dd HH:mm');
 
-  // Mock fetching visit count (replace with actual API call if available)
+  // 예약 번호 포맷팅
+  const formattedReservationId = reservationId
+    ? `WEB-${reservationId.slice(-8)}`
+    : '생성 중...';
+
+  // 호텔 정보 로드 및 상태 확인
   useEffect(() => {
-    // In a real scenario, you would fetch the visit count from an API
-    // For now, we'll mock it as 0
+    const loadHotelInfo = async () => {
+      try {
+        const hotelData = await fetchCustomerHotelSettings(hotelId);
+        setHotelInfo(hotelData);
+
+        // 체크인/체크아웃 시간 조합
+        const checkInTime = hotelData?.checkInTime || '15:00';
+        const checkOutTime = hotelData?.checkOutTime || '11:00';
+
+        // 시간 정보 추가
+        const checkInDateTimeStr = checkIn
+          ? `${checkIn}T${checkInTime}:00+09:00`
+          : null;
+        const checkOutDateTimeStr = checkOut
+          ? `${checkOut}T${checkOutTime}:00+09:00`
+          : null;
+
+        const checkInDateTime = checkInDateTimeStr
+          ? new Date(checkInDateTimeStr)
+          : null;
+        const checkOutDateTime = checkOutDateTimeStr
+          ? new Date(checkOutDateTimeStr)
+          : null;
+
+        // 포맷팅된 체크인/체크아웃 시간 설정
+        setFormattedCheckIn(
+          checkInDateTime ? format(checkInDateTime, 'yyyy-MM-dd HH:mm') : 'N/A'
+        );
+        setFormattedCheckOut(
+          checkOutDateTime
+            ? format(checkOutDateTime, 'yyyy-MM-dd HH:mm')
+            : 'N/A'
+        );
+      } catch (error) {
+        toast({
+          title: '호텔 정보 로드 실패',
+          description: error.message || '호텔 정보를 불러오지 못했습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    };
+
+    if (hotelId) {
+      loadHotelInfo();
+    }
+
+    // 방문 횟수 로드 (Mock)
     setVisitCount(0);
-  }, []);
+  }, [hotelId, checkIn, checkOut, toast]);
 
   const handleConfirm = async () => {
     if (!customer) {
@@ -54,7 +117,6 @@ const ReservationConfirmation = () => {
     }
 
     const finalReservationData = {
-      _id: `WEB-${Date.now()}`,
       hotelId: hotelId,
       siteName: '단잠',
       customerName: customer.name,
@@ -62,15 +124,19 @@ const ReservationConfirmation = () => {
       roomInfo: roomInfo,
       originalRoomInfo: '',
       roomNumber: '',
-      checkIn: checkIn,
-      checkOut: checkOut,
+      checkIn: formattedCheckIn
+        ? `${checkIn}T${hotelInfo?.checkInTime || '15:00'}:00+09:00`
+        : checkIn,
+      checkOut: formattedCheckOut
+        ? `${checkOut}T${hotelInfo?.checkOutTime || '11:00'}:00+09:00`
+        : checkOut,
       reservationDate: new Date().toISOString().replace('Z', '+09:00'),
       reservationStatus: '예약완료',
       price: price,
       specialRequests: specialRequests || null,
       additionalFees: 0,
       couponInfo: null,
-      paymentStatus: '미결제',   //Pending ???
+      paymentStatus: '미결제',
       paymentMethod: '현장결제',
       isCancelled: false,
       type: 'stay',
@@ -87,7 +153,9 @@ const ReservationConfirmation = () => {
 
     try {
       setIsLoading(true);
-      await createReservation(finalReservationData);
+      const response = await createReservation(finalReservationData);
+      setReservationId(response.reservationId);
+      setStatusText('예약확정'); // 예약 성공 후 상태 업데이트
       toast({
         title: '예약 성공',
         description: '예약이 완료되었습니다.',
@@ -106,6 +174,14 @@ const ReservationConfirmation = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAddressClick = () => {
+    if (hotelInfo) {
+      navigate('/map', {
+        state: { hotelId: hotelInfo.hotelId, address: hotelInfo.address },
+      });
     }
   };
 
@@ -161,33 +237,37 @@ const ReservationConfirmation = () => {
           />
           <VStack align="start" spacing={2} mt={4}>
             <Text fontWeight="bold" fontSize="lg">
-              부산호텔 ({hotelId})
+              {hotelInfo?.hotelName || '부산호텔'} ({hotelId})
             </Text>
             <Divider />
+            <Text fontSize="sm">예약 번호: {formattedReservationId}</Text>
             <Text fontSize="sm">
-              객실: {roomInfo}
+              예약자: {customer?.name || '예약자 정보 없음'}
             </Text>
-            <Text fontSize="sm">
-              결제: 현장결제
-            </Text>
-            <Text fontSize="sm">
-              체크인: {checkIn}
-            </Text>
-            <Text fontSize="sm">
-              체크아웃: {checkOut}
-            </Text>
-            <Text fontSize="sm">
-              예약일: {reservationDate}
-            </Text>
-            <Text fontSize="sm">
-              숙박 일수: {numNights}박
-            </Text>
+            <Text fontSize="sm">객실: {roomInfo}</Text>
+            <Text fontSize="sm">결제: 현장결제</Text>
+            <Text fontSize="sm">체크인: {formattedCheckIn}</Text>
+            <Text fontSize="sm">체크아웃: {formattedCheckOut}</Text>
+            <Text fontSize="sm">예약일: {reservationDate}</Text>
+            <Text fontSize="sm">숙박 일수: {numNights}박</Text>
             <Text fontWeight="semibold" color="blue.500">
               총 가격: {price.toLocaleString()}원
             </Text>
-            <Text fontSize="sm">
-              방문 횟수: {visitCount}
-            </Text>
+            <Text fontSize="sm">방문 횟수: {visitCount}</Text>
+            {hotelInfo && (
+              <Button
+                variant="link"
+                color="gray.600"
+                mb={2}
+                onClick={handleAddressClick}
+                textAlign="left"
+                fontSize="sm"
+                p={0}
+                _hover={{ color: 'blue.500', textDecoration: 'underline' }}
+              >
+                위치: {hotelInfo.address || '주소 정보 없음'}
+              </Button>
+            )}
           </VStack>
         </Box>
 
@@ -197,14 +277,25 @@ const ReservationConfirmation = () => {
           </Box>
         ) : (
           <>
-            <Button
-              variant="solid"
-              onClick={handleConfirm}
-              w="full"
-              size="md"
-            >
-              예약 확정
-            </Button>
+            {statusText ? (
+              <Text
+                fontSize="md"
+                color={statusText === '사용완료' ? 'gray.500' : 'blue.500'}
+                w="full"
+                textAlign="center"
+              >
+                {statusText}
+              </Text>
+            ) : (
+              <Button
+                variant="solid"
+                onClick={handleConfirm}
+                w="full"
+                size="md"
+              >
+                예약 확정
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => navigate(`/rooms/${hotelId}`)}

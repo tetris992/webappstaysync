@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Image,
@@ -8,8 +8,7 @@ import {
   Divider,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { format } from 'date-fns';
-
+import { format, isAfter } from 'date-fns';
 
 const ReservationCard = ({ reservation, onCancel }) => {
   const {
@@ -27,14 +26,45 @@ const ReservationCard = ({ reservation, onCancel }) => {
     address,
     phoneNumber,
     photoUrl,
+    customerName,
+    checkInTime = '15:00', // 기본값 (호텔 설정에서 가져왔다고 가정)
+    checkOutTime = '11:00', // 기본값 (호텔 설정에서 가져왔다고 가정)
   } = reservation || {};
 
   const safePrice = typeof price === 'number' ? price : 0;
   const thumbnail = photoUrl || '../assets/default-room1.jpg';
   const cardBg = useColorModeValue('white', 'gray.700');
 
+  const [statusText, setStatusText] = useState('');
+
+  useEffect(() => {
+    const currentDateTime = new Date();
+
+    // 체크인 시간과 체크아웃 시간 조합
+    const checkInDateTimeStr = checkIn
+      ? `${checkIn.split(' ')[0]}T${checkInTime}:00+09:00`
+      : null;
+    const checkOutDateTimeStr = checkOut
+      ? `${checkOut.split(' ')[0]}T${checkOutTime}:00+09:00`
+      : null;
+
+    const checkInDateTime = checkInDateTimeStr ? new Date(checkInDateTimeStr) : null;
+    const checkOutDateTime = checkOutDateTimeStr ? new Date(checkOutDateTimeStr) : null;
+
+    // 상태 결정
+    if (isCancelled) {
+      setStatusText('취소됨');
+    } else if (checkOutDateTime && isAfter(currentDateTime, checkOutDateTime)) {
+      setStatusText('사용완료');
+    } else if (checkInDateTime && isAfter(currentDateTime, checkInDateTime)) {
+      setStatusText('예약확정');
+    } else {
+      setStatusText(reservationStatus || '확인필요');
+    }
+  }, [checkIn, checkOut, checkInTime, checkOutTime, isCancelled, reservationStatus]);
+
   const handleCancelClick = () => {
-    if (onCancel && !isCancelled) {
+    if (onCancel && !isCancelled && statusText !== '예약확정' && statusText !== '사용완료') {
       onCancel(_id);
     }
   };
@@ -66,6 +96,12 @@ const ReservationCard = ({ reservation, onCancel }) => {
           </Text>
           <Divider />
           <Text fontSize="sm" color="gray.600">
+            예약 번호: {`WEB-${_id.slice(-8)}`} {/* 예약 번호 표시 */}
+          </Text>
+          <Text fontSize="sm" color="gray.600">
+            예약자: {customerName || '예약자 정보 없음'} {/* 고객 이름 표시 */}
+          </Text>
+          <Text fontSize="sm" color="gray.600">
             객실: {roomInfo}
           </Text>
           <Text fontSize="sm" color="gray.600">
@@ -86,8 +122,19 @@ const ReservationCard = ({ reservation, onCancel }) => {
         </VStack>
         <Divider />
         <VStack align="start" spacing={2}>
-          <Text fontSize="sm" color={isCancelled ? 'red.500' : 'green.600'}>
-            상태: {isCancelled ? '취소됨' : reservationStatus || '확인필요'}
+          <Text
+            fontSize="sm"
+            color={
+              statusText === '취소됨'
+                ? 'red.500'
+                : statusText === '사용완료'
+                ? 'gray.500'
+                : statusText === '예약확정'
+                ? 'blue.500'
+                : 'green.600'
+            }
+          >
+            상태: {statusText}
           </Text>
           {address && (
             <Text fontSize="xs" color="gray.500">
@@ -103,7 +150,7 @@ const ReservationCard = ({ reservation, onCancel }) => {
             문의: {phoneNumber || '정보 없음'}
           </Text>
           <Divider />
-          {!isCancelled && (
+          {!isCancelled && statusText !== '예약확정' && statusText !== '사용완료' && (
             <Button size="sm" colorScheme="red" onClick={handleCancelClick}>
               예약 취소
             </Button>
