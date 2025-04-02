@@ -18,6 +18,12 @@ const HotelList = ({ loadHotelSettings }) => {
   const navigate = useNavigate();
   const toast = useToast();
   const [hotels, setHotels] = useState([]);
+  const [favorites, setFavorites] = useState({});
+
+  useEffect(() => {
+    const storedFavorites = JSON.parse(localStorage.getItem('favorites')) || {};
+    setFavorites(storedFavorites);
+  }, []);
 
   useEffect(() => {
     const loadHotels = async () => {
@@ -37,6 +43,17 @@ const HotelList = ({ loadHotelSettings }) => {
     loadHotels();
   }, [toast]);
 
+  const toggleFavorite = (hotelId) => {
+    setFavorites((prevFavorites) => {
+      const updatedFavorites = {
+        ...prevFavorites,
+        [hotelId]: !prevFavorites[hotelId],
+      };
+      localStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+      return updatedFavorites;
+    });
+  };
+
   const handleNavigate = (hotelId) => {
     loadHotelSettings(hotelId);
     navigate(`/rooms/${hotelId}`);
@@ -48,21 +65,14 @@ const HotelList = ({ loadHotelSettings }) => {
   };
 
   return (
-    // Flex: Main container to structure the layout with fixed buttons and scrollable content
-    <Flex
-      direction="column"
-      minH="100vh" // Full viewport height
-      bg="gray.50"
-    >
-      {/* Container: Limits the content width */}
+    <Flex direction="column" minH="100vh" bg="gray.50">
       <Container
-        maxW="container.sm" // Consistent max width (~640px)
+        maxW="container.sm"
         py={6}
         flex="1"
         display="flex"
         flexDirection="column"
       >
-        {/* Fixed Header */}
         <Box>
           <Text
             fontSize={{ base: '2xl', md: '3xl' }}
@@ -75,12 +85,11 @@ const HotelList = ({ loadHotelSettings }) => {
           </Text>
         </Box>
 
-        {/* Scrollable Hotel List */}
         <Box
           flex="1"
-          overflowY="auto" // Enables vertical scrolling for the hotel list
+          overflowY="auto"
           css={{
-            '&::-webkit-scrollbar': { display: 'none' }, // Hides scrollbar for cleaner look
+            '&::-webkit-scrollbar': { display: 'none' },
             msOverflowStyle: 'none',
             scrollbarWidth: 'none',
           }}
@@ -95,6 +104,8 @@ const HotelList = ({ loadHotelSettings }) => {
                 <HotelCard
                   key={hotel.hotelId}
                   hotel={hotel}
+                  isFavorite={favorites[hotel.hotelId] || false}
+                  toggleFavorite={() => toggleFavorite(hotel.hotelId)}
                   onSelect={() => handleNavigate(hotel.hotelId)}
                 />
               ))}
@@ -102,7 +113,6 @@ const HotelList = ({ loadHotelSettings }) => {
           )}
         </Box>
 
-        {/* Fixed Footer Buttons */}
         <Box mt={4}>
           <VStack spacing={2}>
             <Button
