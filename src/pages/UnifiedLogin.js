@@ -1,3 +1,53 @@
+// File: src/pages/UnifiedLogin.js
+// webapp/src/pages/UnifiedLogin.js
+// UnifiedLogin.js
+// 로그인 페이지 컴포넌트
+// 이 컴포넌트는 전화번호와 비밀번호로 로그인할 수 있는 폼을 제공하며,
+// 카카오, 네이버, 구글 소셜 로그인을 지원합니다.
+// 또한, 전화번호 입력 시 자동으로 포맷팅을 적용합니다.
+// 필요한 라이브러리와 컴포넌트들을 import합니다.
+// react-hook-form과 yup을 사용하여 폼 유효성 검사를 수행합니다.
+// react-router-dom을 사용하여 페이지 이동을 처리합니다.
+// Chakra UI를 사용하여 UI 컴포넌트를 구성합니다.
+// react-icons를 사용하여 소셜 로그인 아이콘을 표시합니다.
+// api.js에서 로그인 API를 호출하는 함수를 import합니다.
+// utils.js에서 전화번호 포맷팅 함수를 import합니다.
+// AuthContext.js에서 로그인 상태를 관리하는 AuthContext를 import합니다.
+// 필요한 라이브러리와 컴포넌트들을 import합니다.
+// react-hook-form과 yup을 사용하여 폼 유효성 검사를 수행합니다.
+// react-router-dom을 사용하여 페이지 이동을 처리합니다.
+// Chakra UI를 사용하여 UI 컴포넌트를 구성합니다.
+// react-icons를 사용하여 소셜 로그인 아이콘을 표시합니다.
+// api.js에서 로그인 API를 호출하는 함수를 import합니다.
+// utils.js에서 전화번호 포맷팅 함수를 import합니다.
+// AuthContext.js에서 로그인 상태를 관리하는 AuthContext를 import합니다.
+// 필요한 라이브러리와 컴포넌트들을 import합니다.
+// react-hook-form과 yup을 사용하여 폼 유효성 검사를 수행합니다.
+// react-router-dom을 사용하여 페이지 이동을 처리합니다.
+// Chakra UI를 사용하여 UI 컴포넌트를 구성합니다.
+// react-icons를 사용하여 소셜 로그인 아이콘을 표시합니다.
+// api.js에서 로그인 API를 호출하는 함수를 import합니다.
+// utils.js에서 전화번호 포맷팅 함수를 import합니다.
+// AuthContext.js에서 로그인 상태를 관리하는 AuthContext를 import합니다.
+// 필요한 라이브러리와 컴포넌트들을 import합니다.
+// react-hook-form과 yup을 사용하여 폼 유효성 검사를 수행합니다.
+// react-router-dom을 사용하여 페이지 이동을 처리합니다.
+// Chakra UI를 사용하여 UI 컴포넌트를 구성합니다.
+// react-icons를 사용하여 소셜 로그인 아이콘을 표시합니다.
+// api.js에서 로그인 API를 호출하는 함수를 import합니다.
+// utils.js에서 전화번호 포맷팅 함수를 import합니다.
+// AuthContext.js에서 로그인 상태를 관리하는 AuthContext를 import합니다.
+// 필요한 라이브러리와 컴포넌트들을 import합니다.
+// react-hook-form과 yup을 사용하여 폼 유효성 검사를 수행합니다.
+// react-router-dom을 사용하여 페이지 이동을 처리합니다.
+// Chakra UI를 사용하여 UI 컴포넌트를 구성합니다.
+// react-icons를 사용하여 소셜 로그인 아이콘을 표시합니다.
+// api.js에서 로그인 API를 호출하는 함수를 import합니다.
+// utils.js에서 전화번호 포맷팅 함수를 import합니다.
+// AuthContext.js에서 로그인 상태를 관리하는 AuthContext를 import합니다.
+// 필요한 라이브러리와 컴포넌트들을 import합니다.   
+
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';

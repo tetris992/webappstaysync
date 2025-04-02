@@ -8,6 +8,8 @@ import {
   Divider,
   useColorModeValue,
 } from '@chakra-ui/react';
+import { format } from 'date-fns';
+
 
 const ReservationCard = ({ reservation, onCancel }) => {
   const {
@@ -70,10 +72,10 @@ const ReservationCard = ({ reservation, onCancel }) => {
             결제: {paymentMethod}
           </Text>
           <Text fontSize="sm" color="gray.600">
-            체크인: {checkIn ? checkIn.slice(0, 10) : 'N/A'}
+            체크인: {checkIn ? format(new Date(checkIn), 'yyyy-MM-dd HH:mm') : 'N/A'}
           </Text>
           <Text fontSize="sm" color="gray.600">
-            체크아웃: {checkOut ? checkOut.slice(0, 10) : 'N/A'}
+            체크아웃: {checkOut ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm') : 'N/A'}
           </Text>
           <Text fontSize="sm" color="gray.600">
             숙박 일수: {numDays || 1}박
