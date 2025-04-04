@@ -1,7 +1,16 @@
 import React from 'react';
-import { Box, Image, Text, Button, Flex, IconButton } from '@chakra-ui/react';
+import {
+  Box,
+  Image,
+  Text,
+  Button,
+  Flex,
+  IconButton,
+  HStack,
+} from '@chakra-ui/react';
 import { FaRegStar, FaStar } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import iconMap from '../utils/iconMap'; // 공통 아이콘 맵
 
 const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
   const navigate = useNavigate();
@@ -47,16 +56,9 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
             }
             fontSize="20px"
             color={isFavorite ? 'yellow.400' : 'gray.400'}
-            _focus={{
-              boxShadow: 'none', // 포커스 시 생기는 외곽선 제거
-              outline: 'none',
-            }}
-            _hover={{
-              bg: 'transparent', // 호버 시 배경색 제거
-            }}
-            _active={{
-              bg: 'transparent', // 클릭 시 배경색 제거
-            }}
+            _focus={{ boxShadow: 'none', outline: 'none' }}
+            _hover={{ bg: 'transparent' }}
+            _active={{ bg: 'transparent' }}
           />
         </Flex>
         <Text color="gray.600" mb={1}>
@@ -64,6 +66,10 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
         </Text>
         <Text color="gray.600" mb={1}>
           이메일: {hotel.email || '이메일 정보 없음'}
+        </Text>
+        <Text color="gray.600" mb={1}>
+          체크인: {hotel.checkInTime || 'N/A'} / 체크아웃:{' '}
+          {hotel.checkOutTime || 'N/A'}
         </Text>
         <Button
           variant="link"
@@ -77,6 +83,18 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
         >
           위치: {hotel.address || '주소 정보 없음'}
         </Button>
+        {hotel.amenities && hotel.amenities.length > 0 && (
+          <HStack spacing={2} mb={2}>
+            {hotel.amenities.map((amenity, idx) => {
+              const IconComponent = iconMap[amenity.icon];
+              return (
+                <Box key={idx} title={amenity.nameKor}>
+                  {IconComponent ? <IconComponent /> : <span>❓</span>}
+                </Box>
+              );
+            })}
+          </HStack>
+        )}
         <Button colorScheme="teal" size="sm" onClick={onSelect} w="full">
           객실 선택
         </Button>

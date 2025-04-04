@@ -1,3 +1,4 @@
+// webapp/src/pages/RoomSelection.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -37,6 +38,7 @@ const RoomSelection = () => {
     const loadHotelSettings = async () => {
       try {
         const settings = await fetchCustomerHotelSettings(hotelId);
+        console.log('[RoomSelection] Hotel Settings:', settings); // 디버깅 로그 추가
         setHotelSettings(settings);
       } catch (error) {
         toast({
@@ -78,7 +80,38 @@ const RoomSelection = () => {
     setIsLoading(true);
     try {
       const hotelData = await fetchHotelAvailability(hotelId, checkIn, checkOut);
-      setAvailableRooms(hotelData.availability || []);
+      console.log('[RoomSelection] Hotel Availability:', hotelData); // 디버깅 로그 추가
+
+      // roomTypes에서 각 객실 타입의 활성화된 roomAmenities를 매핑
+      const roomTypesWithAmenities = hotelSettings?.roomTypes || [];
+      console.log('[RoomSelection] Room Types:', roomTypesWithAmenities); // 디버깅 로그 추가
+
+      const availabilityWithAmenities = (hotelData.availability || []).map((room) => {
+        // roomInfo를 소문자로 만들어 매칭
+        const roomInfoLower = room.roomInfo.toLowerCase();
+        const roomType = roomTypesWithAmenities.find(
+          (rt) => rt.roomInfo.toLowerCase() === roomInfoLower
+        );
+      
+        // 실제로 roomType가 존재하고, roomAmenities 배열이 있어야 함
+        const activeAmenities =
+          roomType?.roomAmenities
+            ?.filter((amenity) => amenity.isActive)
+            .map((amenity) => ({
+              nameKor: amenity.nameKor,
+              nameEng: amenity.nameEng,
+              icon: amenity.icon,
+            })) || [];
+      
+        console.log(`[RoomSelection] Active Amenities for ${roomInfoLower}:`, activeAmenities);
+      
+        return {
+          ...room,
+          activeAmenities, // 나중에 RoomCarouselCard에서 사용
+        };
+      });
+
+      setAvailableRooms(availabilityWithAmenities);
       setIsAvailabilityChecked(true);
     } catch (error) {
       toast({
@@ -94,7 +127,10 @@ const RoomSelection = () => {
   };
 
   const handleSelectRoom = (roomInfo, perNightPrice) => {
-    const numNights = differenceInCalendarDays(new Date(checkOut), new Date(checkIn));
+    const numNights = differenceInCalendarDays(
+      new Date(checkOut),
+      new Date(checkIn)
+    );
     const totalPrice = perNightPrice * numNights;
     navigate('/confirm', {
       state: {
@@ -163,13 +199,19 @@ const RoomSelection = () => {
                   price={room.price}
                   stock={room.availableRooms}
                   numDays={numDays}
+                  activeAmenities={room.activeAmenities} // 활성화된 시설 전달
                   onSelect={() => handleSelectRoom(room.roomInfo, room.price)}
                 />
               ))}
             </SimpleGrid>
           )
         )}
-        <Button onClick={() => navigate('/')} colorScheme="gray" w="full" size="md">
+        <Button
+          onClick={() => navigate('/')}
+          colorScheme="gray"
+          w="full"
+          size="md"
+        >
           뒤로가기
         </Button>
       </VStack>

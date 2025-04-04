@@ -217,7 +217,7 @@ export const fetchCustomerHotelSettings = async (hotelId) => {
     const response = await api.get('/api/customer/hotel-settings', {
       params: { hotelId },
     });
-    return response.data.data; // 반드시 .data 직접 반환
+    return response.data; // 반드시 .data 직접 반환
   } catch (error) {
     handleApiError(error, '고객용 호텔 설정 조회 실패');
   }
