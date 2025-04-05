@@ -10,7 +10,7 @@ import {
   SimpleGrid,
   useToast,
 } from '@chakra-ui/react';
-import { format, addDays, differenceInCalendarDays } from 'date-fns';
+import { format, addDays, startOfDay, differenceInCalendarDays, isBefore } from 'date-fns';
 import RoomCarouselCard from '../components/RoomCarouselCard';
 import { fetchHotelAvailability, fetchCustomerHotelSettings } from '../api/api';
 
@@ -38,7 +38,7 @@ const RoomSelection = () => {
     const loadHotelSettings = async () => {
       try {
         const settings = await fetchCustomerHotelSettings(hotelId);
-        console.log('[RoomSelection] Hotel Settings:', settings); // 디버깅 로그 추가
+        console.log('[RoomSelection] Hotel Settings:', settings);
         setHotelSettings(settings);
       } catch (error) {
         toast({
@@ -55,11 +55,25 @@ const RoomSelection = () => {
   }, [hotelId, toast, navigate]);
 
   const handleCheckAvailability = async () => {
+    // 날짜 입력 검증
     if (!checkIn || !checkOut) {
       toast({
         title: '날짜 입력 필요',
-        description: '체크인 및 체크아웃 날짜를 입력해주세요.',
+        description: '체크인 및 체크아웃 날짜를 모두 입력해주세요.',
         status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    // 과거 날짜 검증
+    const todayDate = startOfDay(new Date());
+    if (isBefore(new Date(checkIn), todayDate)) {
+      toast({
+        title: '날짜 오류',
+        description: '체크인 날짜는 오늘 또는 미래 날짜여야 합니다.',
+        status: 'error',
         duration: 3000,
         isClosable: true,
       });
@@ -69,7 +83,7 @@ const RoomSelection = () => {
     if (numDays <= 0) {
       toast({
         title: '날짜 오류',
-        description: '체크아웃 날짜는 체크인 날짜 이후여야 합니다.',
+        description: '체크아웃 날짜는 체크인 날짜보다 이후여야 합니다.',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -80,20 +94,17 @@ const RoomSelection = () => {
     setIsLoading(true);
     try {
       const hotelData = await fetchHotelAvailability(hotelId, checkIn, checkOut);
-      console.log('[RoomSelection] Hotel Availability:', hotelData); // 디버깅 로그 추가
+      console.log('[RoomSelection] Hotel Availability:', hotelData);
 
-      // roomTypes에서 각 객실 타입의 활성화된 roomAmenities를 매핑
       const roomTypesWithAmenities = hotelSettings?.roomTypes || [];
-      console.log('[RoomSelection] Room Types:', roomTypesWithAmenities); // 디버깅 로그 추가
+      console.log('[RoomSelection] Room Types:', roomTypesWithAmenities);
 
       const availabilityWithAmenities = (hotelData.availability || []).map((room) => {
-        // roomInfo를 소문자로 만들어 매칭
         const roomInfoLower = room.roomInfo.toLowerCase();
         const roomType = roomTypesWithAmenities.find(
           (rt) => rt.roomInfo.toLowerCase() === roomInfoLower
         );
-      
-        // 실제로 roomType가 존재하고, roomAmenities 배열이 있어야 함
+
         const activeAmenities =
           roomType?.roomAmenities
             ?.filter((amenity) => amenity.isActive)
@@ -102,12 +113,13 @@ const RoomSelection = () => {
               nameEng: amenity.nameEng,
               icon: amenity.icon,
             })) || [];
-      
+
         console.log(`[RoomSelection] Active Amenities for ${roomInfoLower}:`, activeAmenities);
-      
+        console.log(`[RoomSelection] Room ${roomInfoLower}: stock=${room.availableRooms}`); // 재고 로그 추가
+
         return {
           ...room,
-          activeAmenities, // 나중에 RoomCarouselCard에서 사용
+          activeAmenities,
         };
       });
 
@@ -166,7 +178,7 @@ const RoomSelection = () => {
             type="date"
             value={checkIn}
             onChange={(e) => setCheckIn(e.target.value)}
-            min={today}
+            min={today} // 과거 날짜 선택 방지
           />
           <Text>체크아웃 날짜</Text>
           <Input
@@ -187,7 +199,7 @@ const RoomSelection = () => {
         </VStack>
         {isAvailabilityChecked && availableRooms.length === 0 ? (
           <Text textAlign="center" color="gray.500">
-            해당 기간에 가용 객실이 없습니다.
+            선택하신 기간({checkIn} ~ {checkOut})에 이용 가능한 객실이 없습니다. 다른 날짜를 선택해 주세요.
           </Text>
         ) : (
           isAvailabilityChecked && (
@@ -199,7 +211,7 @@ const RoomSelection = () => {
                   price={room.price}
                   stock={room.availableRooms}
                   numDays={numDays}
-                  activeAmenities={room.activeAmenities} // 활성화된 시설 전달
+                  activeAmenities={room.activeAmenities}
                   onSelect={() => handleSelectRoom(room.roomInfo, room.price)}
                 />
               ))}
