@@ -1,4 +1,3 @@
-// webapp/src/pages/RoomSelection.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -10,7 +9,14 @@ import {
   SimpleGrid,
   useToast,
 } from '@chakra-ui/react';
-import { format, addDays, startOfDay, differenceInCalendarDays, isBefore } from 'date-fns';
+import {
+  format,
+  addDays,
+  startOfDay,
+  differenceInCalendarDays,
+  isBefore,
+  addMonths,
+} from 'date-fns';
 import RoomCarouselCard from '../components/RoomCarouselCard';
 import { fetchHotelAvailability, fetchCustomerHotelSettings } from '../api/api';
 
@@ -21,6 +27,7 @@ const RoomSelection = () => {
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+  const maxDate = format(addMonths(new Date(), 3), 'yyyy-MM-dd'); // 3개월 이후 날짜
 
   const [checkIn, setCheckIn] = useState(today);
   const [checkOut, setCheckOut] = useState(tomorrow);
@@ -80,6 +87,19 @@ const RoomSelection = () => {
       return;
     }
 
+    // 3개월 범위 검증
+    const maxCheckInDate = startOfDay(addMonths(todayDate, 3));
+    if (isBefore(maxCheckInDate, new Date(checkIn))) {
+      toast({
+        title: '날짜 범위 오류',
+        description: '체크인 날짜는 현재로부터 3개월 이내여야 합니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     if (numDays <= 0) {
       toast({
         title: '날짜 오류',
@@ -91,37 +111,64 @@ const RoomSelection = () => {
       return;
     }
 
+    // 체크아웃 날짜가 체크인 날짜로부터 3개월 이내인지 검증
+    const maxCheckOutDate = startOfDay(addMonths(new Date(checkIn), 3));
+    if (isBefore(maxCheckOutDate, new Date(checkOut))) {
+      toast({
+        title: '날짜 범위 오류',
+        description: '체크아웃 날짜는 체크인 날짜로부터 3개월 이내여야 합니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const hotelData = await fetchHotelAvailability(hotelId, checkIn, checkOut);
+      console.log(
+        `[RoomSelection] Checking availability from ${checkIn} to ${checkOut}`
+      );
+      const hotelData = await fetchHotelAvailability(
+        hotelId,
+        checkIn,
+        checkOut
+      );
       console.log('[RoomSelection] Hotel Availability:', hotelData);
 
       const roomTypesWithAmenities = hotelSettings?.roomTypes || [];
       console.log('[RoomSelection] Room Types:', roomTypesWithAmenities);
 
-      const availabilityWithAmenities = (hotelData.availability || []).map((room) => {
-        const roomInfoLower = room.roomInfo.toLowerCase();
-        const roomType = roomTypesWithAmenities.find(
-          (rt) => rt.roomInfo.toLowerCase() === roomInfoLower
-        );
+      const availabilityWithAmenities = (hotelData.availability || []).map(
+        (room) => {
+          const roomInfoLower = room.roomInfo.toLowerCase();
+          const roomType = roomTypesWithAmenities.find(
+            (rt) => rt.roomInfo.toLowerCase() === roomInfoLower
+          );
 
-        const activeAmenities =
-          roomType?.roomAmenities
-            ?.filter((amenity) => amenity.isActive)
-            .map((amenity) => ({
-              nameKor: amenity.nameKor,
-              nameEng: amenity.nameEng,
-              icon: amenity.icon,
-            })) || [];
+          const activeAmenities =
+            roomType?.roomAmenities
+              ?.filter((amenity) => amenity.isActive)
+              .map((amenity) => ({
+                nameKor: amenity.nameKor,
+                nameEng: amenity.nameEng,
+                icon: amenity.icon,
+              })) || [];
 
-        console.log(`[RoomSelection] Active Amenities for ${roomInfoLower}:`, activeAmenities);
-        console.log(`[RoomSelection] Room ${roomInfoLower}: stock=${room.availableRooms}`); // 재고 로그 추가
+          console.log(
+            `[RoomSelection] Active Amenities for ${roomInfoLower}:`,
+            activeAmenities
+          );
+          console.log(
+            `[RoomSelection] Room ${roomInfoLower}: stock=${room.availableRooms}`
+          );
 
-        return {
-          ...room,
-          activeAmenities,
-        };
-      });
+          return {
+            ...room,
+            activeAmenities,
+          };
+        }
+      );
 
       setAvailableRooms(availabilityWithAmenities);
       setIsAvailabilityChecked(true);
@@ -179,6 +226,7 @@ const RoomSelection = () => {
             value={checkIn}
             onChange={(e) => setCheckIn(e.target.value)}
             min={today} // 과거 날짜 선택 방지
+            max={maxDate} // 3개월 이후 날짜 선택 방지
           />
           <Text>체크아웃 날짜</Text>
           <Input
@@ -186,7 +234,11 @@ const RoomSelection = () => {
             value={checkOut}
             onChange={(e) => setCheckOut(e.target.value)}
             min={format(addDays(new Date(checkIn), 1), 'yyyy-MM-dd')}
+            max={format(addMonths(new Date(checkIn), 3), 'yyyy-MM-dd')} // 체크인으로부터 3개월 이후 날짜 선택 방지
           />
+          <Text fontSize="sm" color="gray.500">
+            최대 3개월 이내의 날짜만 예약 가능합니다.
+          </Text>
           <Button
             colorScheme="teal"
             onClick={handleCheckAvailability}
@@ -199,7 +251,8 @@ const RoomSelection = () => {
         </VStack>
         {isAvailabilityChecked && availableRooms.length === 0 ? (
           <Text textAlign="center" color="gray.500">
-            선택하신 기간({checkIn} ~ {checkOut})에 이용 가능한 객실이 없습니다. 다른 날짜를 선택해 주세요.
+            선택하신 기간({checkIn} ~ {checkOut})에 이용 가능한 객실이 없습니다.
+            다른 날짜를 선택해 주세요.
           </Text>
         ) : (
           isAvailabilityChecked && (
