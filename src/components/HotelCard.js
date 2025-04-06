@@ -1,3 +1,4 @@
+// webapp/src/components/HotelCard.js
 import React from 'react';
 import {
   Box,
@@ -8,15 +9,14 @@ import {
   IconButton,
   HStack,
 } from '@chakra-ui/react';
-import { FaRegStar, FaStar } from 'react-icons/fa';
+import { FaRegStar, FaStar, FaQuestionCircle } from 'react-icons/fa'; // 대체 아이콘 추가
 import { useNavigate } from 'react-router-dom';
-import iconMap from '../utils/iconMap'; // 공통 아이콘 맵
+import iconMap from '../utils/iconMap';
 
 const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
   const navigate = useNavigate();
 
   const handleAddressClick = () => {
-    // 지도 페이지로 이동, 호텔 정보를 state로 전달
     navigate('/map', {
       state: { hotelId: hotel.hotelId, address: hotel.address },
     });
@@ -86,10 +86,10 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
         {hotel.amenities && hotel.amenities.length > 0 && (
           <HStack spacing={2} mb={2}>
             {hotel.amenities.map((amenity, idx) => {
-              const IconComponent = iconMap[amenity.icon];
+              const IconComponent = iconMap[amenity.icon] || FaQuestionCircle; // 대체 아이콘 사용
               return (
                 <Box key={idx} title={amenity.nameKor}>
-                  {IconComponent ? <IconComponent /> : <span>❓</span>}
+                  <IconComponent color="teal.500" />
                 </Box>
               );
             })}
