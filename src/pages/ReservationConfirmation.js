@@ -12,7 +12,7 @@ import {
   Divider,
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
-import { createReservation, fetchCustomerHotelSettings } from '../api/api';
+import { createReservation, fetchCustomerHotelSettings, fetchHotelPhotos } from '../api/api';
 import { differenceInCalendarDays, format } from 'date-fns';
 
 const ReservationConfirmation = () => {
@@ -27,6 +27,7 @@ const ReservationConfirmation = () => {
   const [statusText, setStatusText] = useState(''); // 상태 텍스트 추가
   const [formattedCheckIn, setFormattedCheckIn] = useState(''); // 조합된 체크인 시간
   const [formattedCheckOut, setFormattedCheckOut] = useState(''); // 조합된 체크아웃 시간
+  const [roomImage, setRoomImage] = useState('/assets/default-room1.jpg'); // S3 사진 URL 상태 추가
 
   const { hotelId, roomInfo, checkIn, checkOut, price, specialRequests } =
     state || {};
@@ -49,12 +50,21 @@ const ReservationConfirmation = () => {
     ? `WEB-${reservationId.slice(-8)}`
     : '생성 중...';
 
-  // 호텔 정보 로드 및 상태 확인
+  // 호텔 정보 및 객실 사진 로드
   useEffect(() => {
-    const loadHotelInfo = async () => {
+    const loadHotelInfoAndPhotos = async () => {
       try {
+        // 호텔 정보 로드
         const hotelData = await fetchCustomerHotelSettings(hotelId);
         setHotelInfo(hotelData);
+
+        // 객실 사진 로드
+        const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
+        console.log(`[ReservationConfirmation] Photos for room ${roomInfo}:`, photosData);
+        if (photosData?.roomPhotos && photosData.roomPhotos.length > 0) {
+          // 첫 번째 사진의 photoUrl 사용
+          setRoomImage(photosData.roomPhotos[0].photoUrl);
+        }
 
         // 체크인/체크아웃 시간 조합
         const checkInTime = hotelData?.checkInTime || '15:00';
@@ -95,13 +105,13 @@ const ReservationConfirmation = () => {
       }
     };
 
-    if (hotelId) {
-      loadHotelInfo();
+    if (hotelId && roomInfo) {
+      loadHotelInfoAndPhotos();
     }
 
     // 방문 횟수 로드 (Mock)
     setVisitCount(0);
-  }, [hotelId, checkIn, checkOut, toast]);
+  }, [hotelId, roomInfo, checkIn, checkOut, toast]);
 
   const handleConfirm = async () => {
     if (!customer) {
@@ -185,6 +195,12 @@ const ReservationConfirmation = () => {
     }
   };
 
+  // S3 사진 로드 실패 시 기본 사진으로 대체
+  const handleImageError = (e) => {
+    console.error(`[ReservationConfirmation] Failed to load image for room ${roomInfo}: ${roomImage}`);
+    e.target.src = '/assets/default-room1.jpg';
+  };
+
   if (!state) {
     return (
       <Container maxW="container.sm" py={6} minH="100vh">
@@ -228,12 +244,13 @@ const ReservationConfirmation = () => {
         {/* Reservation Details Card */}
         <Box variant="card">
           <Image
-            src="/assets/default-room1.jpg"
+            src={roomImage} // S3 사진 URL 사용
             alt={roomInfo}
             h="150px"
             w="100%"
             objectFit="cover"
             borderRadius="md"
+            onError={handleImageError} // 로드 실패 시 기본 사진으로 대체
           />
           <VStack align="start" spacing={2} mt={4}>
             <Text fontWeight="bold" fontSize="lg">

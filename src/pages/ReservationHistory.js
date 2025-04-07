@@ -16,7 +16,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import useSocket from '../hooks/useSocket';
 import ReservationCard from '../components/ReservationCard';
-import { getReservationHistory, cancelReservation } from '../api/api';
+import { getReservationHistory, cancelReservation, fetchHotelPhotos } from '../api/api';
 import { motion } from 'framer-motion';
 import { useSwipeable } from 'react-swipeable';
 
@@ -45,7 +45,36 @@ const ReservationHistory = () => {
       const sortedReservations = (response.history || []).sort(
         (a, b) => new Date(b.reservationDate) - new Date(a.reservationDate)
       );
-      setReservations(sortedReservations);
+
+      // 각 예약에 대해 사진 로드
+      const reservationsWithPhotos = await Promise.all(
+        sortedReservations.map(async (reservation) => {
+          try {
+            const photosData = await fetchHotelPhotos(
+              reservation.hotelId,
+              'room',
+              reservation.roomInfo
+            );
+            console.log(
+              `[ReservationHistory] Photos for room ${reservation.roomInfo}:`,
+              photosData
+            );
+            const photoUrl =
+              photosData?.roomPhotos && photosData.roomPhotos.length > 0
+                ? photosData.roomPhotos[0].photoUrl
+                : '/assets/default-room1.jpg';
+            return { ...reservation, photoUrl };
+          } catch (error) {
+            console.error(
+              `[ReservationHistory] Failed to fetch photos for room ${reservation.roomInfo}:`,
+              error
+            );
+            return { ...reservation, photoUrl: '/assets/default-room1.jpg' };
+          }
+        })
+      );
+
+      setReservations(reservationsWithPhotos);
       setTotalVisits(response.totalVisits || 0);
     } catch (error) {
       toast({

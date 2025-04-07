@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, VStack, Text, Button, Icon, useToast } from '@chakra-ui/react';
+import {
+  Container,
+  VStack,
+  Text,
+  Button,
+  Icon,
+  useToast,
+} from '@chakra-ui/react';
 import { SiKakao } from 'react-icons/si';
 import { connectSocialAccount } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,13 +36,17 @@ const ConnectSocial = () => {
   }, [customer, navigate, toast]);
 
   useEffect(() => {
-    console.log('REACT_APP_KAKAO_APP_KEY:', process.env.REACT_APP_KAKAO_APP_KEY);
+    console.log(
+      'REACT_APP_KAKAO_APP_KEY:',
+      process.env.REACT_APP_KAKAO_APP_KEY
+    );
     if (window.Kakao && !window.Kakao.isInitialized()) {
       if (!process.env.REACT_APP_KAKAO_APP_KEY) {
         console.error('Kakao App Key is not set in environment variables');
         toast({
           title: 'Kakao 연결 오류',
-          description: 'Kakao App Key가 설정되지 않았습니다. 관리자에게 문의해주세요.',
+          description:
+            'Kakao App Key가 설정되지 않았습니다. 관리자에게 문의해주세요.',
           status: 'error',
           duration: 3000,
           isClosable: true,
@@ -49,7 +60,8 @@ const ConnectSocial = () => {
         console.error('Kakao SDK initialization failed:', error);
         toast({
           title: 'Kakao 연결 오류',
-          description: 'Kakao SDK 초기화에 실패했습니다. 관리자에게 문의해주세요.',
+          description:
+            'Kakao SDK 초기화에 실패했습니다. 관리자에게 문의해주세요.',
           status: 'error',
           duration: 3000,
           isClosable: true,
@@ -71,8 +83,15 @@ const ConnectSocial = () => {
     }
     setIsSocialLoading((prev) => ({ ...prev, kakao: true }));
     try {
+      // 동적으로 Redirect URI 설정
+      const isProduction = process.env.NODE_ENV === 'production';
+      const redirectUri = isProduction
+        ? 'https://danjam.in/auth/kakao/callback'
+        : 'http://localhost:3000/auth/kakao/callback';
+
       await new Promise((resolve, reject) => {
-        window.Kakao.Auth.login({
+        window.Kakao.Auth.authorize({
+          redirectUri,
           success: () => resolve(),
           fail: (error) => reject(error),
         });
@@ -110,17 +129,22 @@ const ConnectSocial = () => {
     } catch (error) {
       let errorMessage = '소셜 계정 연결 중 오류가 발생했습니다.';
       if (error.message.includes('popup_blocked_by_browser')) {
-        errorMessage = '팝업 차단이 활성화되어 있습니다. 팝업 차단을 해제하고 다시 시도해주세요.';
+        errorMessage =
+          '팝업 차단이 활성화되어 있습니다. 팝업 차단을 해제하고 다시 시도해주세요.';
       } else if (error.message.includes('user_cancelled')) {
         errorMessage = '사용자가 계정 연결을 취소했습니다.';
       } else if (error.message.includes('network_error')) {
-        errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
+        errorMessage =
+          '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
       } else if (error.message.includes('invalid_app_key')) {
         errorMessage = '앱 키가 유효하지 않습니다. 관리자에게 문의해주세요.';
       } else if (error.message.includes('invalid_scope')) {
-        errorMessage = '요청된 권한이 유효하지 않습니다. 관리자에게 문의해주세요.';
+        errorMessage =
+          '요청된 권한이 유효하지 않습니다. 관리자에게 문의해주세요.';
       }
-      console.error(`Social account connection failed for kakao: ${error.message}`);
+      console.error(
+        `Social account connection failed for kakao: ${error.message}`
+      );
       toast({
         title: '소셜 계정 연결 실패',
         description: errorMessage,
@@ -137,18 +161,35 @@ const ConnectSocial = () => {
     navigate('/');
   };
 
-  if (loading) {
+  if (loading || !customer) {
     return (
-      <Container maxW="container.sm" py={8} bg="white" borderRadius="lg" boxShadow="lg">
+      <Container
+        maxW="container.sm"
+        py={8}
+        bg="white"
+        borderRadius="lg"
+        boxShadow="lg"
+      >
         <Text textAlign="center">소셜 로그인 설정을 불러오는 중...</Text>
       </Container>
     );
   }
 
   return (
-    <Container maxW="container.sm" py={8} bg="white" borderRadius="lg" boxShadow="md">
+    <Container
+      maxW="container.sm"
+      py={8}
+      bg="white"
+      borderRadius="lg"
+      boxShadow="md"
+    >
       <VStack spacing={6} align="stretch">
-        <Text fontSize="3xl" fontWeight="bold" textAlign="center" color="gray.800">
+        <Text
+          fontSize="3xl"
+          fontWeight="bold"
+          textAlign="center"
+          color="gray.800"
+        >
           소셜 계정 연결
         </Text>
         <Text textAlign="center" color="gray.600">
@@ -173,7 +214,13 @@ const ConnectSocial = () => {
             카카오로 연결하기
           </Button>
         </VStack>
-        <Button variant="link" colorScheme="blue" onClick={handleSkip} w="full" mt={4}>
+        <Button
+          variant="link"
+          colorScheme="blue"
+          onClick={handleSkip}
+          w="full"
+          mt={4}
+        >
           나중에 연결하기
         </Button>
       </VStack>

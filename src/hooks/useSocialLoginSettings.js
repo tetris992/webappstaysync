@@ -4,17 +4,21 @@ import { useToast } from '@chakra-ui/react';
 
 const useSocialLoginSettings = () => {
   const toast = useToast();
-  const [socialLoginSettings, setSocialLoginSettings] = useState(null);
+  const [socialLoginSettings, setSocialLoginSettings] = useState({
+    kakao: {
+      enabled: true, // 기본값 설정
+      openIdConnectEnabled: false,
+    },
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('customerToken');
     if (!token) {
-      console.warn('고객 토큰이 존재하지 않습니다.');
-      // 토큰이 없으면 로그인 상태가 아니므로 API 호출을 건너뜁니다.
+      // 로그인 토큰이 없으면 기본값으로 설정 후 로딩 종료
       setSocialLoginSettings({
         kakao: {
-          enabled: true, // 강제로 활성화
+          enabled: true,
           openIdConnectEnabled: false,
         },
       });
@@ -37,7 +41,7 @@ const useSocialLoginSettings = () => {
           ...response.data,
           kakao: {
             ...response.data.kakao,
-            enabled: true, // 강제로 활성화
+            enabled: true,
           },
         });
       } catch (error) {
@@ -45,7 +49,7 @@ const useSocialLoginSettings = () => {
         if (error.response?.status === 404) {
           setSocialLoginSettings({
             kakao: {
-              enabled: true, // 강제로 활성화
+              enabled: true,
               openIdConnectEnabled: false,
             },
           });
