@@ -48,18 +48,14 @@ const HotelList = ({ loadHotelSettings }) => {
               };
             } catch (error) {
               console.error(`Failed to fetch exterior photos for hotel ${hotel.hotelId}:`, error);
-              // 401 에러 처리
-              if (error.status === 401) {
-                toast({
-                  title: '인증 오류',
-                  description: '세션이 만료되었습니다. 다시 로그인해주세요.',
-                  status: 'error',
-                  duration: 3000,
-                  isClosable: true,
-                });
-                logout();
-                navigate('/login');
-              }
+              // 401 에러 발생 시 로그아웃하지 않고 기본 사진으로 대체
+              toast({
+                title: '사진 로드 실패',
+                description: '호텔 사진을 불러오지 못했습니다. 기본 이미지를 표시합니다.',
+                status: 'warning',
+                duration: 3000,
+                isClosable: true,
+              });
               return { hotelId: hotel.hotelId, exteriorPhotos: [] };
             }
           });
@@ -86,7 +82,7 @@ const HotelList = ({ loadHotelSettings }) => {
       }
     };
     loadHotels();
-  }, [toast, isAuthenticated, customer, logout, navigate]);
+  }, [toast, isAuthenticated, customer, navigate]);
 
   const toggleFavorite = (hotelId) => {
     setFavorites((prevFavorites) => {

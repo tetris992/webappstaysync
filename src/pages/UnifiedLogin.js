@@ -44,6 +44,7 @@ const UnifiedLogin = () => {
   const [isSocialLoading, setIsSocialLoading] = useState({
     kakao: false,
   });
+  const [isKakaoEnabled, setIsKakaoEnabled] = useState(true); // 카카오 로그인 활성화 상태
   const { socialLoginSettings, loading } = useSocialLoginSettings();
 
   const {
@@ -64,21 +65,19 @@ const UnifiedLogin = () => {
 
   // Kakao SDK 초기화
   useEffect(() => {
-    console.log(
-      'REACT_APP_KAKAO_APP_KEY:',
-      process.env.REACT_APP_KAKAO_APP_KEY
-    );
+    console.log('REACT_APP_KAKAO_APP_KEY:', process.env.REACT_APP_KAKAO_APP_KEY);
     if (window.Kakao && !window.Kakao.isInitialized()) {
       if (!process.env.REACT_APP_KAKAO_APP_KEY) {
         console.error('Kakao App Key is not set in environment variables');
         toast({
           title: 'Kakao 로그인 오류',
           description:
-            'Kakao App Key가 설정되지 않았습니다. 관리자에게 문의해주세요.',
+            'Kakao App Key가 설정되지 않았습니다. 카카오 로그인은 비활성화됩니다.',
           status: 'error',
           duration: 3000,
           isClosable: true,
         });
+        setIsKakaoEnabled(false); // 카카오 로그인 비활성화
         return;
       }
       try {
@@ -89,11 +88,12 @@ const UnifiedLogin = () => {
         toast({
           title: 'Kakao 로그인 오류',
           description:
-            'Kakao SDK 초기화에 실패했습니다. 관리자에게 문의해주세요.',
+            'Kakao SDK 초기화에 실패했습니다. 카카오 로그인은 비활성화됩니다.',
           status: 'error',
           duration: 3000,
           isClosable: true,
         });
+        setIsKakaoEnabled(false); // 카카오 로그인 비활성화
       }
     }
   }, [toast]);
@@ -303,7 +303,7 @@ const UnifiedLogin = () => {
               leftIcon={<Icon as={SiKakao} />}
               onClick={() => handleSocialLogin('kakao')}
               isLoading={isSocialLoading.kakao}
-              isDisabled={isSocialLoading.kakao}
+              isDisabled={isSocialLoading.kakao || !isKakaoEnabled} // 카카오 로그인 비활성화 시 버튼 비활성화
               loadingText="카카오 로그인 중..."
               size="md"
             >

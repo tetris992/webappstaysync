@@ -16,7 +16,11 @@ import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import useSocket from '../hooks/useSocket';
 import ReservationCard from '../components/ReservationCard';
-import { getReservationHistory, cancelReservation, fetchHotelPhotos } from '../api/api';
+import {
+  getReservationHistory,
+  cancelReservation,
+  fetchHotelPhotos,
+} from '../api/api';
 import { motion } from 'framer-motion';
 import { useSwipeable } from 'react-swipeable';
 
@@ -69,6 +73,14 @@ const ReservationHistory = () => {
               `[ReservationHistory] Failed to fetch photos for room ${reservation.roomInfo}:`,
               error
             );
+            toast({
+              title: '사진 로드 실패',
+              description:
+                '예약 사진을 불러오지 못했습니다. 기본 이미지를 표시합니다.',
+              status: 'warning',
+              duration: 3000,
+              isClosable: true,
+            });
             return { ...reservation, photoUrl: '/assets/default-room1.jpg' };
           }
         })
