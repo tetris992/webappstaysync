@@ -1,62 +1,61 @@
-// webapp/src/components/RoomCarouselCard.js
-import React from 'react';
-import {
-  Box,
-  Image,
-  Text,
-  Button,
-  VStack,
-  Flex,
-  Tooltip,
-  Icon,
-} from '@chakra-ui/react';
-import iconMap from '../utils/iconMap'; // 공용 iconMap 임포트
+import React, { useState, useEffect } from 'react';
+import { Box, Image, Text, Button, Flex, IconButton, HStack, Tooltip, Spinner } from '@chakra-ui/react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { motion } from 'framer-motion';
+import { useSwipeable } from 'react-swipeable';
+import iconMap from '../utils/iconMap';
 
-const roomPhotoMap = {
-  standard: '/assets/default-room1.jpg',
-  premium: '/assets/default-room2.jpg',
-  deluxe: '/assets/default-room3.jpg',
-  suite: '/assets/default-room4.jpg',
-  family: '/assets/default-room5.jpg',
-  double: '/assets/default-room6.jpg',
-  twin: '/assets/default-room7.jpg',
-  single: '/assets/default-room8.jpg',
-};
+const MotionBox = motion(Box);
 
-// 활성화된 시설 아이콘 표시 컴포넌트
-const AmenityIcons = ({ activeAmenities = [] }) => {
-  if (!activeAmenities.length) return null;
+const RoomCarouselCard = ({ roomInfo, price, stock, numDays, activeAmenities, photos, onSelect }) => {
+  const defaultPhoto = '/assets/default-room1.jpg';
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
-  return (
-    <Flex wrap="wrap" gap={2}>
-      {activeAmenities.map((amenity, idx) => {
-        const IconComponent = iconMap[amenity.icon];
-        return IconComponent ? (
-          <Tooltip key={idx} label={amenity.nameKor} placement="top" hasArrow>
-            <Box>
-              <Icon as={IconComponent} boxSize={5} color="teal.500" />
-            </Box>
-          </Tooltip>
-        ) : null;
-      })}
-    </Flex>
-  );
-};
+  // 사진 데이터 방어 처리
+  const photoUrls = Array.isArray(photos) && photos.length > 0
+    ? photos.map(photo => photo?.photoUrl).filter(url => typeof url === 'string')
+    : [defaultPhoto];
 
-const RoomCarouselCard = ({
-  roomInfo,
-  price,
-  stock,
-  numDays,
-  activeAmenities,
-  onSelect,
-}) => {
-  if (stock <= 0) return null;
+  // 가격 및 재고 데이터 방어 처리
+  const formattedPrice = typeof price === 'number' ? price : 0;
+  const formattedStock = typeof stock === 'number' ? stock : 0;
+  const formattedNumDays = typeof numDays === 'number' ? numDays : 0;
 
-  const defaultPhoto =
-    roomPhotoMap[roomInfo?.toLowerCase()] || '/assets/default-room1.jpg';
-  const safePrice = typeof price === 'number' ? price : 0;
-  const totalPrice = safePrice * (numDays || 1); // 총 가격 계산
+  // 슬라이드 이동 핸들러
+  const handlePrev = () => {
+    setCurrentIndex((prevIndex) =>
+      prevIndex === 0 ? photoUrls.length - 1 : prevIndex - 1
+    );
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prevIndex) =>
+      prevIndex === photoUrls.length - 1 ? 0 : prevIndex + 1
+    );
+  };
+
+  // 스와이프 제스처 핸들러
+  const handlers = useSwipeable({
+    onSwipedLeft: handleNext,
+    onSwipedRight: handlePrev,
+    trackMouse: true,
+  });
+
+  // 자동 슬라이드 기능
+  useEffect(() => {
+    if (photoUrls.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentIndex((prevIndex) =>
+          prevIndex === photoUrls.length - 1 ? 0 : prevIndex + 1
+        );
+      }, 5000); // 5초 간격
+      return () => clearInterval(interval);
+    }
+  }, [photoUrls.length]);
+
+  console.log(`[RoomCarouselCard] Photos for room ${roomInfo}:`, photos);
+  console.log(`[RoomCarouselCard] Photo URLs for room ${roomInfo}:`, photoUrls);
 
   return (
     <Box
@@ -65,29 +64,148 @@ const RoomCarouselCard = ({
       overflow="hidden"
       shadow="md"
       bg="white"
+      position="relative"
     >
-      <Image
-        src={defaultPhoto}
-        alt={roomInfo}
-        h="150px"
-        w="100%"
-        objectFit="cover"
-      />
+      {/* 슬라이드 이미지 영역 */}
+      <Box position="relative" h="150px" w="100%" overflow="hidden">
+        {photoUrls.length > 1 && (
+          <>
+            <IconButton
+              icon={<ChevronLeftIcon />}
+              position="absolute"
+              left="5px"
+              top="50%"
+              transform="translateY(-50%)"
+              zIndex={10}
+              bg="gray.200"
+              opacity={0.7}
+              _hover={{ opacity: 1 }}
+              onClick={handlePrev}
+              aria-label="Previous photo"
+              size="sm"
+            />
+            <IconButton
+              icon={<ChevronRightIcon />}
+              position="absolute"
+              right="5px"
+              top="50%"
+              transform="translateY(-50%)"
+              zIndex={10}
+              bg="gray.200"
+              opacity={0.7}
+              _hover={{ opacity: 1 }}
+              onClick={handleNext}
+              aria-label="Next photo"
+              size="sm"
+            />
+          </>
+        )}
+        <Box
+          {...handlers}
+          w="100%"
+          h="100%"
+          position="relative"
+          css={{
+            '&::-webkit-scrollbar': { display: 'none' },
+            msOverflowStyle: 'none',
+            scrollbarWidth: 'none',
+          }}
+        >
+          <Flex
+            w={`${photoUrls.length * 100}%`}
+            h="100%"
+            transform={`translateX(-${currentIndex * (100 / photoUrls.length)}%)`}
+            transition="transform 0.5s ease-in-out"
+          >
+            {photoUrls.map((photoUrl, index) => (
+              <MotionBox
+                key={index}
+                w={`${100 / photoUrls.length}%`}
+                h="100%"
+                flexShrink={0}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, ease: 'easeInOut' }}
+              >
+                {isLoading && (
+                  <Flex justify="center" align="center" h="100%" w="100%">
+                    <Spinner size="md" color="teal.500" />
+                  </Flex>
+                )}
+                <Image
+                  src={photoUrl}
+                  alt={`${roomInfo} photo ${index + 1}`}
+                  h="100%"
+                  w="100%"
+                  objectFit="cover"
+                  fallbackSrc={defaultPhoto}
+                  loading="lazy"
+                  onError={(e) => {
+                    console.error(`[RoomCarouselCard] Failed to load image for room ${roomInfo}: ${photoUrl}`);
+                    e.target.src = defaultPhoto;
+                    setIsLoading(false);
+                  }}
+                  onLoad={() => {
+                    console.log(`[RoomCarouselCard] Successfully loaded image for room ${roomInfo}: ${photoUrl}`);
+                    setIsLoading(false);
+                  }}
+                />
+              </MotionBox>
+            ))}
+          </Flex>
+        </Box>
+        {/* 슬라이드 인디케이터 */}
+        {photoUrls.length > 1 && (
+          <Flex justify="center" position="absolute" bottom="5px" left="0" right="0" zIndex={10}>
+            {photoUrls.map((_, idx) => (
+              <Box
+                key={idx}
+                w="8px"
+                h="8px"
+                bg={currentIndex === idx ? 'white' : 'gray.300'}
+                borderRadius="full"
+                mx={1}
+                transition="background-color 0.3s"
+                opacity={0.8}
+              />
+            ))}
+          </Flex>
+        )}
+      </Box>
+      {/* 객실 정보 영역 */}
       <Box p={4}>
-        <VStack align="start" spacing={2}>
-          <Text fontSize="lg" fontWeight="bold">
-            {roomInfo || '정보 없음'}
+        <Text fontSize="lg" fontWeight="bold">{roomInfo}</Text>
+        <Text color="teal.700">{formattedPrice.toLocaleString()}원 / 박</Text>
+        {formattedNumDays > 0 && (
+          <Text fontSize="sm" color="gray.500">
+            총 가격: {(formattedPrice * formattedNumDays).toLocaleString()}원 ({formattedNumDays}박)
           </Text>
-          <Text>{safePrice.toLocaleString()}원 / 박</Text>
-          <Text color="blue.500">
-            총 가격: {totalPrice.toLocaleString()}원 ({numDays || 1}박)
+        )}
+        {stock !== undefined && (
+          <Text fontSize="sm" color={formattedStock > 0 ? 'teal.500' : 'orange.500'}>
+            잔여 객실: {formattedStock}개
           </Text>
-          <Text color="gray.500">재고: {stock}개</Text>
-          <AmenityIcons activeAmenities={activeAmenities} />
-          <Button mt={2} colorScheme="blue" size="sm" onClick={onSelect}>
-            이 객실 선택
-          </Button>
-        </VStack>
+        )}
+        {/* 편의 시설 표시 */}
+        {Array.isArray(activeAmenities) && activeAmenities.length > 0 ? (
+          <HStack spacing={1} mt={2} mb={2}>
+            {activeAmenities.map((amenity, idx) => {
+              const IconComponent = iconMap[amenity.icon] || (() => <Box as="span" color="gray.400">?</Box>);
+              return (
+                <Tooltip key={idx} label={amenity.nameKor} placement="top">
+                  <Box>
+                    <IconComponent color="gray.500" boxSize={4} />
+                  </Box>
+                </Tooltip>
+              );
+            })}
+          </HStack>
+        ) : (
+          <Text fontSize="sm" color="gray.500">편의 시설 정보 없음</Text>
+        )}
+        <Button mt={2} colorScheme="blue" size="sm" onClick={onSelect}>
+          선택하기
+        </Button>
       </Box>
     </Box>
   );

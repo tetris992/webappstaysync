@@ -3,12 +3,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   VStack,
+  HStack,
   Text,
-  Input,
   Button,
   SimpleGrid,
   useToast,
+  FormControl,
+  FormLabel,
+  Input,
+  InputGroup,
+  InputLeftElement,
 } from '@chakra-ui/react';
+import { CalendarIcon } from '@chakra-ui/icons';
+import { DateRange } from 'react-date-range';
+import 'react-date-range/dist/styles.css'; // react-date-range 기본 스타일
+import 'react-date-range/dist/theme/default.css'; // react-date-range 테마
 import {
   format,
   addDays,
@@ -18,28 +27,32 @@ import {
   addMonths,
 } from 'date-fns';
 import RoomCarouselCard from '../components/RoomCarouselCard';
-import { fetchHotelAvailability, fetchCustomerHotelSettings } from '../api/api';
+import { fetchHotelAvailability, fetchCustomerHotelSettings, fetchHotelPhotos } from '../api/api';
 
 const RoomSelection = () => {
   const { hotelId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
 
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-  const maxDate = format(addMonths(new Date(), 3), 'yyyy-MM-dd'); // 3개월 이후 날짜
+  const today = startOfDay(new Date());
+  const tomorrow = addDays(today, 1);
+  const maxDate = addMonths(today, 3);
 
-  const [checkIn, setCheckIn] = useState(today);
-  const [checkOut, setCheckOut] = useState(tomorrow);
+  const [dateRange, setDateRange] = useState([
+    {
+      startDate: today,
+      endDate: tomorrow,
+      key: 'selection',
+    },
+  ]);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [availableRooms, setAvailableRooms] = useState([]);
   const [isAvailabilityChecked, setIsAvailabilityChecked] = useState(false);
   const [hotelSettings, setHotelSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [roomPhotosMap, setRoomPhotosMap] = useState({});
 
-  const numDays = differenceInCalendarDays(
-    new Date(checkOut),
-    new Date(checkIn)
-  );
+  const numDays = differenceInCalendarDays(dateRange[0].endDate, dateRange[0].startDate);
 
   useEffect(() => {
     const loadHotelSettings = async () => {
@@ -47,6 +60,29 @@ const RoomSelection = () => {
         const settings = await fetchCustomerHotelSettings(hotelId);
         console.log('[RoomSelection] Hotel Settings:', settings);
         setHotelSettings(settings);
+
+        // 객실별 사진 로드
+        const roomTypes = settings.roomTypes || [];
+        const photosPromises = roomTypes.map(async (roomType) => {
+          try {
+            const photosData = await fetchHotelPhotos(hotelId, 'room', roomType.roomInfo);
+            console.log(`[RoomSelection] Photos for room ${roomType.roomInfo}:`, photosData);
+            return {
+              roomInfo: roomType.roomInfo,
+              photos: photosData.roomPhotos || [],
+            };
+          } catch (error) {
+            console.error(`Failed to fetch photos for room ${roomType.roomInfo}:`, error);
+            return { roomInfo: roomType.roomInfo, photos: [] };
+          }
+        });
+
+        const photosResults = await Promise.all(photosPromises);
+        const photosMap = photosResults.reduce((acc, { roomInfo, photos }) => {
+          acc[roomInfo.toLowerCase()] = photos;
+          return acc;
+        }, {});
+        setRoomPhotosMap(photosMap);
       } catch (error) {
         toast({
           title: '호텔 설정 로딩 실패',
@@ -61,8 +97,19 @@ const RoomSelection = () => {
     loadHotelSettings();
   }, [hotelId, toast, navigate]);
 
+  const handleDateChange = (ranges) => {
+    const { selection } = ranges;
+    setDateRange([selection]);
+    // 날짜 선택 후 달력 창 닫기
+    if (selection.startDate && selection.endDate) {
+      setShowCalendar(false);
+    }
+  };
+
   const handleCheckAvailability = async () => {
-    // 날짜 입력 검증
+    const checkIn = dateRange[0].startDate;
+    const checkOut = dateRange[0].endDate;
+
     if (!checkIn || !checkOut) {
       toast({
         title: '날짜 입력 필요',
@@ -74,12 +121,10 @@ const RoomSelection = () => {
       return;
     }
 
-    // 과거 날짜 검증
-    const todayDate = startOfDay(new Date());
-    if (isBefore(new Date(checkIn), todayDate)) {
+    if (isBefore(checkIn, today)) {
       toast({
         title: '날짜 오류',
-        description: '체크인 날짜는 오늘 또는 미래 날짜여야 합니다.',
+        description: `체크인 날짜(${format(checkIn, 'yyyy-MM-dd')})는 오늘(${format(today, 'yyyy-MM-dd')}) 또는 미래 날짜여야 합니다.`,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -87,9 +132,7 @@ const RoomSelection = () => {
       return;
     }
 
-    // 3개월 범위 검증
-    const maxCheckInDate = startOfDay(addMonths(todayDate, 3));
-    if (isBefore(maxCheckInDate, new Date(checkIn))) {
+    if (isBefore(maxDate, checkIn)) {
       toast({
         title: '날짜 범위 오류',
         description: '체크인 날짜는 현재로부터 3개월 이내여야 합니다.',
@@ -111,9 +154,8 @@ const RoomSelection = () => {
       return;
     }
 
-    // 체크아웃 날짜가 체크인 날짜로부터 3개월 이내인지 검증
-    const maxCheckOutDate = startOfDay(addMonths(new Date(checkIn), 3));
-    if (isBefore(maxCheckOutDate, new Date(checkOut))) {
+    const maxCheckOutDate = startOfDay(addMonths(checkIn, 3));
+    if (isBefore(maxCheckOutDate, checkOut)) {
       toast({
         title: '날짜 범위 오류',
         description: '체크아웃 날짜는 체크인 날짜로부터 3개월 이내여야 합니다.',
@@ -127,12 +169,12 @@ const RoomSelection = () => {
     setIsLoading(true);
     try {
       console.log(
-        `[RoomSelection] Checking availability from ${checkIn} to ${checkOut}`
+        `[RoomSelection] Checking availability from ${format(checkIn, 'yyyy-MM-dd')} to ${format(checkOut, 'yyyy-MM-dd')}`
       );
       const hotelData = await fetchHotelAvailability(
         hotelId,
-        checkIn,
-        checkOut
+        format(checkIn, 'yyyy-MM-dd'),
+        format(checkOut, 'yyyy-MM-dd')
       );
       console.log('[RoomSelection] Hotel Availability:', hotelData);
 
@@ -166,6 +208,7 @@ const RoomSelection = () => {
           return {
             ...room,
             activeAmenities,
+            photos: roomPhotosMap[roomInfoLower] || [],
           };
         }
       );
@@ -186,17 +229,14 @@ const RoomSelection = () => {
   };
 
   const handleSelectRoom = (roomInfo, perNightPrice) => {
-    const numNights = differenceInCalendarDays(
-      new Date(checkOut),
-      new Date(checkIn)
-    );
+    const numNights = differenceInCalendarDays(dateRange[0].endDate, dateRange[0].startDate);
     const totalPrice = perNightPrice * numNights;
     navigate('/confirm', {
       state: {
         hotelId,
         roomInfo,
-        checkIn,
-        checkOut,
+        checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
+        checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
         price: totalPrice,
         numNights,
       },
@@ -216,26 +256,78 @@ const RoomSelection = () => {
           fontSize={{ base: '2xl', md: '3xl' }}
           fontWeight="bold"
           color="teal.500"
+          textAlign="center" // 호텔 타이틀 가운데 정렬
         >
           {hotelSettings?.hotelName || '객실 선택'}
         </Text>
         <VStack spacing={2}>
-          <Text>체크인 날짜</Text>
-          <Input
-            type="date"
-            value={checkIn}
-            onChange={(e) => setCheckIn(e.target.value)}
-            min={today} // 과거 날짜 선택 방지
-            max={maxDate} // 3개월 이후 날짜 선택 방지
-          />
-          <Text>체크아웃 날짜</Text>
-          <Input
-            type="date"
-            value={checkOut}
-            onChange={(e) => setCheckOut(e.target.value)}
-            min={format(addDays(new Date(checkIn), 1), 'yyyy-MM-dd')}
-            max={format(addMonths(new Date(checkIn), 3), 'yyyy-MM-dd')} // 체크인으로부터 3개월 이후 날짜 선택 방지
-          />
+          <HStack spacing={4} w="full" justifyContent="center">
+            <FormControl flex={{ base: '1', md: '0 0 200px' }}>
+              <FormLabel>체크인 날짜</FormLabel>
+              <InputGroup>
+                <InputLeftElement pointerEvents="none">
+                  <CalendarIcon color="gray.300" />
+                </InputLeftElement>
+                <Input
+                  value={format(dateRange[0].startDate, 'yyyy-MM-dd')}
+                  onClick={() => setShowCalendar(true)}
+                  readOnly
+                  pl="2.5rem"
+                  aria-label="체크인 날짜 선택"
+                  borderColor="gray.300"
+                  _hover={{ borderColor: 'teal.500' }}
+                  _focus={{ borderColor: 'teal.500', boxShadow: '0 0 0 1px #319795' }}
+                />
+              </InputGroup>
+            </FormControl>
+            <FormControl flex={{ base: '1', md: '0 0 200px' }}>
+              <FormLabel>체크아웃 날짜</FormLabel>
+              <InputGroup>
+                <InputLeftElement pointerEvents="none">
+                  <CalendarIcon color="gray.300" />
+                </InputLeftElement>
+                <Input
+                  value={format(dateRange[0].endDate, 'yyyy-MM-dd')}
+                  onClick={() => setShowCalendar(true)}
+                  readOnly
+                  pl="2.5rem"
+                  aria-label="체크아웃 날짜 선택"
+                  borderColor="gray.300"
+                  _hover={{ borderColor: 'teal.500' }}
+                  _focus={{ borderColor: 'teal.500', boxShadow: '0 0 0 1px #319795' }}
+                />
+              </InputGroup>
+            </FormControl>
+          </HStack>
+          {showCalendar && (
+            <VStack
+              position="absolute"
+              zIndex={1000}
+              bg="white"
+              boxShadow="md"
+              borderRadius="md"
+              p={4}
+              mt={2}
+            >
+              <DateRange
+                editableDateInputs={true}
+                onChange={handleDateChange}
+                moveRangeOnFirstSelection={false}
+                ranges={dateRange}
+                minDate={today}
+                maxDate={maxDate}
+                direction="horizontal"
+                rangeColors={['#319795']}
+              />
+              <Button
+                colorScheme="teal"
+                size="sm"
+                onClick={() => setShowCalendar(false)}
+              >
+                닫기
+              </Button>
+            </VStack>
+          )}
           <Text fontSize="sm" color="gray.500">
             최대 3개월 이내의 날짜만 예약 가능합니다.
           </Text>
@@ -251,7 +343,7 @@ const RoomSelection = () => {
         </VStack>
         {isAvailabilityChecked && availableRooms.length === 0 ? (
           <Text textAlign="center" color="gray.500">
-            선택하신 기간({checkIn} ~ {checkOut})에 이용 가능한 객실이 없습니다.
+            선택하신 기간({format(dateRange[0].startDate, 'yyyy-MM-dd')} ~ {format(dateRange[0].endDate, 'yyyy-MM-dd')})에 이용 가능한 객실이 없습니다.
             다른 날짜를 선택해 주세요.
           </Text>
         ) : (
@@ -265,6 +357,7 @@ const RoomSelection = () => {
                   stock={room.availableRooms}
                   numDays={numDays}
                   activeAmenities={room.activeAmenities}
+                  photos={room.photos}
                   onSelect={() => handleSelectRoom(room.roomInfo, room.price)}
                 />
               ))}

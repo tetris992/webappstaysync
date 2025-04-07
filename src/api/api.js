@@ -22,6 +22,7 @@ const handleApiError = (error, defaultMessage) => {
 };
 
 const getCustomerToken = () => localStorage.getItem('customerToken');
+const getRefreshToken = () => localStorage.getItem('refreshToken');
 const getCsrfToken = () => localStorage.getItem('csrfToken');
 const getCsrfTokenId = () => localStorage.getItem('csrfTokenId');
 
@@ -31,11 +32,24 @@ api.interceptors.request.use(
     console.log('[api.js] Request URL:', `${BASE_URL}${config.url}`);
     console.log('[api.js] Request Body:', config.data);
     const token = getCustomerToken();
-    if (token) {
+    if (token && token !== 'undefined') {
       config.headers.Authorization = `Bearer ${token}`;
       console.log(`[api.js] Setting Authorization header: Bearer ${token}`);
     } else {
       console.log('[api.js] No customerToken found in localStorage');
+      // 로그인, 소셜 로그인, 회원가입, 리프레시 토큰, CSRF 토큰 요청은 리다이렉트하지 않음
+      if (
+        config.url !== '/api/customer/refresh-token' &&
+        config.url !== '/api/customer/login' &&
+        config.url !== '/api/customer/login/social/kakao' &&
+        config.url !== '/api/customer/login/social/naver' &&
+        config.url !== '/api/customer/login/social/google' &&
+        config.url !== '/api/customer/register' && // 회원가입 요청 추가
+        config.url !== '/api/csrf-token'
+      ) {
+        window.location.href = '/login';
+        throw new ApiError(401, 'No customer token available, redirecting to login');
+      }
     }
 
     const isGetRequest = config.method === 'get';
@@ -92,6 +106,10 @@ api.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       originalRequest.url !== '/api/customer/login' &&
+      originalRequest.url !== '/api/customer/login/social/kakao' &&
+      originalRequest.url !== '/api/customer/login/social/naver' &&
+      originalRequest.url !== '/api/customer/login/social/google' &&
+      originalRequest.url !== '/api/customer/register' && // 회원가입 요청 추가
       !originalRequest._retry
     ) {
       if (isRefreshing) {
@@ -110,15 +128,31 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        console.log('[api.js] 401 Unauthorized, redirecting to login');
+        console.log('[api.js] 401 Unauthorized, attempting to refresh token');
+        const refreshToken = getRefreshToken();
+        if (!refreshToken) {
+          throw new ApiError(401, 'No refresh token available');
+        }
+        // refresh-token 요청 시 Authorization 헤더를 제거
+        const response = await api.post('/api/customer/refresh-token', { refreshToken }, {
+          headers: {
+            Authorization: undefined, // Authorization 헤더 제거
+          },
+        });
+        const { token } = response.data;
+        localStorage.setItem('customerToken', token);
+        console.log(`[api.js] Refreshed customerToken: ${token}`);
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        processQueue(null, token);
+        return api(originalRequest);
+      } catch (err) {
+        console.log('[api.js] Token refresh failed, redirecting to login');
         localStorage.removeItem('customerToken');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('csrfToken');
         localStorage.removeItem('csrfTokenId');
         window.location.href = '/login';
         throw new ApiError(401, '토큰이 만료되었습니다. 다시 로그인해주세요.');
-      } catch (err) {
-        processQueue(err, null);
-        throw err;
       } finally {
         isRefreshing = false;
       }
@@ -149,9 +183,11 @@ api.interceptors.response.use(
 export const customerLogin = async (data) => {
   try {
     const response = await api.post('/api/customer/login', data);
-    const { token } = response.data;
+    const { token, refreshToken } = response.data;
     localStorage.setItem('customerToken', token);
+    localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken: ${token}`);
+    console.log(`[api.js] Stored refreshToken: ${refreshToken}`);
     const storedToken = localStorage.getItem('customerToken');
     if (storedToken !== token) {
       console.error('[api.js] Failed to store customerToken in localStorage');
@@ -172,9 +208,11 @@ export const customerLoginSocial = async (provider, socialData) => {
         skipCsrf: true,
       }
     );
-    const { token } = response.data;
+    const { token, refreshToken } = response.data;
     localStorage.setItem('customerToken', token);
+    localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken (social): ${token}`);
+    console.log(`[api.js] Stored refreshToken (social): ${refreshToken}`);
     return response.data;
   } catch (error) {
     handleApiError(error, '소셜 로그인 실패');
@@ -187,6 +225,11 @@ export const connectSocialAccount = async (provider, socialData) => {
       `/api/customer/connect-social/${provider}`,
       socialData
     );
+    const { token, refreshToken } = response.data;
+    localStorage.setItem('customerToken', token);
+    localStorage.setItem('refreshToken', refreshToken);
+    console.log(`[api.js] Stored customerToken (social connect): ${token}`);
+    console.log(`[api.js] Stored refreshToken (social connect): ${refreshToken}`);
     return response.data;
   } catch (error) {
     handleApiError(error, '소셜 계정 연결 실패');
@@ -196,6 +239,11 @@ export const connectSocialAccount = async (provider, socialData) => {
 export const customerRegister = async (customerData) => {
   try {
     const response = await api.post('/api/customer/register', customerData);
+    const { token, refreshToken } = response.data;
+    localStorage.setItem('customerToken', token);
+    localStorage.setItem('refreshToken', refreshToken);
+    console.log(`[api.js] Stored customerToken (register): ${token}`);
+    console.log(`[api.js] Stored refreshToken (register): ${refreshToken}`);
     return response.data;
   } catch (error) {
     handleApiError(error, '회원가입 실패');
@@ -217,7 +265,7 @@ export const fetchCustomerHotelSettings = async (hotelId) => {
     const response = await api.get('/api/customer/hotel-settings', {
       params: { hotelId },
     });
-    return response.data; // 반드시 .data 직접 반환
+    return response.data;
   } catch (error) {
     handleApiError(error, '고객용 호텔 설정 조회 실패');
   }
@@ -307,6 +355,7 @@ export const logoutCustomer = async () => {
     return { error: error.message, redirect: '/login' };
   } finally {
     localStorage.removeItem('customerToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('csrfToken');
     localStorage.removeItem('csrfTokenId');
   }

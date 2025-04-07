@@ -1,4 +1,3 @@
-// webapp/src/components/HotelCard.js
 import React from 'react';
 import {
   Box,
@@ -9,7 +8,7 @@ import {
   IconButton,
   HStack,
 } from '@chakra-ui/react';
-import { FaRegStar, FaStar, FaQuestionCircle } from 'react-icons/fa'; // 대체 아이콘 추가
+import { FaRegStar, FaStar, FaQuestionCircle } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import iconMap from '../utils/iconMap';
 
@@ -22,6 +21,13 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
     });
   };
 
+  const displayPhoto =
+    hotel.photos && hotel.photos.length > 0
+      ? hotel.photos[0].photoUrl
+      : '/assets/default-room1.jpg';
+
+  console.log(`[HotelCard] Display photo for hotel ${hotel.hotelId}:`, displayPhoto);
+
   return (
     <Box
       borderWidth="1px"
@@ -31,15 +37,16 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
       bg="white"
     >
       <Image
-        src={
-          hotel.photos && hotel.photos.length > 0
-            ? hotel.photos[0]
-            : '/assets/default-room1.jpg'
-        }
+        src={displayPhoto}
         alt={hotel.hotelName}
         h="150px"
         w="100%"
         objectFit="cover"
+        onError={(e) => {
+          console.error(`[HotelCard] Failed to load image for hotel ${hotel.hotelId}: ${displayPhoto}`);
+          e.target.src = '/assets/default-room1.jpg'; // Fallback to default image
+        }}
+        onLoad={() => console.log(`[HotelCard] Successfully loaded image for hotel ${hotel.hotelId}: ${displayPhoto}`)}
       />
       <Box p={4}>
         <Flex justify="space-between" align="center" mb={2}>
@@ -86,7 +93,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
         {hotel.amenities && hotel.amenities.length > 0 && (
           <HStack spacing={2} mb={2}>
             {hotel.amenities.map((amenity, idx) => {
-              const IconComponent = iconMap[amenity.icon] || FaQuestionCircle; // 대체 아이콘 사용
+              const IconComponent = iconMap[amenity.icon] || FaQuestionCircle;
               return (
                 <Box key={idx} title={amenity.nameKor}>
                   <IconComponent color="teal.500" />
