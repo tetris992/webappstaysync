@@ -4,7 +4,9 @@ import ApiError from '../utils/ApiError';
 
 const BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
-  (process.env.NODE_ENV === 'production' ? 'https://staysync.org' : 'http://localhost:3004');
+  (process.env.NODE_ENV === 'production'
+    ? 'https://staysync.org'
+    : 'http://localhost:3004');
 console.log('[api.js] BASE_URL:', BASE_URL);
 
 const api = axios.create({
@@ -42,13 +44,14 @@ api.interceptors.request.use(
         config.url !== '/api/customer/refresh-token' &&
         config.url !== '/api/customer/login' &&
         config.url !== '/api/customer/login/social/kakao' &&
-        config.url !== '/api/customer/login/social/naver' &&
-        config.url !== '/api/customer/login/social/google' &&
-        config.url !== '/api/customer/register' && // 회원가입 요청 추가
+        config.url !== '/api/customer/register' &&
         config.url !== '/api/csrf-token'
       ) {
         window.location.href = '/login';
-        throw new ApiError(401, 'No customer token available, redirecting to login');
+        throw new ApiError(
+          401,
+          'No customer token available, redirecting to login'
+        );
       }
     }
 
@@ -107,9 +110,7 @@ api.interceptors.response.use(
       error.response?.status === 401 &&
       originalRequest.url !== '/api/customer/login' &&
       originalRequest.url !== '/api/customer/login/social/kakao' &&
-      originalRequest.url !== '/api/customer/login/social/naver' &&
-      originalRequest.url !== '/api/customer/login/social/google' &&
-      originalRequest.url !== '/api/customer/register' && // 회원가입 요청 추가
+      originalRequest.url !== '/api/customer/register' &&
       !originalRequest._retry
     ) {
       if (isRefreshing) {
@@ -134,11 +135,15 @@ api.interceptors.response.use(
           throw new ApiError(401, 'No refresh token available');
         }
         // refresh-token 요청 시 Authorization 헤더를 제거
-        const response = await api.post('/api/customer/refresh-token', { refreshToken }, {
-          headers: {
-            Authorization: undefined, // Authorization 헤더 제거
-          },
-        });
+        const response = await api.post(
+          '/api/customer/refresh-token',
+          { refreshToken },
+          {
+            headers: {
+              Authorization: undefined, // Authorization 헤더 제거
+            },
+          }
+        );
         const { token } = response.data;
         localStorage.setItem('customerToken', token);
         console.log(`[api.js] Refreshed customerToken: ${token}`);
@@ -229,7 +234,9 @@ export const connectSocialAccount = async (provider, socialData) => {
     localStorage.setItem('customerToken', token);
     localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken (social connect): ${token}`);
-    console.log(`[api.js] Stored refreshToken (social connect): ${refreshToken}`);
+    console.log(
+      `[api.js] Stored refreshToken (social connect): ${refreshToken}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, '소셜 계정 연결 실패');
@@ -259,7 +266,6 @@ export const fetchHotelList = async () => {
   }
 };
 
-// 고객 전용 호텔설정 조회 API
 export const fetchCustomerHotelSettings = async (hotelId) => {
   try {
     const response = await api.get('/api/customer/hotel-settings', {

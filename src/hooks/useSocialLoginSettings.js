@@ -1,4 +1,3 @@
-// src/hooks/useSocialLoginSettings.js
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '@chakra-ui/react';
@@ -13,6 +12,12 @@ const useSocialLoginSettings = () => {
     if (!token) {
       console.warn('고객 토큰이 존재하지 않습니다.');
       // 토큰이 없으면 로그인 상태가 아니므로 API 호출을 건너뜁니다.
+      setSocialLoginSettings({
+        kakao: {
+          enabled: true, // 강제로 활성화
+          openIdConnectEnabled: false,
+        },
+      });
       setLoading(false);
       return;
     }
@@ -27,13 +32,20 @@ const useSocialLoginSettings = () => {
             },
           }
         );
-        setSocialLoginSettings(response.data);
+        // API 응답을 받아도 kakao.enabled를 강제로 true로 설정
+        setSocialLoginSettings({
+          ...response.data,
+          kakao: {
+            ...response.data.kakao,
+            enabled: true, // 강제로 활성화
+          },
+        });
       } catch (error) {
         console.error('Failed to fetch social login settings:', error);
         if (error.response?.status === 404) {
           setSocialLoginSettings({
             kakao: {
-              enabled: false,
+              enabled: true, // 강제로 활성화
               openIdConnectEnabled: false,
             },
           });

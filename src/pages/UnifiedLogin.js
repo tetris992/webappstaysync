@@ -1,4 +1,3 @@
-// src/pages/UnifiedLogin.js
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -17,10 +16,8 @@ import {
   Divider,
   useToast,
   Icon,
-  Tooltip,
 } from '@chakra-ui/react';
-import { SiKakao, SiNaver } from 'react-icons/si';
-import { FaGoogle } from 'react-icons/fa';
+import { SiKakao } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
 import { customerLogin, customerLoginSocial } from '../api/api';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
@@ -43,8 +40,6 @@ const UnifiedLogin = () => {
   const toast = useToast();
   const [isSocialLoading, setIsSocialLoading] = useState({
     kakao: false,
-    naver: false,
-    google: false,
   });
   const { socialLoginSettings, loading } = useSocialLoginSettings();
 
@@ -83,7 +78,7 @@ const UnifiedLogin = () => {
   }, [toast]);
 
   const handleSocialLogin = async (provider) => {
-    if (provider === 'naver' || provider === 'google') {
+    if (provider !== 'kakao') {
       toast({
         title: '미구현 기능',
         description: '현재는 카카오 로그인만 지원됩니다.',
@@ -93,50 +88,38 @@ const UnifiedLogin = () => {
       });
       return;
     }
-    if (provider === 'kakao' && socialLoginSettings?.kakao?.enabled !== true) {
-      toast({
-        title: 'Kakao 로그인 비활성화',
-        description: '현재 Kakao 로그인은 비활성화되어 있습니다.',
-        status: 'info',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    setIsSocialLoading((prev) => ({ ...prev, [provider]: true }));
+    setIsSocialLoading((prev) => ({ ...prev, kakao: true }));
     try {
-      if (provider === 'kakao') {
-        await new Promise((resolve, reject) => {
-          window.Kakao.Auth.login({
-            success: () => resolve(),
-            fail: (error) => reject(error),
-          });
+      await new Promise((resolve, reject) => {
+        window.Kakao.Auth.login({
+          success: () => resolve(),
+          fail: (error) => reject(error),
         });
-        const userInfo = await new Promise((resolve, reject) => {
-          window.Kakao.API.request({
-            url: '/v2/user/me',
-            success: (response) => resolve(response),
-            fail: (error) => reject(error),
-          });
+      });
+      const userInfo = await new Promise((resolve, reject) => {
+        window.Kakao.API.request({
+          url: '/v2/user/me',
+          success: (response) => resolve(response),
+          fail: (error) => reject(error),
         });
-        const socialData = {
-          providerId: userInfo.id.toString(),
-          name: userInfo.properties.nickname || 'Unknown',
-          email: userInfo.kakao_account.email || '',
-        };
-        if (socialLoginSettings?.kakao?.openIdConnectEnabled) {
-          const idToken = window.Kakao.Auth.getIdToken();
-          if (idToken) {
-            socialData.idToken = idToken;
-          }
+      });
+      const socialData = {
+        providerId: userInfo.id.toString(),
+        name: userInfo.properties.nickname || 'Unknown',
+        email: userInfo.kakao_account.email || '',
+      };
+      if (socialLoginSettings?.kakao?.openIdConnectEnabled) {
+        const idToken = window.Kakao.Auth.getIdToken();
+        if (idToken) {
+          socialData.idToken = idToken;
         }
-        const data = await customerLoginSocial('kakao', socialData);
-        if (data.redirectUrl) {
-          console.log(`Kakao login successful: ${socialData.email}`);
-          window.location.href = data.redirectUrl;
-        } else {
-          throw new Error('리다이렉트 URL이 없습니다.');
-        }
+      }
+      const data = await customerLoginSocial('kakao', socialData);
+      if (data.redirectUrl) {
+        console.log(`Kakao login successful: ${socialData.email}`);
+        window.location.href = data.redirectUrl;
+      } else {
+        throw new Error('리다이렉트 URL이 없습니다.');
       }
     } catch (error) {
       let errorMessage = '소셜 로그인 중 오류가 발생했습니다.';
@@ -151,7 +134,7 @@ const UnifiedLogin = () => {
       } else if (error.message.includes('invalid_scope')) {
         errorMessage = '요청된 권한이 유효하지 않습니다. 관리자에게 문의해주세요.';
       }
-      console.error(`Social login failed for ${provider}: ${error.message}`);
+      console.error(`Social login failed for kakao: ${error.message}`);
       toast({
         title: '소셜 로그인 실패',
         description: errorMessage,
@@ -160,7 +143,7 @@ const UnifiedLogin = () => {
         isClosable: true,
       });
     } finally {
-      setIsSocialLoading((prev) => ({ ...prev, [provider]: false }));
+      setIsSocialLoading((prev) => ({ ...prev, kakao: false }));
     }
   };
 
@@ -240,54 +223,18 @@ const UnifiedLogin = () => {
             OR
           </Text>
           <VStack spacing={3}>
-            {socialLoginSettings?.kakao?.enabled ? (
-              <Button
-                variant="kakao"
-                w="full"
-                leftIcon={<Icon as={SiKakao} />}
-                onClick={() => handleSocialLogin('kakao')}
-                isLoading={isSocialLoading.kakao}
-                isDisabled={Object.values(isSocialLoading).some((loading) => loading)}
-                loadingText="카카오 로그인 중..."
-                size="md"
-              >
-                카카오로 계속하기
-              </Button>
-            ) : (
-              <Tooltip label="Kakao 로그인은 현재 비활성화되어 있습니다." placement="top">
-                <Button
-                  variant="kakao"
-                  w="full"
-                  leftIcon={<Icon as={SiKakao} />}
-                  isDisabled
-                  size="md"
-                >
-                  카카오로 계속하기
-                </Button>
-              </Tooltip>
-            )}
-            <Tooltip label="현재는 카카오 로그인만 지원됩니다." placement="top">
-              <Button
-                variant="naver"
-                w="full"
-                leftIcon={<Icon as={SiNaver} />}
-                isDisabled
-                size="md"
-              >
-                네이버로 계속하기
-              </Button>
-            </Tooltip>
-            <Tooltip label="현재는 카카오 로그인만 지원됩니다." placement="top">
-              <Button
-                variant="google"
-                w="full"
-                leftIcon={<Icon as={FaGoogle} />}
-                isDisabled
-                size="md"
-              >
-                구글로 계속하기
-              </Button>
-            </Tooltip>
+            <Button
+              variant="kakao"
+              w="full"
+              leftIcon={<Icon as={SiKakao} />}
+              onClick={() => handleSocialLogin('kakao')}
+              isLoading={isSocialLoading.kakao}
+              isDisabled={isSocialLoading.kakao}
+              loadingText="카카오 로그인 중..."
+              size="md"
+            >
+              카카오로 계속하기
+            </Button>
           </VStack>
           <Text textAlign="center" fontSize="xs" mt={{ base: 6, md: 8 }}>
             이용약관 |{' '}
