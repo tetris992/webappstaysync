@@ -1,3 +1,4 @@
+// src/pages/Register.js
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -81,13 +82,28 @@ const Register = () => {
         duration: 3000,
         isClosable: true,
       });
-      navigate('/connect-social');
+      navigate('/social-login');
     } catch (error) {
+      let errorMessage = '회원가입 중 오류가 발생했습니다.';
+      if (error.status === 409) {
+        const details = error.message.details;
+        if (details.phoneNumber) {
+          errorMessage = details.phoneNumber;
+        } else if (details.email) {
+          errorMessage = details.email;
+        } else {
+          errorMessage = error.message.message || '이미 가입된 전화번호 또는 이메일입니다.';
+        }
+      } else if (error.status === 500) {
+        errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      } else {
+        errorMessage = error.message || '알 수 없는 오류가 발생했습니다.';
+      }
       toast({
         title: '회원가입 실패',
-        description: error.message || '회원가입 중 오류가 발생했습니다.',
+        description: errorMessage,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     }
@@ -110,11 +126,11 @@ const Register = () => {
       justify="center"
       align="center"
       minH="100vh"
-      px={{ base: 3, md: 4 }} // Reduced padding
+      px={{ base: 3, md: 4 }}
     >
       <Box
-        w={{ base: '95%', sm: '85%', md: 'sm' }} // Fluid width
-        p={{ base: 4, md: 5 }} // Reduced padding
+        w={{ base: '95%', sm: '85%', md: 'sm' }}
+        p={{ base: 4, md: 5 }}
         bg="white"
         borderRadius="lg"
         boxShadow="md"
@@ -166,7 +182,7 @@ const Register = () => {
                 color="blue.500"
                 textDecoration="underline"
                 cursor="pointer"
-                mt={{ base: 6, md: 8 }} 
+                mt={{ base: 6, md: 8 }}
                 onClick={() => setShowConsentModal(true)}
               >
                 개인정보 이용 및 서비스 약관

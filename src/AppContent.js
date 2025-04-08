@@ -1,13 +1,14 @@
-import React, { useState, useCallback } from 'react';
+// src/AppContent.js
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Home from './pages/Home';
 import HotelList from './pages/HotelList';
 import RoomSelection from './pages/RoomSelection';
 import ReservationConfirmation from './pages/ReservationConfirmation';
 import ReservationHistory from './pages/ReservationHistory';
-import Login from './pages/UnifiedLogin';
+import TraditionalLogin from './pages/TraditionalLogin';
+import SocialLogin from './pages/SocialLogin';
 import Register from './pages/Register';
-import ConnectSocial from './pages/ConnectSocial';
 import AuthCallback from './pages/AuthCallback';
 import { useAuth } from './contexts/AuthContext';
 import { fetchCustomerHotelSettings } from './api/api';
@@ -39,8 +40,11 @@ function AppContent() {
     }
   }, []);
 
-  if (isLoading) {
+  useEffect(() => {
     setTimeout(() => setIsLoading(false), 0);
+  }, []);
+
+  if (isLoading) {
     return (
       <div
         style={{
@@ -59,18 +63,9 @@ function AppContent() {
     <div style={{ minHeight: '100vh', background: '#f7fafc' }}>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<TraditionalLogin />} />
+        <Route path="/social-login" element={<SocialLogin />} />
         <Route path="/register" element={<Register />} />
-        <Route
-          path="/connect-social"
-          element={
-            isAuthenticated && customer ? (
-              <ConnectSocial />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
         <Route path="/auth/:provider/callback" element={<AuthCallback />} />
         <Route
           path="/hotels"

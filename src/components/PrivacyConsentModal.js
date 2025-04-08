@@ -412,7 +412,7 @@ const PrivacyConsent = ({ onClose, onConsentComplete }) => {
                 부칙
               </Text>
               <Text fontSize="sm" mb={2}>
-                본 약관은 2025년 05월 01일부터 적용됩니다. 단, 공지 시점으로부터
+                본 약관은 2025년 04월 01일부터 적용됩니다. 단, 공지 시점으로부터
                 적용일 전일까지 가입한 신규회원에 대해서는 가입 시부터 본 약관이
                 적용됩니다.
               </Text>

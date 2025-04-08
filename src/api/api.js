@@ -1,3 +1,4 @@
+// src/api/api.js
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
@@ -20,7 +21,7 @@ const handleApiError = (error, defaultMessage) => {
   const status = error.response?.status || 500;
   const message =
     error.response?.data?.message || error.message || defaultMessage;
-  throw new ApiError(status, message);
+  throw new ApiError(status, message, error.response?.data);
 };
 
 const getCustomerToken = () => localStorage.getItem('customerToken');
@@ -39,49 +40,34 @@ api.interceptors.request.use(
       console.log(`[api.js] Setting Authorization header: Bearer ${token}`);
     } else {
       console.log('[api.js] No customerToken found in localStorage');
-      // 로그인, 소셜 로그인, 회원가입, 리프레시 토큰, CSRF 토큰 요청은 리다이렉트하지 않음
-      if (
-        config.url !== '/api/customer/refresh-token' &&
-        config.url !== '/api/customer/login' &&
-        config.url !== '/api/customer/login/social/kakao' &&
-        config.url !== '/api/customer/register' &&
-        config.url !== '/api/csrf-token'
-      ) {
-        window.location.href = '/login';
-        throw new ApiError(
-          401,
-          'No customer token available, redirecting to login'
-        );
+      const noRedirectRoutes = [
+        '/api/customer/refresh-token',
+        '/api/customer/login',
+        '/api/customer/login/social/kakao',
+        '/api/customer/register',
+        '/api/csrf-token',
+      ];
+      if (!noRedirectRoutes.includes(config.url)) {
+        throw new ApiError(401, 'No customer token available');
       }
     }
 
     const isGetRequest = config.method === 'get';
     const isCsrfTokenRequest = config.url === '/api/csrf-token';
-    const skipCsrf = config.skipCsrf || false;
+    const skipCsrf = config.skipCsrf || config.url === '/api/customer/register'; // 수정: /register 요청에 대해 CSRF 생략
 
     if (!isGetRequest && !isCsrfTokenRequest && !skipCsrf) {
       let csrfToken = getCsrfToken();
       let csrfTokenId = getCsrfTokenId();
       if (!csrfToken || !csrfTokenId) {
-        try {
-          const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
-          csrfToken = data.csrfToken;
-          csrfTokenId = data.tokenId;
-          localStorage.setItem('csrfToken', csrfToken);
-          localStorage.setItem('csrfTokenId', csrfTokenId);
-          console.log(
-            `[api.js] Setting CSRF token: ${csrfToken}, tokenId: ${csrfTokenId}`
-          );
-        } catch (error) {
-          console.error('[api.js] Failed to fetch CSRF token:', error);
-          throw new ApiError(403, 'CSRF 토큰을 가져오지 못했습니다.');
-        }
+        const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
+        csrfToken = data.csrfToken;
+        csrfTokenId = data.tokenId;
+        localStorage.setItem('csrfToken', csrfToken);
+        localStorage.setItem('csrfTokenId', csrfTokenId);
       }
       config.headers['X-CSRF-Token'] = csrfToken;
       config.headers['X-CSRF-Token-Id'] = csrfTokenId;
-      console.log(
-        `[api.js] Setting CSRF headers: X-CSRF-Token=${csrfToken}, X-CSRF-Token-Id=${csrfTokenId}`
-      );
     }
 
     return config;
@@ -89,6 +75,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// 응답 인터셉터: 401(토큰 만료) 및 403(CSRF 문제) 에러 처리
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -100,70 +87,51 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// 응답 인터셉터: 401(토큰 만료) 및 403(CSRF 문제) 에러 처리
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    // 401 에러 처리: 토큰 갱신 시도 후 재요청
     if (
       error.response?.status === 401 &&
+      !originalRequest._retry &&
       originalRequest.url !== '/api/customer/login' &&
       originalRequest.url !== '/api/customer/login/social/kakao' &&
-      originalRequest.url !== '/api/customer/register' &&
-      !originalRequest._retry
+      originalRequest.url !== '/api/customer/register'
     ) {
       if (isRefreshing) {
-        try {
-          const token = await new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          });
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        } catch (err) {
-          return Promise.reject(err);
-        }
+        const token = await new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        });
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return api(originalRequest);
       }
 
       originalRequest._retry = true;
       isRefreshing = true;
 
       try {
-        console.log('[api.js] 401 Unauthorized, attempting to refresh token');
         const refreshToken = getRefreshToken();
-        if (!refreshToken) {
-          throw new ApiError(401, 'No refresh token available');
-        }
-        // refresh-token 요청 시 Authorization 헤더를 제거
+        if (!refreshToken) throw new ApiError(401, '리프레시 토큰이 없습니다.');
         const response = await api.post(
           '/api/customer/refresh-token',
           { refreshToken },
-          {
-            headers: {
-              Authorization: undefined, // Authorization 헤더 제거
-            },
-          }
+          { headers: { Authorization: undefined } }
         );
         const { token } = response.data;
         localStorage.setItem('customerToken', token);
-        console.log(`[api.js] Refreshed customerToken: ${token}`);
         originalRequest.headers.Authorization = `Bearer ${token}`;
         processQueue(null, token);
         return api(originalRequest);
       } catch (err) {
-        console.log('[api.js] Token refresh failed, redirecting to login');
         localStorage.removeItem('customerToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('csrfToken');
         localStorage.removeItem('csrfTokenId');
-        window.location.href = '/login';
-        throw new ApiError(401, '토큰이 만료되었습니다. 다시 로그인해주세요.');
+        throw new ApiError(401, '토큰 갱신 실패');
       } finally {
         isRefreshing = false;
       }
-    }
-    // 403 에러 처리: CSRF 토큰 갱신 후 재요청
-    else if (error.response?.status === 403 && !originalRequest._retry) {
+    } else if (error.response?.status === 403 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
         const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
@@ -180,7 +148,8 @@ api.interceptors.response.use(
     }
     throw new ApiError(
       error.response?.status || 500,
-      error.response?.data?.message || '서버 오류'
+      error.response?.data?.message || '서버 오류',
+      error.response?.data
     );
   }
 );
