@@ -27,8 +27,8 @@ const ReservationCard = ({ reservation, onCancel }) => {
     phoneNumber,
     photoUrl,
     customerName,
-    checkInTime = '15:00', // 기본값 (호텔 설정에서 가져왔다고 가정)
-    checkOutTime = '11:00', // 기본값 (호텔 설정에서 가져왔다고 가정)
+    checkInTime = '15:00',
+    checkOutTime = '11:00',
   } = reservation || {};
 
   const safePrice = typeof price === 'number' ? price : 0;
@@ -48,23 +48,53 @@ const ReservationCard = ({ reservation, onCancel }) => {
       ? `${checkOut.split(' ')[0]}T${checkOutTime}:00+09:00`
       : null;
 
-    const checkInDateTime = checkInDateTimeStr ? new Date(checkInDateTimeStr) : null;
-    const checkOutDateTime = checkOutDateTimeStr ? new Date(checkOutDateTimeStr) : null;
+    const checkInDateTime = checkInDateTimeStr
+      ? new Date(checkInDateTimeStr)
+      : null;
+    const checkOutDateTime = checkOutDateTimeStr
+      ? new Date(checkOutDateTimeStr)
+      : null;
+
+    // 체크인 당일 오후 2시(14:00) 설정
+    const checkInDeadline = checkInDateTime
+      ? new Date(
+          checkInDateTime.getFullYear(),
+          checkInDateTime.getMonth(),
+          checkInDateTime.getDate(),
+          14,
+          0,
+          0
+        )
+      : null;
 
     // 상태 결정
     if (isCancelled) {
       setStatusText('취소됨');
     } else if (checkOutDateTime && isAfter(currentDateTime, checkOutDateTime)) {
       setStatusText('사용완료');
+    } else if (checkInDeadline && isAfter(currentDateTime, checkInDeadline)) {
+      setStatusText('예약확정'); // 체크인 당일 오후 2시 이후
     } else if (checkInDateTime && isAfter(currentDateTime, checkInDateTime)) {
-      setStatusText('예약확정');
+      setStatusText('예약확정'); // 체크인 시간 이후
     } else {
       setStatusText(reservationStatus || '확인필요');
     }
-  }, [checkIn, checkOut, checkInTime, checkOutTime, isCancelled, reservationStatus]);
+  }, [
+    checkIn,
+    checkOut,
+    checkInTime,
+    checkOutTime,
+    isCancelled,
+    reservationStatus,
+  ]);
 
   const handleCancelClick = () => {
-    if (onCancel && !isCancelled && statusText !== '예약확정' && statusText !== '사용완료') {
+    if (
+      onCancel &&
+      !isCancelled &&
+      statusText !== '예약확정' &&
+      statusText !== '사용완료'
+    ) {
       onCancel(_id);
     }
   };
@@ -96,10 +126,10 @@ const ReservationCard = ({ reservation, onCancel }) => {
           </Text>
           <Divider />
           <Text fontSize="sm" color="gray.600">
-            예약 번호: {`WEB-${_id.slice(-8)}`} {/* 예약 번호 표시 */}
+            예약 번호: {`WEB-${_id.slice(-8)}`}
           </Text>
           <Text fontSize="sm" color="gray.600">
-            예약자: {customerName || '예약자 정보 없음'} {/* 고객 이름 표시 */}
+            예약자: {customerName || '예약자 정보 없음'}
           </Text>
           <Text fontSize="sm" color="gray.600">
             객실: {roomInfo}
@@ -108,10 +138,12 @@ const ReservationCard = ({ reservation, onCancel }) => {
             결제: {paymentMethod}
           </Text>
           <Text fontSize="sm" color="gray.600">
-            체크인: {checkIn ? format(new Date(checkIn), 'yyyy-MM-dd HH:mm') : 'N/A'}
+            체크인:{' '}
+            {checkIn ? format(new Date(checkIn), 'yyyy-MM-dd HH:mm') : 'N/A'}
           </Text>
           <Text fontSize="sm" color="gray.600">
-            체크아웃: {checkOut ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm') : 'N/A'}
+            체크아웃:{' '}
+            {checkOut ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm') : 'N/A'}
           </Text>
           <Text fontSize="sm" color="gray.600">
             숙박 일수: {numDays || 1}박
@@ -143,18 +175,20 @@ const ReservationCard = ({ reservation, onCancel }) => {
           )}
           {paymentMethod === '현장결제' && (
             <Text fontSize="xs" color="gray.500">
-              후불예약은 당일 13시 전까지 무료 취소 가능합니다.
+              후불예약은 당일 14시 전까지 무료 취소 가능합니다.
             </Text>
           )}
           <Text fontSize="xs" color="gray.500">
             문의: {phoneNumber || '정보 없음'}
           </Text>
           <Divider />
-          {!isCancelled && statusText !== '예약확정' && statusText !== '사용완료' && (
-            <Button size="sm" colorScheme="red" onClick={handleCancelClick}>
-              예약 취소
-            </Button>
-          )}
+          {!isCancelled &&
+            statusText !== '예약확정' &&
+            statusText !== '사용완료' && (
+              <Button size="sm" colorScheme="red" onClick={handleCancelClick}>
+                예약 취소
+              </Button>
+            )}
         </VStack>
       </VStack>
     </Box>

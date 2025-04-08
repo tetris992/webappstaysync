@@ -1,35 +1,120 @@
 import React from 'react';
-import { Box, Image, Text, Button } from '@chakra-ui/react';
+import { Box, Image, Text, Button, Flex, HStack } from '@chakra-ui/react';
+import { FaQuestionCircle } from 'react-icons/fa';
+import Slider from 'react-slick';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
+import iconMap from '../utils/iconMap';
 
 const RoomCard = ({ room, onSelect }) => {
-  const defaultPhoto = '/assets/default-room1.jpg';
-  const displayPhoto =
+  // 슬라이드 설정
+  const sliderSettings = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 3000,
+    arrows: true,
+    adaptiveHeight: true,
+  };
+
+  // 사진 배열 (S3에서 가져온 사진 또는 디폴트 사진)
+  const photos =
     room.photos && room.photos.length > 0
-      ? room.photos[0].photoUrl
-      : defaultPhoto; // S3 사진이 없으면 디폴트 사진 사용
+      ? room.photos
+      : [{ photoUrl: '/assets/default-room1.jpg' }];
 
   return (
     <Box
-      borderWidth="1px"
-      borderRadius="lg"
+      borderWidth="0"
+      borderRadius="xl"
       overflow="hidden"
-      shadow="md"
+      shadow="sm"
       bg="white"
+      transition="all 0.4s ease"
+      _hover={{ shadow: 'xl', transform: 'translateY(-8px)' }}
     >
-      <Image
-        src={displayPhoto}
-        alt={room.roomInfo}
-        h="150px"
-        w="100%"
-        objectFit="cover"
-        onError={() => console.error(`Failed to load image: ${displayPhoto}`)}
-      />
-      <Box p={4}>
-        <Text fontSize="lg" fontWeight="bold">{room.roomInfo}</Text>
-        <Text>{room.price.toLocaleString()}원 / 박</Text>
-        <Button mt={2} colorScheme="blue" size="sm" onClick={() => onSelect(room)}>
-          선택하기
-        </Button>
+      {/* 슬라이드 컴포넌트 */}
+      <Slider {...sliderSettings}>
+        {photos.map((photo, idx) => (
+          <Box key={idx}>
+            <Image
+              src={photo.photoUrl}
+              alt={`${room.roomInfo} - ${idx + 1}`}
+              h="200px"
+              w="100%"
+              objectFit="cover"
+              loading="lazy"
+              onError={(e) => {
+                e.target.src = '/assets/default-room1.jpg';
+                console.error(`Failed to load image: ${photo.photoUrl}`);
+              }}
+              boxShadow="sm"
+            />
+          </Box>
+        ))}
+      </Slider>
+      <Box p={5}>
+        <Text fontSize="xl" fontWeight="semibold" color="gray.800" mb={3}>
+          {room.roomInfo}
+        </Text>
+        <Flex align="center" mb={2}>
+          <Text fontSize="sm" color="gray.700" fontWeight="medium">
+            가격:
+          </Text>
+          <Text fontSize="sm" color="gray.600" ml={2}>
+            {room.price.toLocaleString()}원 / 박
+          </Text>
+        </Flex>
+        <Flex align="center" mb={3}>
+          <Text fontSize="sm" color="gray.700" fontWeight="medium">
+            재고:
+          </Text>
+          <Text fontSize="sm" color="gray.600" ml={2}>
+            {room.availableRooms || room.stock}개
+          </Text>
+        </Flex>
+        <Flex justify="space-between" align="center">
+          {room.activeAmenities && room.activeAmenities.length > 0 ? (
+            <HStack spacing={3}>
+              {room.activeAmenities.slice(0, 3).map((amenity, idx) => {
+                const IconComponent = iconMap[amenity.icon] || FaQuestionCircle;
+                return (
+                  <Box key={idx} title={amenity.nameKor}>
+                    <IconComponent color="teal.500" boxSize={4} />
+                  </Box>
+                );
+              })}
+              {room.activeAmenities.length > 3 && (
+                <Text fontSize="sm" color="gray.500">
+                  +{room.activeAmenities.length - 3}
+                </Text>
+              )}
+            </HStack>
+          ) : (
+            <Box flex="1" />
+          )}
+          <Button
+            colorScheme="blue"
+            size="md"
+            onClick={() => onSelect(room)}
+            px={5}
+            py={2}
+            fontSize="sm"
+            fontWeight="medium"
+            borderRadius="md"
+            transition="all 0.3s ease"
+            _hover={{
+              bg: 'teal.600',
+              transform: 'scale(1.05)',
+              boxShadow: 'md',
+            }}
+          >
+            선택하기
+          </Button>
+        </Flex>
       </Box>
     </Box>
   );

@@ -35,7 +35,7 @@ const blink = keyframes`
 const ReservationHistory = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const { customer } = useAuth();
+  const { customer, logout } = useAuth();
   const socket = useSocket();
   const [reservations, setReservations] = useState([]);
   const [totalVisits, setTotalVisits] = useState(0);
@@ -50,7 +50,6 @@ const ReservationHistory = () => {
         (a, b) => new Date(b.reservationDate) - new Date(a.reservationDate)
       );
 
-      // 각 예약에 대해 사진 로드
       const reservationsWithPhotos = await Promise.all(
         sortedReservations.map(async (reservation) => {
           try {
@@ -166,6 +165,11 @@ const ReservationHistory = () => {
     onSwipedRight: () => handlePrev(),
     trackMouse: true,
   });
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
     <Container
@@ -291,6 +295,25 @@ const ReservationHistory = () => {
           size="md"
         >
           홈으로 돌아가기
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          w="full"
+          size="md"
+          color="red.400"
+          borderColor="red.200"
+          borderRadius="full"
+          boxShadow="md"
+          _hover={{
+            bg: 'red.50',
+            transform: 'scale(1.05)',
+            boxShadow: 'lg',
+          }}
+          _active={{ transform: 'scale(0.95)' }}
+          transition="all 0.3s ease"
+        >
+          로그아웃
         </Button>
       </VStack>
     </Container>

@@ -10,10 +10,21 @@ import {
   Spinner,
   Box,
   Divider,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Flex,
+  Icon,
 } from '@chakra-ui/react';
+import { FaMapMarkerAlt, FaMapSigns } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { createReservation, fetchCustomerHotelSettings, fetchHotelPhotos } from '../api/api';
 import { differenceInCalendarDays, format } from 'date-fns';
+import Map from '../components/Map';
 
 const ReservationConfirmation = () => {
   const { state } = useLocation();
@@ -24,15 +35,18 @@ const ReservationConfirmation = () => {
   const [visitCount, setVisitCount] = useState(0);
   const [hotelInfo, setHotelInfo] = useState(null);
   const [reservationId, setReservationId] = useState('');
-  const [statusText, setStatusText] = useState(''); // 상태 텍스트 추가
-  const [formattedCheckIn, setFormattedCheckIn] = useState(''); // 조합된 체크인 시간
-  const [formattedCheckOut, setFormattedCheckOut] = useState(''); // 조합된 체크아웃 시간
-  const [roomImage, setRoomImage] = useState('/assets/default-room1.jpg'); // S3 사진 URL 상태 추가
+  const [statusText, setStatusText] = useState('');
+  const [formattedCheckIn, setFormattedCheckIn] = useState('');
+  const [formattedCheckOut, setFormattedCheckOut] = useState('');
+  const [roomImage, setRoomImage] = useState('/assets/default-room1.jpg');
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [coordinates, setCoordinates] = useState(null);
+  const [coordinatesLoading, setCoordinatesLoading] = useState(false);
+  const [coordinatesError, setCoordinatesError] = useState(null);
 
   const { hotelId, roomInfo, checkIn, checkOut, price, specialRequests } =
     state || {};
 
-  // 숙박 일수 계산
   const numNights =
     checkIn && checkOut
       ? (() => {
@@ -45,32 +59,25 @@ const ReservationConfirmation = () => {
 
   const reservationDate = format(new Date(), 'yyyy-MM-dd HH:mm');
 
-  // 예약 번호 포맷팅
   const formattedReservationId = reservationId
     ? `WEB-${reservationId.slice(-8)}`
     : '생성 중...';
 
-  // 호텔 정보 및 객실 사진 로드
   useEffect(() => {
     const loadHotelInfoAndPhotos = async () => {
       try {
-        // 호텔 정보 로드
         const hotelData = await fetchCustomerHotelSettings(hotelId);
         setHotelInfo(hotelData);
 
-        // 객실 사진 로드
         const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
         console.log(`[ReservationConfirmation] Photos for room ${roomInfo}:`, photosData);
         if (photosData?.roomPhotos && photosData.roomPhotos.length > 0) {
-          // 첫 번째 사진의 photoUrl 사용
           setRoomImage(photosData.roomPhotos[0].photoUrl);
         }
 
-        // 체크인/체크아웃 시간 조합
         const checkInTime = hotelData?.checkInTime || '15:00';
         const checkOutTime = hotelData?.checkOutTime || '11:00';
 
-        // 시간 정보 추가
         const checkInDateTimeStr = checkIn
           ? `${checkIn}T${checkInTime}:00+09:00`
           : null;
@@ -85,7 +92,6 @@ const ReservationConfirmation = () => {
           ? new Date(checkOutDateTimeStr)
           : null;
 
-        // 포맷팅된 체크인/체크아웃 시간 설정
         setFormattedCheckIn(
           checkInDateTime ? format(checkInDateTime, 'yyyy-MM-dd HH:mm') : 'N/A'
         );
@@ -94,6 +100,38 @@ const ReservationConfirmation = () => {
             ? format(checkOutDateTime, 'yyyy-MM-dd HH:mm')
             : 'N/A'
         );
+
+        // 호텔 주소로 좌표 가져오기
+        if (hotelData?.address) {
+          setCoordinatesLoading(true);
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(hotelData.address)}`,
+              {
+                headers: {
+                  'User-Agent': 'DanjamApp/0.1.0 (nomac74@example.com)',
+                },
+              }
+            );
+            const data = await response.json();
+            console.log('Nominatim API response for coordinates:', data);
+            if (data && data.length > 0) {
+              const coords = {
+                lat: parseFloat(data[0].lat),
+                lng: parseFloat(data[0].lon),
+              };
+              setCoordinates(coords);
+              setCoordinatesError(null);
+            } else {
+              setCoordinatesError(`해당 주소의 좌표를 찾을 수 없습니다: ${hotelData.address}`);
+            }
+          } catch (error) {
+            console.error('Failed to fetch coordinates:', error);
+            setCoordinatesError(`좌표를 가져오는 데 실패했습니다: ${error.message}`);
+          } finally {
+            setCoordinatesLoading(false);
+          }
+        }
       } catch (error) {
         toast({
           title: '호텔 정보 로드 실패',
@@ -109,7 +147,6 @@ const ReservationConfirmation = () => {
       loadHotelInfoAndPhotos();
     }
 
-    // 방문 횟수 로드 (Mock)
     setVisitCount(0);
   }, [hotelId, roomInfo, checkIn, checkOut, toast]);
 
@@ -165,7 +202,7 @@ const ReservationConfirmation = () => {
       setIsLoading(true);
       const response = await createReservation(finalReservationData);
       setReservationId(response.reservationId);
-      setStatusText('예약확정'); // 예약 성공 후 상태 업데이트
+      setStatusText('예약확정');
       toast({
         title: '예약 성공',
         description: '예약이 완료되었습니다.',
@@ -188,14 +225,60 @@ const ReservationConfirmation = () => {
   };
 
   const handleAddressClick = () => {
-    if (hotelInfo) {
-      navigate('/map', {
-        state: { hotelId: hotelInfo.hotelId, address: hotelInfo.address },
+    if (hotelInfo && hotelInfo.address) {
+      setIsMapOpen(true);
+    } else {
+      toast({
+        title: '주소 정보 없음',
+        description: '호텔 주소 정보를 찾을 수 없습니다.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
       });
     }
   };
 
-  // S3 사진 로드 실패 시 기본 사진으로 대체
+  const handleTMapNavigation = () => {
+    if (!coordinates) {
+      toast({
+        title: '좌표 정보 없음',
+        description: coordinatesError || '호텔 좌표를 찾을 수 없습니다.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const { lat, lng } = coordinates;
+    const tmapUrl = `tmap://route?goalx=${lng}&goaly=${lat}&name=${encodeURIComponent(hotelInfo?.hotelName || '호텔')}`;
+    
+    window.location.href = tmapUrl;
+
+    setTimeout(() => {
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (isAndroid) {
+        window.location.href = 'https://play.google.com/store/apps/details?id=com.skt.tmap.ku';
+      } else if (isIOS) {
+        window.location.href = 'https://apps.apple.com/kr/app/tmap/id431589174';
+      } else {
+        toast({
+          title: 'T맵 설치 필요',
+          description: 'T맵 앱이 설치되어 있지 않습니다. 설치 페이지로 이동합니다.',
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    }, 2000);
+  };
+
+  const handleCoordinatesChange = (coords) => {
+    setCoordinates(coords);
+  };
+
   const handleImageError = (e) => {
     console.error(`[ReservationConfirmation] Failed to load image for room ${roomInfo}: ${roomImage}`);
     e.target.src = '/assets/default-room1.jpg';
@@ -244,13 +327,13 @@ const ReservationConfirmation = () => {
         {/* Reservation Details Card */}
         <Box variant="card">
           <Image
-            src={roomImage} // S3 사진 URL 사용
+            src={roomImage}
             alt={roomInfo}
             h="150px"
             w="100%"
             objectFit="cover"
             borderRadius="md"
-            onError={handleImageError} // 로드 실패 시 기본 사진으로 대체
+            onError={handleImageError}
           />
           <VStack align="start" spacing={2} mt={4}>
             <Text fontWeight="bold" fontSize="lg">
@@ -272,18 +355,33 @@ const ReservationConfirmation = () => {
             </Text>
             <Text fontSize="sm">방문 횟수: {visitCount}</Text>
             {hotelInfo && (
-              <Button
-                variant="link"
-                color="gray.600"
-                mb={2}
-                onClick={handleAddressClick}
-                textAlign="left"
-                fontSize="sm"
-                p={0}
-                _hover={{ color: 'blue.500', textDecoration: 'underline' }}
-              >
-                위치: {hotelInfo.address || '주소 정보 없음'}
-              </Button>
+              <Flex align="center" mb={2}>
+                <Icon as={FaMapMarkerAlt} color="teal.500" boxSize={4} mr={2} />
+                <Button
+                  variant="link"
+                  color="teal.600"
+                  onClick={handleAddressClick}
+                  textAlign="left"
+                  fontSize="sm"
+                  p={0}
+                  _hover={{ color: 'teal.800', textDecoration: 'underline' }}
+                >
+                  위치: {hotelInfo.address || '주소 정보 없음'}
+                </Button>
+                <Button
+                  variant="link"
+                  color="teal.600"
+                  ml={4}
+                  onClick={handleTMapNavigation}
+                  fontSize="sm"
+                  p={0}
+                  _hover={{ color: 'teal.800', textDecoration: 'underline' }}
+                  isDisabled={coordinatesLoading}
+                >
+                  <Icon as={FaMapSigns} color="teal.500" boxSize={4} mr={1} />
+                  {coordinatesLoading ? '좌표 가져오는 중...' : 'T맵으로 길찾기'}
+                </Button>
+              </Flex>
             )}
           </VStack>
         </Box>
@@ -309,6 +407,7 @@ const ReservationConfirmation = () => {
                 onClick={handleConfirm}
                 w="full"
                 size="md"
+                colorScheme="teal"
               >
                 예약 확정
               </Button>
@@ -326,6 +425,34 @@ const ReservationConfirmation = () => {
           </>
         )}
       </VStack>
+
+      {/* 지도 모달 */}
+      <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>호텔 위치</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Text fontSize="md" color="gray.600" mb={2}>
+              호텔 ID: {hotelId}
+            </Text>
+            <Text fontSize="md" color="gray.600" mb={4}>
+              주소: {hotelInfo?.address || '주소 정보 없음'}
+            </Text>
+            <Box h="400px" w="100%">
+              <Map
+                address={hotelInfo?.address}
+                onCoordinatesChange={handleCoordinatesChange}
+              />
+            </Box>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="gray" onClick={() => setIsMapOpen(false)}>
+              닫기
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Container>
   );
 };

@@ -27,7 +27,11 @@ import {
   addMonths,
 } from 'date-fns';
 import RoomCarouselCard from '../components/RoomCarouselCard';
-import { fetchHotelAvailability, fetchCustomerHotelSettings, fetchHotelPhotos } from '../api/api';
+import {
+  fetchHotelAvailability,
+  fetchCustomerHotelSettings,
+  fetchHotelPhotos,
+} from '../api/api';
 
 const RoomSelection = () => {
   const { hotelId } = useParams();
@@ -52,7 +56,10 @@ const RoomSelection = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [roomPhotosMap, setRoomPhotosMap] = useState({});
 
-  const numDays = differenceInCalendarDays(dateRange[0].endDate, dateRange[0].startDate);
+  const numDays = differenceInCalendarDays(
+    dateRange[0].endDate,
+    dateRange[0].startDate
+  );
 
   useEffect(() => {
     const loadHotelSettings = async () => {
@@ -65,14 +72,24 @@ const RoomSelection = () => {
         const roomTypes = settings.roomTypes || [];
         const photosPromises = roomTypes.map(async (roomType) => {
           try {
-            const photosData = await fetchHotelPhotos(hotelId, 'room', roomType.roomInfo);
-            console.log(`[RoomSelection] Photos for room ${roomType.roomInfo}:`, photosData);
+            const photosData = await fetchHotelPhotos(
+              hotelId,
+              'room',
+              roomType.roomInfo
+            );
+            console.log(
+              `[RoomSelection] Photos for room ${roomType.roomInfo}:`,
+              photosData
+            );
             return {
               roomInfo: roomType.roomInfo,
               photos: photosData.roomPhotos || [],
             };
           } catch (error) {
-            console.error(`Failed to fetch photos for room ${roomType.roomInfo}:`, error);
+            console.error(
+              `Failed to fetch photos for room ${roomType.roomInfo}:`,
+              error
+            );
             return { roomInfo: roomType.roomInfo, photos: [] };
           }
         });
@@ -124,7 +141,10 @@ const RoomSelection = () => {
     if (isBefore(checkIn, today)) {
       toast({
         title: '날짜 오류',
-        description: `체크인 날짜(${format(checkIn, 'yyyy-MM-dd')})는 오늘(${format(today, 'yyyy-MM-dd')}) 또는 미래 날짜여야 합니다.`,
+        description: `체크인 날짜(${format(
+          checkIn,
+          'yyyy-MM-dd'
+        )})는 오늘(${format(today, 'yyyy-MM-dd')}) 또는 미래 날짜여야 합니다.`,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -169,7 +189,10 @@ const RoomSelection = () => {
     setIsLoading(true);
     try {
       console.log(
-        `[RoomSelection] Checking availability from ${format(checkIn, 'yyyy-MM-dd')} to ${format(checkOut, 'yyyy-MM-dd')}`
+        `[RoomSelection] Checking availability from ${format(
+          checkIn,
+          'yyyy-MM-dd'
+        )} to ${format(checkOut, 'yyyy-MM-dd')}`
       );
       const hotelData = await fetchHotelAvailability(
         hotelId,
@@ -229,7 +252,10 @@ const RoomSelection = () => {
   };
 
   const handleSelectRoom = (roomInfo, perNightPrice) => {
-    const numNights = differenceInCalendarDays(dateRange[0].endDate, dateRange[0].startDate);
+    const numNights = differenceInCalendarDays(
+      dateRange[0].endDate,
+      dateRange[0].startDate
+    );
     const totalPrice = perNightPrice * numNights;
     navigate('/confirm', {
       state: {
@@ -276,7 +302,10 @@ const RoomSelection = () => {
                   aria-label="체크인 날짜 선택"
                   borderColor="gray.300"
                   _hover={{ borderColor: 'teal.500' }}
-                  _focus={{ borderColor: 'teal.500', boxShadow: '0 0 0 1px #319795' }}
+                  _focus={{
+                    borderColor: 'teal.500',
+                    boxShadow: '0 0 0 1px #319795',
+                  }}
                 />
               </InputGroup>
             </FormControl>
@@ -294,7 +323,10 @@ const RoomSelection = () => {
                   aria-label="체크아웃 날짜 선택"
                   borderColor="gray.300"
                   _hover={{ borderColor: 'teal.500' }}
-                  _focus={{ borderColor: 'teal.500', boxShadow: '0 0 0 1px #319795' }}
+                  _focus={{
+                    borderColor: 'teal.500',
+                    boxShadow: '0 0 0 1px #319795',
+                  }}
                 />
               </InputGroup>
             </FormControl>
@@ -343,8 +375,9 @@ const RoomSelection = () => {
         </VStack>
         {isAvailabilityChecked && availableRooms.length === 0 ? (
           <Text textAlign="center" color="gray.500">
-            선택하신 기간({format(dateRange[0].startDate, 'yyyy-MM-dd')} ~ {format(dateRange[0].endDate, 'yyyy-MM-dd')})에 이용 가능한 객실이 없습니다.
-            다른 날짜를 선택해 주세요.
+            선택하신 기간({format(dateRange[0].startDate, 'yyyy-MM-dd')} ~{' '}
+            {format(dateRange[0].endDate, 'yyyy-MM-dd')})에 이용 가능한 객실이
+            없습니다. 다른 날짜를 선택해 주세요.
           </Text>
         ) : (
           isAvailabilityChecked && (
@@ -365,7 +398,7 @@ const RoomSelection = () => {
           )
         )}
         <Button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(-1)}
           colorScheme="gray"
           w="full"
           size="md"

@@ -1,19 +1,35 @@
-// src/theme.js
 import { extendTheme } from '@chakra-ui/react';
 
 const theme = extendTheme({
+  fonts: {
+    heading: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
+    body: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
+  },
+
   colors: {
     brand: {
-      500: '#319795',
+      50: '#e6fffa',
+      100: '#b2f5ea',
+      200: '#81e6d9',
+      300: '#4fd1c5',
+      400: '#38b2ac',
+      500: '#319795', // Main brand color
       600: '#2c7a7b',
+      700: '#285e61',
+      800: '#234e52',
+      900: '#1a3c34',
     },
     gray: {
       50: '#f7fafc',
       100: '#edf2f7',
-      300: '#e2e8f0',
-      500: '#a0aec0',
+      200: '#e2e8f0',
+      300: '#cbd5e0',
+      400: '#a0aec0',
+      500: '#718096',
       600: '#4a5568',
       700: '#2d3748',
+      800: '#1a202c',
+      900: '#171923',
     },
     blue: {
       500: '#3182ce',
@@ -25,7 +41,7 @@ const theme = extendTheme({
     },
     kakao: {
       500: '#FEE500',
-      600: '#E4D100', // 호버 색상으로 변경
+      600: '#E4D100',
     },
     naver: {
       500: '#03C75A',
@@ -42,6 +58,10 @@ const theme = extendTheme({
       body: {
         bg: 'gray.50',
         color: 'gray.700',
+        fontFamily: 'body',
+      },
+      '*': {
+        transition: 'all 0.2s ease',
       },
     },
   },
@@ -50,12 +70,18 @@ const theme = extendTheme({
     Input: {
       baseStyle: {
         field: {
-          borderColor: 'gray.300',
+          borderColor: 'gray.200',
           borderWidth: '1px',
-          borderRadius: 'md',
+          borderRadius: 'full',
+          bg: 'white',
+          boxShadow: 'sm',
+          _hover: {
+            borderColor: 'brand.500',
+            boxShadow: 'md',
+          },
           _focus: {
             borderColor: 'brand.500',
-            boxShadow: `0 0 0 1px var(--chakra-colors-brand-500)`,
+            boxShadow: '0 0 0 2px rgba(49, 151, 149, 0.2)',
           },
         },
       },
@@ -65,6 +91,37 @@ const theme = extendTheme({
             fontSize: { base: 'sm', md: 'md' },
             padding: { base: '2', md: '3' },
             lineHeight: 'normal',
+            height: '40px',
+          },
+        },
+      },
+    },
+
+    Select: {
+      baseStyle: {
+        field: {
+          borderColor: 'gray.200',
+          borderWidth: '1px',
+          borderRadius: 'full',
+          bg: 'white',
+          boxShadow: 'sm',
+          _hover: {
+            borderColor: 'brand.500',
+            boxShadow: 'md',
+          },
+          _focus: {
+            borderColor: 'brand.500',
+            boxShadow: '0 0 0 2px rgba(49, 151, 149, 0.2)',
+          },
+        },
+      },
+      sizes: {
+        md: {
+          field: {
+            fontSize: { base: 'sm', md: 'md' },
+            padding: { base: '2', md: '3' },
+            lineHeight: 'normal',
+            height: '40px',
           },
         },
       },
@@ -72,81 +129,109 @@ const theme = extendTheme({
 
     Button: {
       baseStyle: {
-        borderRadius: 'md',
+        borderRadius: 'full',
         fontWeight: 'medium',
         _focus: {
-          boxShadow: '0 0 0 3px var(--chakra-colors-brand-500)',
+          boxShadow: '0 0 0 3px rgba(49, 151, 149, 0.2)',
         },
       },
       variants: {
         solid: {
           bg: 'brand.500',
           color: 'white',
+          boxShadow: 'md',
           _hover: {
             bg: 'brand.600',
+            transform: 'scale(1.05)',
+            boxShadow: 'lg',
+          },
+          _active: {
+            bg: 'brand.700',
+            transform: 'scale(0.95)',
           },
         },
         outline: {
-          borderColor: 'gray.300',
+          borderColor: 'gray.200',
           color: 'gray.700',
+          boxShadow: 'sm',
           _hover: {
             bg: 'gray.100',
+            transform: 'scale(1.05)',
+            boxShadow: 'md',
+          },
+          _active: {
+            transform: 'scale(0.95)',
           },
         },
         link: {
-          color: 'blue.500',
+          color: 'brand.500',
           _hover: {
-            color: 'blue.600',
-            textDecoration: 'underline',
+            color: 'brand.600',
+            textDecoration: 'none',
+            transform: 'scale(1.02)',
           },
         },
         kakao: {
-          bg: 'kakao.500', // 기본 배경: 카카오 노란색
+          bg: 'kakao.500',
           color: 'black',
+          boxShadow: 'sm',
           _hover: {
-            bg: 'kakao.600', // 호버 시 더 진한 노란색
-            transform: 'scale(1.05)', // 호버 시 확대
-            transition: 'all 0.3s ease',
+            bg: 'kakao.600',
+            transform: 'scale(1.05)',
+            boxShadow: 'md',
           },
           _active: {
-            bg: '#D4C100', // 클릭 시 더 어두운 노란색
+            bg: '#D4C100',
+            transform: 'scale(0.95)',
           },
         },
         naver: {
           bg: 'white',
           color: 'gray.700',
           borderWidth: '1px',
-          borderColor: 'gray.300',
+          borderColor: 'gray.200',
+          boxShadow: 'sm',
           _hover: {
             bg: 'naver.500',
             color: 'white',
+            transform: 'scale(1.05)',
+            boxShadow: 'md',
           },
         },
         google: {
           bg: 'google.500',
           color: 'gray.700',
           borderWidth: '1px',
-          borderColor: 'gray.300',
+          borderColor: 'gray.200',
+          boxShadow: 'sm',
           _hover: {
             bg: 'google.600',
+            transform: 'scale(1.05)',
+            boxShadow: 'md',
           },
         },
         homeButton: {
-          bg: 'google.500',
+          bg: 'white',
           color: 'gray.700',
           borderWidth: '1px',
-          borderColor: 'gray.300',
+          borderColor: 'gray.200',
+          boxShadow: 'sm',
           _hover: {
-            bg: 'google.600',
+            bg: 'gray.100',
+            transform: 'scale(1.05)',
+            boxShadow: 'md',
           },
         },
         homeButtonSecondary: {
-          bg: 'google.500',
+          bg: 'white',
           color: 'gray.700',
           borderWidth: '1px',
-          borderColor: 'gray.300',
+          borderColor: 'gray.200',
+          boxShadow: 'sm',
           _hover: {
-            bg: 'google.600',
+            bg: 'teal.50',
+            transform: 'scale(1.05)',
+            boxShadow: 'md',
           },
         },
       },
@@ -154,7 +239,7 @@ const theme = extendTheme({
         md: {
           fontSize: { base: 'sm', md: 'md' },
           padding: { base: '2', md: '3' },
-          height: { base: '36px', md: '40px' },
+          height: { base: '40px', md: '44px' },
         },
       },
     },
@@ -162,7 +247,7 @@ const theme = extendTheme({
     FormLabel: {
       baseStyle: {
         color: 'gray.600',
-        fontSize: { base: 'sm', md: 'md' },
+        fontSize: { base: 'xs', md: 'sm' },
         lineHeight: 'normal',
         marginBottom: '1',
       },
@@ -181,22 +266,27 @@ const theme = extendTheme({
         card: {
           bg: 'white',
           borderWidth: '1px',
-          borderColor: 'gray.300',
+          borderColor: 'gray.200',
           borderRadius: 'lg',
-          boxShadow: 'md',
+          boxShadow: 'sm',
           p: { base: '3', md: '4' },
           maxW: 'sm',
           mx: 'auto',
+          transition: 'all 0.3s ease',
+          _hover: {
+            boxShadow: 'md',
+            transform: 'translateY(-2px)',
+          },
         },
       },
     },
 
     Divider: {
       baseStyle: {
-        borderColor: 'gray.300',
+        borderColor: 'gray.200',
         maxW: 'sm',
         borderWidth: '1px',
-        opacity: 0.6,
+        opacity: 0.5,
       },
     },
   },
