@@ -1,3 +1,4 @@
+// src/components/PrivacyConsentModal.js
 import React, { useState } from 'react';
 import {
   Container,
@@ -9,22 +10,26 @@ import {
   Divider,
   Heading,
   useColorModeValue,
-} from '@chakra-ui/react'; // CheckboxGroup과 Stack 제거
+  // IconButton,
+} from '@chakra-ui/react';
+// import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 
 const PrivacyConsentModal = ({ onClose, onConsentComplete }) => {
   const [agreements, setAgreements] = useState({
-    terms: false, // 서비스 이용약관 (필수)
-    privacy: false, // 개인정보 수집 및 이용 동의 (필수)
-    marketing: false, // 마케팅 정보 수신 동의 (선택)
+    terms: false,
+    privacy: false,
+    marketing: false,
   });
-
   const [allAgreed, setAllAgreed] = useState(false);
 
   const handleAgreementChange = (key) => (e) => {
-    setAgreements((prev) => ({
-      ...prev,
+    const updatedAgreements = {
+      ...agreements,
       [key]: e.target.checked,
-    }));
+    };
+    setAgreements(updatedAgreements);
+    // 모든 필수 항목이 체크되었는지 확인
+    setAllAgreed(updatedAgreements.terms && updatedAgreements.privacy);
   };
 
   const handleAllAgree = (e) => {
@@ -42,7 +47,8 @@ const PrivacyConsentModal = ({ onClose, onConsentComplete }) => {
       alert('필수 약관에 동의해야 합니다.');
       return;
     }
-    onConsentComplete();
+    console.log('[PrivacyConsentModal.js] Agreements on submit:', agreements);
+    onConsentComplete(agreements); // 동의 항목 데이터를 전달
     onClose();
   };
 

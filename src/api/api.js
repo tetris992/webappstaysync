@@ -45,6 +45,7 @@ api.interceptors.request.use(
         '/api/customer/login',
         '/api/customer/login/social/kakao',
         '/api/customer/register',
+        '/api/customer/check-duplicate',
         '/api/csrf-token',
       ];
       if (!noRedirectRoutes.includes(config.url)) {
@@ -58,10 +59,10 @@ api.interceptors.request.use(
       '/api/customer/register',
       '/api/customer/login',
       '/api/customer/login/social/kakao',
-      '/api/hotel-settings/photos', // 추가: 사진 요청에 대해 CSRF 생략
+      '/api/hotel-settings/photos',
     ];
     const skipCsrf =
-      config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest; // 수정: GET 요청은 CSRF 생략
+      config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;
 
     if (!isGetRequest && !isCsrfTokenRequest && !skipCsrf) {
       let csrfToken = getCsrfToken();
@@ -169,7 +170,7 @@ api.interceptors.response.use(
   }
 );
 
-// 나머지 API 함수는 동일
+// 로그인 API
 export const customerLogin = async (data) => {
   try {
     const response = await api.post('/api/customer/login', data);
@@ -189,6 +190,7 @@ export const customerLogin = async (data) => {
   }
 };
 
+// 소셜 로그인 API
 export const customerLoginSocial = async (provider, socialData) => {
   try {
     const response = await api.post(
@@ -209,6 +211,7 @@ export const customerLoginSocial = async (provider, socialData) => {
   }
 };
 
+// 소셜 계정 연결 API
 export const connectSocialAccount = async (provider, socialData) => {
   try {
     const response = await api.post(
@@ -228,6 +231,7 @@ export const connectSocialAccount = async (provider, socialData) => {
   }
 };
 
+// 회원 가입 API (수정)
 export const customerRegister = async (customerData) => {
   try {
     const response = await api.post('/api/customer/register', customerData);
@@ -242,6 +246,27 @@ export const customerRegister = async (customerData) => {
   }
 };
 
+// 동의 항목 수정 API (추가)
+export const updateCustomer = async (agreements) => {
+  try {
+    const response = await api.put('/api/customer/update', { agreements });
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '동의 항목 업데이트 실패');
+  }
+};
+
+// 동의 내역 조회 API (추가)
+export const getAgreements = async () => {
+  try {
+    const response = await api.get('/api/customer/agreements');
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '동의 내역 조회 실패');
+  }
+};
+
+// 호텔 목록 조회 API
 export const fetchHotelList = async () => {
   try {
     const response = await api.get('/api/customer/hotel-list');
@@ -251,6 +276,7 @@ export const fetchHotelList = async () => {
   }
 };
 
+// 호텔 설정 조회 API
 export const fetchCustomerHotelSettings = async (hotelId) => {
   try {
     const response = await api.get('/api/customer/hotel-settings', {
@@ -262,6 +288,7 @@ export const fetchCustomerHotelSettings = async (hotelId) => {
   }
 };
 
+// 호텔 사진 조회 API
 export const fetchHotelPhotos = async (hotelId, category, subCategory) => {
   try {
     const startTime = Date.now();
@@ -280,6 +307,7 @@ export const fetchHotelPhotos = async (hotelId, category, subCategory) => {
   }
 };
 
+// 호텔 가용성 조회 API
 export const fetchHotelAvailability = async (hotelId, checkIn, checkOut) => {
   try {
     const response = await api.get('/api/customer/hotel-availability', {
@@ -291,6 +319,7 @@ export const fetchHotelAvailability = async (hotelId, checkIn, checkOut) => {
   }
 };
 
+// 예약 생성 API
 export const createReservation = async (finalReservationData) => {
   try {
     const response = await api.post(
@@ -303,6 +332,7 @@ export const createReservation = async (finalReservationData) => {
   }
 };
 
+// 예약 히스토리 조회 API
 export const getReservationHistory = async () => {
   try {
     const response = await api.get('/api/customer/history');
@@ -328,6 +358,20 @@ export const getReservationHistory = async () => {
   }
 };
 
+// 중복 체크 API 호출 함수 추가
+export const checkDuplicate = async (phoneNumber, email) => {
+  try {
+    const response = await api.post('/api/customer/check-duplicate', {
+      phoneNumber,
+      email,
+    });
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '중복 체크 실패');
+  }
+};
+
+// 예약 취소 API
 export const cancelReservation = async (reservationId) => {
   try {
     const response = await api.delete(
@@ -339,6 +383,7 @@ export const cancelReservation = async (reservationId) => {
   }
 };
 
+// 로그아웃 API
 export const logoutCustomer = async () => {
   try {
     const token = getCustomerToken();
