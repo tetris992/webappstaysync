@@ -14,6 +14,8 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
+    "@svgr/plugin-svgo": "^8.1.0",
+    "@svgr/webpack": "^8.1.0",
     "axios": "^1.7.7",
     "axios-retry": "^4.5.0",
     "date-fns": "^3.6.0",
@@ -30,6 +32,7 @@
     "react-scripts": "^5.0.1",
     "react-slick": "^0.29.0",
     "react-swipeable": "^7.0.2",
+    "resolve-url-loader": "^5.0.0",
     "slick-carousel": "^1.8.1",
     "socket.io-client": "^4.8.1",
     "styled-components": "^6.1.13",
@@ -72,6 +75,12 @@
     ]
   },
   "devDependencies": {
-    "@types/react-date-range": "^1.4.10"
+    "@types/react-date-range": "^1.4.10",
+    "typescript": "4.9.5"
+  },
+  "resolutions": {
+    "svgo": "^3.3.2",
+    "nth-check": "^2.0.1",
+    "postcss": "^8.4.31"
   }
 }
