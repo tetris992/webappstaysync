@@ -54,13 +54,24 @@ api.interceptors.request.use(
 
     const isGetRequest = config.method === 'get';
     const isCsrfTokenRequest = config.url === '/api/csrf-token';
-    const skipCsrf = config.skipCsrf || config.url === '/api/customer/register'; // 수정: /register 요청에 대해 CSRF 생략
+    const skipCsrfRoutes = [
+      '/api/customer/register',
+      '/api/customer/login',
+      '/api/customer/login/social/kakao',
+      '/api/hotel-settings/photos', // 추가: 사진 요청에 대해 CSRF 생략
+    ];
+    const skipCsrf =
+      config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest; // 수정: GET 요청은 CSRF 생략
 
     if (!isGetRequest && !isCsrfTokenRequest && !skipCsrf) {
       let csrfToken = getCsrfToken();
       let csrfTokenId = getCsrfTokenId();
       if (!csrfToken || !csrfTokenId) {
+        console.log('[api.js] Fetching CSRF token');
+        const startTime = Date.now();
         const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
+        const endTime = Date.now();
+        console.log(`[api.js] CSRF token fetched in ${endTime - startTime}ms`);
         csrfToken = data.csrfToken;
         csrfTokenId = data.tokenId;
         localStorage.setItem('csrfToken', csrfToken);
@@ -134,7 +145,11 @@ api.interceptors.response.use(
     } else if (error.response?.status === 403 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
+        console.log('[api.js] Fetching CSRF token due to 403 error');
+        const startTime = Date.now();
         const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
+        const endTime = Date.now();
+        console.log(`[api.js] CSRF token fetched in ${endTime - startTime}ms`);
         localStorage.setItem('csrfToken', data.csrfToken);
         localStorage.setItem('csrfTokenId', data.tokenId);
         originalRequest.headers['X-CSRF-Token'] = data.csrfToken;
@@ -154,6 +169,7 @@ api.interceptors.response.use(
   }
 );
 
+// 나머지 API 함수는 동일
 export const customerLogin = async (data) => {
   try {
     const response = await api.post('/api/customer/login', data);
@@ -248,9 +264,16 @@ export const fetchCustomerHotelSettings = async (hotelId) => {
 
 export const fetchHotelPhotos = async (hotelId, category, subCategory) => {
   try {
+    const startTime = Date.now();
     const response = await api.get('/api/hotel-settings/photos', {
       params: { hotelId, category, subCategory },
     });
+    const endTime = Date.now();
+    console.log(
+      `[api.js] fetchHotelPhotos for hotelId ${hotelId} took ${
+        endTime - startTime
+      }ms`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, '호텔 사진 불러오기 실패');

@@ -1,3 +1,4 @@
+// src/pages/HotelList.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import {
@@ -12,6 +13,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { fetchHotelList, fetchHotelPhotos } from '../api/api';
 import HotelCard from '../components/HotelCard';
+import pLimit from 'p-limit';
 
 const HotelList = ({ loadHotelSettings }) => {
   const { logout, isAuthenticated, customer } = useAuth();
@@ -34,39 +36,65 @@ const HotelList = ({ loadHotelSettings }) => {
         const hotelList = await fetchHotelList();
         setHotels(hotelList);
 
-        // 인증된 상태에서만 사진 로드
-        if (isAuthenticated && customer && localStorage.getItem('customerToken')) {
+        if (
+          isAuthenticated &&
+          customer &&
+          localStorage.getItem('customerToken')
+        ) {
           console.log('[HotelList] User authenticated, fetching photos');
-          console.log('[HotelList] customerToken:', localStorage.getItem('customerToken'));
-          const photosPromises = hotelList.map(async (hotel) => {
-            try {
-              const photosData = await fetchHotelPhotos(hotel.hotelId, 'exterior');
-              console.log(`[HotelList] Photos for hotel ${hotel.hotelId}:`, photosData);
-              return {
-                hotelId: hotel.hotelId,
-                exteriorPhotos: photosData.commonPhotos || [],
-              };
-            } catch (error) {
-              console.error(`Failed to fetch exterior photos for hotel ${hotel.hotelId}:`, error);
-              // 401 에러 발생 시 로그아웃하지 않고 기본 사진으로 대체
-              toast({
-                title: '사진 로드 실패',
-                description: '호텔 사진을 불러오지 못했습니다. 기본 이미지를 표시합니다.',
-                status: 'warning',
-                duration: 3000,
-                isClosable: true,
-              });
-              return { hotelId: hotel.hotelId, exteriorPhotos: [] };
-            }
-          });
+          console.log(
+            '[HotelList] customerToken:',
+            localStorage.getItem('customerToken')
+          );
+          const limit = pLimit(3); // 최대 3개의 요청만 동시에 처리
+          const photosPromises = hotelList.map((hotel) =>
+            limit(async () => {
+              try {
+                const startTime = Date.now();
+                const photosData = await fetchHotelPhotos(
+                  hotel.hotelId,
+                  'exterior'
+                );
+                const endTime = Date.now();
+                console.log(
+                  `[HotelList] Photos for hotel ${hotel.hotelId} fetched in ${
+                    endTime - startTime
+                  }ms`
+                );
+                return {
+                  hotelId: hotel.hotelId,
+                  exteriorPhotos: photosData.commonPhotos || [],
+                };
+              } catch (error) {
+                console.error(
+                  `Failed to fetch exterior photos for hotel ${hotel.hotelId}:`,
+                  error
+                );
+                toast({
+                  title: '사진 로드 실패',
+                  description:
+                    '호텔 사진을 불러오지 못했습니다. 기본 이미지를 표시합니다.',
+                  status: 'warning',
+                  duration: 3000,
+                  isClosable: true,
+                });
+                return { hotelId: hotel.hotelId, exteriorPhotos: [] };
+              }
+            })
+          );
           const photosResults = await Promise.all(photosPromises);
-          const photosMap = photosResults.reduce((acc, { hotelId, exteriorPhotos }) => {
-            acc[hotelId] = exteriorPhotos;
-            return acc;
-          }, {});
+          const photosMap = photosResults.reduce(
+            (acc, { hotelId, exteriorPhotos }) => {
+              acc[hotelId] = exteriorPhotos;
+              return acc;
+            },
+            {}
+          );
           setExteriorPhotosMap(photosMap);
         } else {
-          console.warn('[HotelList] User not authenticated or no token, skipping photo fetch');
+          console.warn(
+            '[HotelList] User not authenticated or no token, skipping photo fetch'
+          );
           setExteriorPhotosMap({});
         }
       } catch (error) {
@@ -112,7 +140,13 @@ const HotelList = ({ loadHotelSettings }) => {
 
   return (
     <Flex direction="column" minH="100vh" bg="gray.50">
-      <Container maxW="container.sm" py={6} flex="1" display="flex" flexDirection="column">
+      <Container
+        maxW="container.sm"
+        py={6}
+        flex="1"
+        display="flex"
+        flexDirection="column"
+      >
         <Box>
           <Text
             fontSize={{ base: '2xl', md: '3xl' }}

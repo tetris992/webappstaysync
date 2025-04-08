@@ -1,7 +1,14 @@
-// webapp/src/pages/AuthCallback.js
+// src/pages/AuthCallback.js
 import React, { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useToast } from '@chakra-ui/react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import {
+  useToast,
+  Text,
+  Button,
+  VStack,
+  Flex,
+  Spinner,
+} from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
 
 const AuthCallback = () => {
@@ -21,7 +28,6 @@ const AuthCallback = () => {
           throw new Error('토큰 또는 고객 정보가 없습니다.');
         }
 
-        // Mode B: 소셜 콜백으로 받은 token과 customer 정보를 AuthContext에 저장
         await login(customer, token);
 
         toast({
@@ -40,14 +46,39 @@ const AuthCallback = () => {
           duration: 3000,
           isClosable: true,
         });
-        navigate('/login');
       }
     };
 
     handleCallback();
   }, [navigate, login, toast, location]);
 
-  return <div>소셜 로그인 처리 중...</div>;
+  return (
+    <Flex
+      direction="column"
+      justify="center"
+      align="center"
+      minH="100vh"
+      px={{ base: 3, md: 4 }}
+    >
+      <VStack spacing={4}>
+        <Spinner size="md" color="blue.500" />
+        <Text>소셜 로그인 처리 중...</Text>
+        <Text textAlign="center" fontSize="sm">
+          전화번호로 로그인하려면{' '}
+          <Button
+            as={Link}
+            to="/login"
+            variant="link"
+            fontSize="sm"
+            color="blue.500"
+          >
+            여기
+          </Button>
+          를 클릭하세요.
+        </Text>
+      </VStack>
+    </Flex>
+  );
 };
 
 export default AuthCallback;

@@ -7,7 +7,6 @@ import RoomSelection from './pages/RoomSelection';
 import ReservationConfirmation from './pages/ReservationConfirmation';
 import ReservationHistory from './pages/ReservationHistory';
 import TraditionalLogin from './pages/TraditionalLogin';
-import SocialLogin from './pages/SocialLogin';
 import Register from './pages/Register';
 import AuthCallback from './pages/AuthCallback';
 import { useAuth } from './contexts/AuthContext';
@@ -19,8 +18,6 @@ function AppContent() {
   const navigate = useNavigate();
   const [hotelSettings, setHotelSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  // eslint-disable-next-line
-  const [hasConsented, setHasConsented] = useState(false);
 
   const loadHotelSettings = useCallback(async (hotelId) => {
     try {
@@ -64,7 +61,6 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<TraditionalLogin />} />
-        <Route path="/social-login" element={<SocialLogin />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/:provider/callback" element={<AuthCallback />} />
         <Route
@@ -122,7 +118,6 @@ function AppContent() {
             isAuthenticated && customer ? (
               <PrivacyConsent
                 onConsentComplete={() => {
-                  setHasConsented(true);
                   console.log('Consent completed');
                 }}
                 onClose={() => navigate('/')}

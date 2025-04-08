@@ -1,3 +1,4 @@
+// src/theme.js
 import { extendTheme } from '@chakra-ui/react';
 
 const theme = extendTheme({
@@ -24,7 +25,7 @@ const theme = extendTheme({
     },
     kakao: {
       500: '#FEE500',
-      600: '#F7E600',
+      600: '#E4D100', // 호버 색상으로 변경
     },
     naver: {
       500: '#03C75A',
@@ -99,18 +100,18 @@ const theme = extendTheme({
             textDecoration: 'underline',
           },
         },
-        // Updated Kakao variant: White background with border by default, yellow on hover
         kakao: {
-          bg: 'white',
-          color: 'gray.700',
-          borderWidth: '1px',
-          borderColor: 'gray.300',
+          bg: 'kakao.500', // 기본 배경: 카카오 노란색
+          color: 'black',
           _hover: {
-            bg: 'kakao.500',
-            color: 'black',
+            bg: 'kakao.600', // 호버 시 더 진한 노란색
+            transform: 'scale(1.05)', // 호버 시 확대
+            transition: 'all 0.3s ease',
+          },
+          _active: {
+            bg: '#D4C100', // 클릭 시 더 어두운 노란색
           },
         },
-        // Updated Naver variant: White background with border by default, green on hover
         naver: {
           bg: 'white',
           color: 'gray.700',

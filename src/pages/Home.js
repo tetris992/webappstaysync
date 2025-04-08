@@ -43,7 +43,7 @@ const Home = () => {
 
           {/* Flower Image - Match button width */}
           <Image
-            src="/assets/welcome-team.jpg"
+            src="/assets/welcome-team.jpeg"
             alt="Welcome Image"
             w={{ base: '90%', sm: '80%', md: 'sm' }} // Match button width
             h={{ base: '250px', md: '300px' }} // Maintain aspect ratio
