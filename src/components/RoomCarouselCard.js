@@ -1,3 +1,4 @@
+// src/components/RoomCarouselCard.js
 import React, { useState, useEffect } from 'react';
 import { Box, Image, Text, Button, Flex, IconButton, HStack, Tooltip, Spinner } from '@chakra-ui/react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
@@ -203,7 +204,17 @@ const RoomCarouselCard = ({ roomInfo, price, stock, numDays, activeAmenities, ph
         ) : (
           <Text fontSize="sm" color="gray.500">편의 시설 정보 없음</Text>
         )}
-        <Button mt={2} colorScheme="blue" size="sm" onClick={onSelect}>
+        <Button
+          mt={2}
+          colorScheme="blue"
+          size="sm"
+          onClick={onSelect}
+          isDisabled={formattedStock === 0} // 잔여 객실이 0개일 경우 비활성화
+          bg={formattedStock === 0 ? 'gray.300' : 'blue.500'} // 잔여 객실이 0개일 경우 회색 배경
+          _hover={formattedStock === 0 ? { bg: 'gray.300' } : { bg: 'blue.600' }} // 비활성화 시 호버 효과 제거
+          _active={formattedStock === 0 ? { bg: 'gray.300' } : { bg: 'blue.700' }} // 비활성화 시 클릭 효과 제거
+          cursor={formattedStock === 0 ? 'not-allowed' : 'pointer'} // 비활성화 시 커서 변경
+        >
           선택하기
         </Button>
       </Box>
