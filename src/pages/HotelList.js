@@ -72,13 +72,27 @@ const HotelList = ({ loadHotelSettings }) => {
       try {
         setIsLoading(true);
         const hotelList = await fetchHotelList();
-        console.log('Hotel List from API:', hotelList);
+        console.log('[HotelList] Raw hotel list from HMS server:', hotelList);
+
+        // 각 호텔의 주소와 좌표를 콘솔에 출력
+        hotelList.forEach((hotel, index) => {
+          console.log(`[HotelList] Hotel ${index + 1}:`, {
+            hotelId: hotel.hotelId,
+            hotelName: hotel.hotelName,
+            address: hotel.address,
+            latitude: hotel.latitude,
+            longitude: hotel.longitude,
+          });
+        });
+
         const hotelsWithRatings = hotelList.map((hotel) => ({
           ...hotel,
           rating: Math.random() * 2 + 3,
           reviewCount: Math.floor(Math.random() * 100) + 10,
           price: Math.floor(Math.random() * 100000) + 50000,
           address: normalizeAddress(hotel.address) || '주소 정보 없음',
+          latitude: hotel.latitude || null, // 좌표 보장
+          longitude: hotel.longitude || null, // 좌표 보장
         }));
         setHotels(hotelsWithRatings);
         setFilteredHotels(hotelsWithRatings);

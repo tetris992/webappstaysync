@@ -1,4 +1,3 @@
-// src/pages/TraditionalLogin.js
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -33,10 +32,6 @@ const schema = yup.object().shape({
       /^\d{10,11}$|^\d{3}-\d{3,4}-\d{4}$/,
       '전화번호는 10~11자리 숫자여야 합니다.'
     ),
-  password: yup
-    .string()
-    .required('비밀번호는 필수입니다.')
-    .min(4, '비밀번호는 최소 4자 이상이어야 합니다.'),
 });
 
 const TraditionalLogin = () => {
@@ -180,7 +175,6 @@ const TraditionalLogin = () => {
     try {
       const response = await customerLogin({
         phoneNumber: data.phoneNumber,
-        password: data.password,
       });
       await login(response.customer, response.token, response.refreshToken);
       toast({
@@ -192,9 +186,16 @@ const TraditionalLogin = () => {
       });
       navigate('/');
     } catch (error) {
+      let errorMessage = '로그인 중 오류가 발생했습니다.';
+      if (error.status === 403) {
+        errorMessage = error.message;
+        navigate(error.redirectUrl, { state: { customerId: error.customerId } });
+      } else if (error.status === 404) {
+        errorMessage = '가입되지 않은 전화번호입니다.';
+      }
       toast({
         title: '로그인 실패',
-        description: error.message || '전화번호 또는 비밀번호를 확인해주세요.',
+        description: errorMessage,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -263,16 +264,6 @@ const TraditionalLogin = () => {
                 <FormErrorMessage>
                   {errors.phoneNumber?.message}
                 </FormErrorMessage>
-              </FormControl>
-              <FormControl isInvalid={!!errors.password}>
-                <FormLabel>비밀번호</FormLabel>
-                <Input
-                  type="password"
-                  {...register('password')}
-                  placeholder="비밀번호 입력"
-                  w="full"
-                />
-                <FormErrorMessage>{errors.password?.message}</FormErrorMessage>
               </FormControl>
               <Button
                 variant="solid"

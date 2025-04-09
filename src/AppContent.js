@@ -1,6 +1,5 @@
-// src/AppContent.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import HotelList from './pages/HotelList';
 import RoomSelection from './pages/RoomSelection';
@@ -9,13 +8,12 @@ import ReservationHistory from './pages/ReservationHistory';
 import TraditionalLogin from './pages/TraditionalLogin';
 import Register from './pages/Register';
 import AuthCallback from './pages/AuthCallback';
+import PrivacyConsentPage from './pages/PrivacyConsentModal'; // 추가
 import { useAuth } from './contexts/AuthContext';
 import { fetchCustomerHotelSettings } from './api/api';
-import PrivacyConsent from './components/PrivacyConsentModal';
 
 function AppContent() {
   const { isAuthenticated, customer, logout } = useAuth();
-  const navigate = useNavigate();
   const [hotelSettings, setHotelSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,6 +61,7 @@ function AppContent() {
         <Route path="/login" element={<TraditionalLogin />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/:provider/callback" element={<AuthCallback />} />
+        <Route path="/consent" element={<PrivacyConsentPage />} /> {/* 수정 */}
         <Route
           path="/hotels"
           element={
@@ -107,21 +106,6 @@ function AppContent() {
           element={
             isAuthenticated && customer ? (
               <ReservationHistory customer={customer} />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/consent"
-          element={
-            isAuthenticated && customer ? (
-              <PrivacyConsent
-                onConsentComplete={() => {
-                  console.log('Consent completed');
-                }}
-                onClose={() => navigate('/')}
-              />
             ) : (
               <Navigate to="/login" replace />
             )

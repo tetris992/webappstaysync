@@ -13,6 +13,14 @@ import {
   HStack,
   Select,
   Flex,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody,
+  PopoverArrow,
+  PopoverFooter,
+  Button as ChakraButton,
+  useToast, // useToast 훅 추가
 } from '@chakra-ui/react';
 import { SearchIcon, CalendarIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,13 +28,15 @@ import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { DateRange } from 'react-date-range';
+import { format, addDays, startOfDay, addMonths, isValid } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
-import { format, addDays, startOfDay, addMonths } from 'date-fns';
 
 const Home = () => {
   const navigate = useNavigate();
   const { customer, logout } = useAuth();
+  const toast = useToast(); // useToast 훅 초기화
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState([
     {
@@ -35,8 +45,8 @@ const Home = () => {
       key: 'selection',
     },
   ]);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [guestCount, setGuestCount] = useState(1);
+  const [isOpen, setIsOpen] = useState(false); // Popover 상태 관리
 
   const handleLogout = async () => {
     await logout();
@@ -44,21 +54,35 @@ const Home = () => {
   };
 
   const handleSearch = () => {
+    const checkIn = dateRange[0].startDate;
+    const checkOut = dateRange[0].endDate;
+    if (!isValid(checkIn) || !isValid(checkOut)) {
+      alert('날짜가 올바르지 않습니다.');
+      return;
+    }
+
     navigate('/hotels', {
       state: {
         searchQuery,
-        checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
-        checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
+        checkIn: format(checkIn, 'yyyy-MM-dd'),
+        checkOut: format(checkOut, 'yyyy-MM-dd'),
         guestCount,
       },
     });
   };
 
-  const handleDateChange = (ranges) => {
-    const { selection } = ranges;
-    setDateRange([selection]);
-    if (selection.startDate && selection.endDate) {
-      setShowCalendar(false);
+  const handleDateChange = (item) => {
+    setDateRange([item.selection]);
+    // 시작 날짜와 종료 날짜가 모두 선택되었으면 팝업 닫기 및 토스트 알림 표시
+    if (item.selection.startDate && item.selection.endDate) {
+      setIsOpen(false);
+      toast({
+        title: '날짜 선택 완료',
+        description: `${format(item.selection.startDate, 'yyyy-MM-dd')} ~ ${format(item.selection.endDate, 'yyyy-MM-dd')}`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -70,7 +94,7 @@ const Home = () => {
     slidesToScroll: 1,
     autoplay: true,
     autoplaySpeed: 3000,
-    arrows: false, // Hide default arrows for a cleaner look
+    arrows: false,
     appendDots: (dots) => (
       <Box
         position="absolute"
@@ -104,7 +128,6 @@ const Home = () => {
     customPaging: () => <Box w="10px" h="10px" borderRadius="full" />,
   };
 
-  // Recommended hotels data
   const recommendedHotels = [
     { id: 1, name: '부산 호텔', image: '/assets/hotel1.jpg', rating: 4.5 },
     { id: 2, name: '서울 호텔', image: '/assets/hotel2.jpg', rating: 4.8 },
@@ -118,6 +141,14 @@ const Home = () => {
     { id: 10, name: '속초 호텔', image: '/assets/hotel10.jpg', rating: 4.0 },
     { id: 11, name: '여수 호텔', image: '/assets/hotel11.jpg', rating: 4.8 },
   ];
+
+  // 날짜 범위 표시용 라벨
+  const startLabel = isValid(dateRange[0].startDate)
+    ? format(dateRange[0].startDate, 'yyyy-MM-dd')
+    : '';
+  const endLabel = isValid(dateRange[0].endDate)
+    ? format(dateRange[0].endDate, 'yyyy-MM-dd')
+    : '';
 
   return (
     <Box
@@ -142,7 +173,6 @@ const Home = () => {
           justifyContent="center"
           align="center"
         >
-          {/* Title and Subtitle */}
           <VStack spacing={1}>
             <Text
               fontSize={{ base: '2xl', md: '3xl' }}
@@ -166,7 +196,6 @@ const Home = () => {
             </Text>
           </VStack>
 
-          {/* Search Bar */}
           <VStack spacing={3} w="full">
             <InputGroup w={{ base: '90%', sm: '80%', md: 'sm' }}>
               <InputLeftElement pointerEvents="none">
@@ -188,85 +217,73 @@ const Home = () => {
                 transition="all 0.3s ease"
               />
             </InputGroup>
-            <HStack spacing={2} w={{ base: '90%', sm: '80%', md: 'sm' }}>
-              <InputGroup flex="1">
-                <InputLeftElement pointerEvents="none">
-                  <CalendarIcon color="gray.300" />
-                </InputLeftElement>
-                <Input
-                  value={format(dateRange[0].startDate, 'yyyy-MM-dd')}
-                  onClick={() => setShowCalendar(true)}
-                  readOnly
-                  pl="2.5rem"
-                  aria-label="체크인 날짜 선택"
-                  borderColor="gray.300"
-                  borderRadius="full"
-                  bg="white"
-                  boxShadow="sm"
-                  _hover={{ borderColor: 'brand.500', boxShadow: 'md' }}
-                  _focus={{
-                    borderColor: 'brand.500',
-                    boxShadow: '0 0 0 2px rgba(49, 151, 149, 0.2)',
-                  }}
-                  transition="all 0.3s ease"
-                />
-              </InputGroup>
-              <InputGroup flex="1">
-                <InputLeftElement pointerEvents="none">
-                  <CalendarIcon color="gray.300" />
-                </InputLeftElement>
-                <Input
-                  value={format(dateRange[0].endDate, 'yyyy-MM-dd')}
-                  onClick={() => setShowCalendar(true)}
-                  readOnly
-                  pl="2.5rem"
-                  aria-label="체크아웃 날짜 선택"
-                  borderColor="gray.300"
-                  borderRadius="full"
-                  bg="white"
-                  boxShadow="sm"
-                  _hover={{ borderColor: 'brand.500', boxShadow: 'md' }}
-                  _focus={{
-                    borderColor: 'brand.500',
-                    boxShadow: '0 0 0 2px rgba(49, 151, 149, 0.2)',
-                  }}
-                  transition="all 0.3s ease"
-                />
-              </InputGroup>
-            </HStack>
-            {showCalendar && (
-              <Box
-                position="absolute"
-                zIndex={1000}
-                bg="white"
-                boxShadow="lg"
-                borderRadius="md"
-                p={4}
-                border="1px solid"
-                borderColor="gray.200"
+
+            {/* 날짜 선택: 하나의 입력 필드에서 DateRange 팝업 */}
+            <Popover
+              placement="bottom"
+              isOpen={isOpen}
+              onOpen={() => setIsOpen(true)}
+              onClose={() => setIsOpen(false)}
+              closeOnBlur={true}
+            >
+              <PopoverTrigger>
+                <InputGroup w={{ base: '90%', sm: '80%', md: 'sm' }} cursor="pointer">
+                  <InputLeftElement pointerEvents="none">
+                    <CalendarIcon color="gray.300" />
+                  </InputLeftElement>
+                  <Input
+                    readOnly
+                    borderColor="gray.300"
+                    borderRadius="full"
+                    bg="white"
+                    boxShadow="sm"
+                    _hover={{ borderColor: 'brand.500', boxShadow: 'md' }}
+                    _focus={{
+                      borderColor: 'brand.500',
+                      boxShadow: '0 0 0 2px rgba(49, 151, 149, 0.2)',
+                    }}
+                    pl="2.5rem"
+                    transition="all 0.3s ease"
+                    value={startLabel && endLabel ? `${startLabel} ~ ${endLabel}` : '날짜 선택'}
+                    aria-label="체크인 및 체크아웃 날짜 선택"
+                  />
+                </InputGroup>
+              </PopoverTrigger>
+              <PopoverContent
+                zIndex={1500}
+                w="fit-content" // 달력 너비에 맞게 컨테이너 크기 조정
+                mx="auto"
+                textAlign="center"
               >
-                <DateRange
-                  editableDateInputs={true}
-                  onChange={handleDateChange}
-                  moveRangeOnFirstSelection={false}
-                  ranges={dateRange}
-                  minDate={startOfDay(new Date())}
-                  maxDate={addMonths(startOfDay(new Date()), 3)}
-                  direction="horizontal"
-                  rangeColors={['#319795']}
-                />
-                <Button
-                  colorScheme="teal"
-                  size="sm"
-                  onClick={() => setShowCalendar(false)}
-                  mt={2}
-                  w="full"
-                  borderRadius="full"
-                >
-                  닫기
-                </Button>
-              </Box>
-            )}
+                <PopoverArrow />
+                <PopoverBody p={4} display="flex" justifyContent="center">
+                  <Box>
+                    <DateRange
+                      editableDateInputs={true}
+                      onChange={handleDateChange}
+                      moveRangeOnFirstSelection={false}
+                      ranges={dateRange}
+                      months={2}
+                      direction="vertical"
+                      scroll={{ enabled: true }}
+                      minDate={startOfDay(new Date())}
+                      maxDate={addMonths(startOfDay(new Date()), 3)}
+                      locale={ko}
+                    />
+                  </Box>
+                </PopoverBody>
+                <PopoverFooter border="0" d="flex" justifyContent="flex-end" pb={4}>
+                  <ChakraButton
+                    size="sm"
+                    colorScheme="gray"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    닫기
+                  </ChakraButton>
+                </PopoverFooter>
+              </PopoverContent>
+            </Popover>
+
             <Select
               w={{ base: '90%', sm: '80%', md: 'sm' }}
               value={guestCount}
@@ -307,7 +324,6 @@ const Home = () => {
             </Button>
           </VStack>
 
-          {/* Recommended Hotels Carousel */}
           <Box w={{ base: '90%', sm: '80%', md: 'sm' }} mb={4}>
             <Text fontSize="lg" fontWeight="bold" mb={3} color="gray.700">
               추천 호텔
@@ -329,7 +345,6 @@ const Home = () => {
                     borderRadius="lg"
                     boxShadow="md"
                   />
-                  {/* Gradient Overlay for Text Readability */}
                   <Box
                     position="absolute"
                     bottom="0"
@@ -357,7 +372,6 @@ const Home = () => {
             </Slider>
           </Box>
 
-          {/* User Status */}
           {customer && (
             <Box
               w={{ base: '90%', sm: '80%', md: 'sm' }}
@@ -398,7 +412,6 @@ const Home = () => {
             </Box>
           )}
 
-          {/* Navigation Buttons */}
           <Button
             variant="homeButtonSecondary"
             onClick={() => navigate('/history')}

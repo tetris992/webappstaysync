@@ -26,6 +26,17 @@ const RoomCard = ({ room, onSelect }) => {
       ? room.photos
       : [{ photoUrl: '/assets/default-room1.jpg' }];
 
+  // room 객체에서 필요한 데이터 추출 (좌표는 prop으로 추가되지만 여기서는 사용 안 함)
+  const {
+    roomInfo,
+    price,
+    availableRooms,
+    stock,
+    activeAmenities,
+    latitude, // 좌표 prop 추가 (미래 사용 대비)
+    longitude, // 좌표 prop 추가 (미래 사용 대비)
+  } = room || {};
+
   return (
     <Box
       borderWidth="0"
@@ -42,7 +53,7 @@ const RoomCard = ({ room, onSelect }) => {
           <Box key={idx}>
             <Image
               src={photo.photoUrl}
-              alt={`${room.roomInfo} - ${idx + 1}`}
+              alt={`${roomInfo} - ${idx + 1}`}
               h="200px"
               w="100%"
               objectFit="cover"
@@ -58,14 +69,14 @@ const RoomCard = ({ room, onSelect }) => {
       </Slider>
       <Box p={5}>
         <Text fontSize="xl" fontWeight="semibold" color="gray.800" mb={3}>
-          {room.roomInfo}
+          {roomInfo}
         </Text>
         <Flex align="center" mb={2}>
           <Text fontSize="sm" color="gray.700" fontWeight="medium">
             가격:
           </Text>
           <Text fontSize="sm" color="gray.600" ml={2}>
-            {room.price.toLocaleString()}원 / 박
+            {price.toLocaleString()}원 / 박
           </Text>
         </Flex>
         <Flex align="center" mb={3}>
@@ -73,13 +84,13 @@ const RoomCard = ({ room, onSelect }) => {
             재고:
           </Text>
           <Text fontSize="sm" color="gray.600" ml={2}>
-            {room.availableRooms || room.stock}개
+            {availableRooms || stock}개
           </Text>
         </Flex>
         <Flex justify="space-between" align="center">
-          {room.activeAmenities && room.activeAmenities.length > 0 ? (
+          {activeAmenities && activeAmenities.length > 0 ? (
             <HStack spacing={3}>
-              {room.activeAmenities.slice(0, 3).map((amenity, idx) => {
+              {activeAmenities.slice(0, 3).map((amenity, idx) => {
                 const IconComponent = iconMap[amenity.icon] || FaQuestionCircle;
                 return (
                   <Box key={idx} title={amenity.nameKor}>
@@ -87,9 +98,9 @@ const RoomCard = ({ room, onSelect }) => {
                   </Box>
                 );
               })}
-              {room.activeAmenities.length > 3 && (
+              {activeAmenities.length > 3 && (
                 <Text fontSize="sm" color="gray.500">
-                  +{room.activeAmenities.length - 3}
+                  +{activeAmenities.length - 3}
                 </Text>
               )}
             </HStack>

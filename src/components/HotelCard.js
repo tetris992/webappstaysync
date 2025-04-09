@@ -16,22 +16,100 @@ import {
   ModalBody,
   ModalCloseButton,
 } from '@chakra-ui/react';
-import { FaRegStar, FaStar, FaQuestionCircle, FaMapMarkerAlt, FaStar as FaStarFilled } from 'react-icons/fa';
+import { FaRegStar, FaStar, FaQuestionCircle, FaMapMarkerAlt, FaMapSigns, FaCopy } from 'react-icons/fa';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
+import { useToast } from '@chakra-ui/react';
 import iconMap from '../utils/iconMap';
 import Map from './Map';
 
 const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const toast = useToast();
+
+  console.log('[HotelCard] Hotel data received:', {
+    hotelId: hotel.hotelId,
+    hotelName: hotel.hotelName,
+    address: hotel.address,
+    latitude: hotel.latitude,
+    longitude: hotel.longitude,
+  });
 
   const handleAddressClick = () => {
-    console.log('Address passed to Map:', hotel.address);
-    setIsMapOpen(true);
+    console.log('[HotelCard] Address clicked, checking coordinates:', {
+      address: hotel.address,
+      latitude: hotel.latitude,
+      longitude: hotel.longitude,
+    });
+
+    if (hotel.latitude && hotel.longitude) {
+      // 좌표가 있는 경우 T맵 자동 실행
+      handleTMapNavigation();
+    } else {
+      // 좌표가 없는 경우 주소 복사만 가능
+      toast({
+        title: '위치 정보 없음',
+        description: '호텔 좌표 정보를 찾을 수 없습니다. 주소를 복사할 수 있습니다.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
-  // 슬라이드 설정
+  const handleTMapNavigation = () => {
+    if (!hotel.latitude || !hotel.longitude) {
+      // 좌표가 없으면 지도 모달 표시
+      setIsMapOpen(true);
+      return;
+    }
+
+    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${hotel.latitude}&name=${encodeURIComponent(hotel.hotelName || '호텔')}`;
+    console.log('[HotelCard] TMap URL:', tmapUrl);
+    window.location.href = tmapUrl;
+
+    setTimeout(() => {
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isAndroid || isIOS) {
+        // T맵이 설치되지 않은 경우 지도 모달 표시
+        setIsMapOpen(true);
+      } else {
+        toast({
+          title: 'T맵 설치 필요',
+          description: 'T맵 앱이 설치되어 있지 않습니다. 기본 지도를 표시합니다.',
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+        });
+        setIsMapOpen(true);
+      }
+    }, 2000);
+  };
+
+  const handleCopyAddress = () => {
+    if (hotel.address) {
+      navigator.clipboard.writeText(hotel.address).then(() => {
+        toast({
+          title: '주소 복사 완료',
+          description: '호텔 주소가 클립보드에 복사되었습니다.',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }).catch((error) => {
+        toast({
+          title: '주소 복사 실패',
+          description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      });
+    }
+  };
+
   const sliderSettings = {
     dots: true,
     infinite: true,
@@ -44,8 +122,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
     adaptiveHeight: true,
   };
 
-  // 사진 배열 (S3에서 가져온 사진 또는 디폴트 사진)
-  const photos = hotel.photos && hotel.photos.length > 0 ? hotel.photos : [{ photoUrl: '/assets/default-room1.jpg' }];
+  const photos = hotel.photos && hotel.photos.length > 0 ? hotel.photos : [{ photoUrl: '/assets/default-hotel.jpg' }];
 
   return (
     <>
@@ -58,19 +135,18 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
         transition="all 0.4s ease"
         _hover={{ shadow: 'xl', transform: 'translateY(-8px)' }}
       >
-        {/* 슬라이드 컴포넌트 */}
         <Slider {...sliderSettings}>
           {photos.map((photo, idx) => (
             <Box key={idx}>
               <Image
                 src={photo.photoUrl}
                 alt={`${hotel.hotelName} - ${idx + 1}`}
-                h="200px"
+                h="150px"
                 w="100%"
                 objectFit="cover"
                 loading="lazy"
                 onError={(e) => {
-                  e.target.src = '/assets/default-room1.jpg';
+                  e.target.src = '/assets/default-hotel.jpg';
                 }}
                 boxShadow="sm"
               />
@@ -101,7 +177,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               {[...Array(5)].map((_, i) => (
                 <Icon
                   key={i}
-                  as={i < Math.floor(hotel.rating || 0) ? FaStarFilled : FaRegStar}
+                  as={i < Math.floor(hotel.rating || 0) ? FaStar : FaRegStar}
                   color={i < Math.floor(hotel.rating || 0) ? 'yellow.400' : 'gray.300'}
                   boxSize={3.5}
                 />
@@ -162,6 +238,20 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
             >
               위치: {hotel.address || '주소 정보 없음'}
             </Button>
+            <Flex align="center" ml={4}>
+              <Button
+                variant="link"
+                color="gray.600"
+                onClick={handleCopyAddress}
+                fontSize="sm"
+                p={0}
+                _hover={{ color: 'gray.800', textDecoration: 'underline' }}
+                display="flex"
+                alignItems="center"
+              >
+                <Icon as={FaCopy} color="gray.500" boxSize={4} />
+              </Button>
+            </Flex>
           </Flex>
           <Flex justify="space-between" align="center">
             {hotel.amenities && hotel.amenities.length > 0 ? (
@@ -170,7 +260,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
                   const IconComponent = iconMap[amenity.icon] || FaQuestionCircle;
                   return (
                     <Box key={idx} title={amenity.nameKor}>
-                      <IconComponent color="teal.500" boxSize={4} />
+                      <Icon as={IconComponent} color="teal.500" boxSize={4} />
                     </Box>
                   );
                 })}
@@ -199,13 +289,13 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
                 boxShadow: 'md',
               }}
             >
-              객실 선택
+              선택
             </Button>
           </Flex>
         </Box>
       </Box>
 
-      {/* Modal for Map Display */}
+      {/* 지도 모달 (T맵 설치되지 않은 경우 표시) */}
       <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">
         <ModalOverlay />
         <ModalContent>
@@ -216,16 +306,41 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               호텔 ID: {hotel.hotelId}
             </Text>
             <Text fontSize="md" color="gray.600" mb={4}>
-              주소: {hotel.address}
+              주소: {hotel.address || '주소 정보 없음'}
             </Text>
             <Box h="400px" w="100%">
-              <Map address={hotel.address} />
+              {hotel.latitude && hotel.longitude ? (
+                <Map
+                  address={hotel.address}
+                  latitude={hotel.latitude}
+                  longitude={hotel.longitude}
+                  onCoordinatesChange={() => {}}
+                />
+              ) : (
+                <Text color="red.500">지도 데이터를 로드할 수 없습니다.</Text>
+              )}
             </Box>
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="gray" onClick={() => setIsMapOpen(false)}>
-              닫기
-            </Button>
+            <HStack spacing={2}>
+              <Button
+                variant="outline"
+                color="teal.600"
+                leftIcon={<FaMapSigns />}
+                onClick={handleTMapNavigation}
+              >
+                T맵으로 길찾기
+              </Button>
+              <Button
+                variant="outline"
+                color="gray.600"
+                leftIcon={<FaCopy />}
+                onClick={handleCopyAddress}
+              />
+              <Button colorScheme="gray" onClick={() => setIsMapOpen(false)}>
+                닫기
+              </Button>
+            </HStack>
           </ModalFooter>
         </ModalContent>
       </Modal>

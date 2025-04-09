@@ -1,4 +1,3 @@
-// src/api/api.js
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
@@ -47,6 +46,7 @@ api.interceptors.request.use(
         '/api/customer/register',
         '/api/customer/check-duplicate',
         '/api/csrf-token',
+        '/api/customer/activate-account',
       ];
       if (!noRedirectRoutes.includes(config.url)) {
         throw new ApiError(401, 'No customer token available');
@@ -54,11 +54,13 @@ api.interceptors.request.use(
     }
 
     const isGetRequest = config.method === 'get';
-    const isCsrfTokenRequest = config.url === '/api/csrf-token';
+    const isCsrfTokenRequest = config.url === 'api/csrf-token';
     const skipCsrfRoutes = [
       '/api/customer/register',
       '/api/customer/login',
       '/api/customer/login/social/kakao',
+      '/api/customer/check-duplicate',
+      '/api/customer/activate-account',
       '/api/hotel-settings/photos',
     ];
     const skipCsrf =
@@ -231,22 +233,30 @@ export const connectSocialAccount = async (provider, socialData) => {
   }
 };
 
-// 회원 가입 API (수정)
-export const customerRegister = async (customerData) => {
+// 회원 가입 API
+export const registerCustomer = async (customerData) => {
   try {
     const response = await api.post('/api/customer/register', customerData);
-    const { token, refreshToken } = response.data;
-    localStorage.setItem('customerToken', token);
-    localStorage.setItem('refreshToken', refreshToken);
-    console.log(`[api.js] Stored customerToken (register): ${token}`);
-    console.log(`[api.js] Stored refreshToken (register): ${refreshToken}`);
-    return response.data;
+    return response.data; // { message, customerId, redirectUrl } 반환
   } catch (error) {
     handleApiError(error, '회원가입 실패');
   }
 };
 
-// 동의 항목 수정 API (추가)
+// 계정 활성화 API
+export const activateAccount = async (activationData) => {
+  try {
+    const response = await api.post(
+      '/api/customer/activate-account',
+      activationData
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '계정 활성화 실패');
+  }
+};
+
+// 동의 항목 수정 API
 export const updateCustomer = async (agreements) => {
   try {
     const response = await api.put('/api/customer/update', { agreements });
@@ -256,7 +266,7 @@ export const updateCustomer = async (agreements) => {
   }
 };
 
-// 동의 내역 조회 API (추가)
+// 동의 내역 조회 API
 export const getAgreements = async () => {
   try {
     const response = await api.get('/api/customer/agreements');
@@ -270,6 +280,7 @@ export const getAgreements = async () => {
 export const fetchHotelList = async () => {
   try {
     const response = await api.get('/api/customer/hotel-list');
+    console.log('[api.js] fetchHotelList raw response:', response.data);
     return response.data;
   } catch (error) {
     handleApiError(error, '호텔 목록 불러오기 실패');
@@ -282,7 +293,13 @@ export const fetchCustomerHotelSettings = async (hotelId) => {
     const response = await api.get('/api/customer/hotel-settings', {
       params: { hotelId },
     });
-    return response.data;
+    // 좌표 데이터를 명시적으로 포함하도록 보장
+    const hotelData = {
+      ...response.data,
+      latitude: response.data.latitude || null,
+      longitude: response.data.longitude || null,
+    };
+    return hotelData;
   } catch (error) {
     handleApiError(error, '고객용 호텔 설정 조회 실패');
   }
@@ -348,6 +365,8 @@ export const getReservationHistory = async () => {
       hotelName: reservation.hotelName || '알 수 없음',
       checkIn: reservation.checkIn || '',
       checkOut: reservation.checkOut || '',
+      latitude: reservation.latitude || null, // 좌표 추가
+      longitude: reservation.longitude || null, // 좌표 추가
     }));
     return {
       history: reservations,
@@ -359,11 +378,13 @@ export const getReservationHistory = async () => {
 };
 
 // 중복 체크 API 호출 함수 추가
-export const checkDuplicate = async (phoneNumber, email) => {
+export const checkDuplicate = async ({ phoneNumber, email, nickname }) => {
   try {
+    console.log('checkDuplicate input:', { phoneNumber, email, nickname });
     const response = await api.post('/api/customer/check-duplicate', {
       phoneNumber,
-      email,
+      email: email || null,
+      nickname: nickname || null,
     });
     return response.data;
   } catch (error) {

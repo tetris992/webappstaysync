@@ -66,7 +66,12 @@ const ReservationHistory = () => {
               photosData?.roomPhotos && photosData.roomPhotos.length > 0
                 ? photosData.roomPhotos[0].photoUrl
                 : '/assets/default-room1.jpg';
-            return { ...reservation, photoUrl };
+            return { 
+              ...reservation, 
+              photoUrl,
+              latitude: reservation.latitude || null, // 좌표 추가
+              longitude: reservation.longitude || null // 좌표 추가
+            };
           } catch (error) {
             console.error(
               `[ReservationHistory] Failed to fetch photos for room ${reservation.roomInfo}:`,
@@ -80,7 +85,12 @@ const ReservationHistory = () => {
               duration: 3000,
               isClosable: true,
             });
-            return { ...reservation, photoUrl: '/assets/default-room1.jpg' };
+            return { 
+              ...reservation, 
+              photoUrl: '/assets/default-room1.jpg',
+              latitude: reservation.latitude || null,
+              longitude: reservation.longitude || null
+            };
           }
         })
       );

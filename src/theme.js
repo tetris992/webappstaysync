@@ -89,13 +89,17 @@ const theme = extendTheme({
         md: {
           field: {
             fontSize: { base: 'sm', md: 'md' },
-            padding: { base: '2', md: '3' },
-            lineHeight: 'normal',
-            height: '40px',
+            // 고정 height 제거
+            // height: '40px',
+            // lineHeight을 좀 더 넉넉하게
+            lineHeight: '1.4',
+            px: 4, // 좌우 패딩
+            py: 2, // 상하 패딩
           },
         },
       },
     },
+
 
     Select: {
       baseStyle: {
@@ -119,13 +123,16 @@ const theme = extendTheme({
         md: {
           field: {
             fontSize: { base: 'sm', md: 'md' },
-            padding: { base: '2', md: '3' },
-            lineHeight: 'normal',
-            height: '40px',
+            // 고정 height 제거
+            // height: '40px',
+            lineHeight: '1.4',
+            px: 4,
+            py: 2,
           },
         },
       },
     },
+
 
     Button: {
       baseStyle: {

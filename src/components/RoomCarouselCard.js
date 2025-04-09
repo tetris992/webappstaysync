@@ -22,13 +22,14 @@ const RoomCarouselCard = ({
   activeAmenities,
   photos,
   onSelect,
+  // latitude, // 좌표 prop 추가 (미래 사용 대비)
+  // longitude, // 좌표 prop 추가 (미래 사용 대비)
 }) => {
   const defaultPhoto = '/assets/default-room1.jpg';
   const [isLoading, setIsLoading] = useState(true);
   const [isFirstImageLoaded, setIsFirstImageLoaded] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0); // 현재 슬라이드 인덱스 추적
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  // 사진 데이터 방어 처리
   const photoUrls =
     Array.isArray(photos) && photos.length > 0
       ? photos
@@ -36,12 +37,10 @@ const RoomCarouselCard = ({
           .filter((url) => typeof url === 'string')
       : [defaultPhoto];
 
-  // 가격 및 재고 데이터 방어 처리
   const formattedPrice = typeof price === 'number' ? price : 0;
   const formattedStock = typeof stock === 'number' ? stock : 0;
   const formattedNumDays = typeof numDays === 'number' ? numDays : 0;
 
-  // 슬라이드 설정
   const sliderSettings = {
     dots: true,
     infinite: true,
@@ -60,20 +59,19 @@ const RoomCarouselCard = ({
       <Box
         w="8px"
         h="8px"
-        bg={currentIndex === i ? 'white' : 'gray.300'} // 현재 슬라이드 인덱스와 비교
+        bg={currentIndex === i ? 'white' : 'gray.300'}
         borderRadius="full"
         mx={1}
         transition="background-color 0.3s"
         opacity={0.8}
       />
     ),
-    afterChange: (index) => setCurrentIndex(index), // 현재 슬라이드 인덱스 업데이트
+    afterChange: (index) => setCurrentIndex(index),
   };
 
   console.log(`[RoomCarouselCard] Photos for room ${roomInfo}:`, photos);
   console.log(`[RoomCarouselCard] Photo URLs for room ${roomInfo}:`, photoUrls);
 
-  // 첫 번째 이미지 로드 시 로딩 상태 변경
   const handleImageLoad = () => {
     if (!isFirstImageLoaded) {
       console.log(
@@ -105,7 +103,6 @@ const RoomCarouselCard = ({
       transition="all 0.4s ease"
       _hover={{ shadow: 'xl', transform: 'translateY(-8px)' }}
     >
-      {/* 슬라이드 컴포넌트 */}
       <Box position="relative" h="200px" w="100%" overflow="hidden">
         {isLoading && (
           <Flex justify="center" align="center" h="200px" w="100%">
