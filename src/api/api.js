@@ -83,13 +83,11 @@ api.interceptors.request.use(
       config.headers['X-CSRF-Token'] = csrfToken;
       config.headers['X-CSRF-Token-Id'] = csrfTokenId;
     }
-
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// 응답 인터셉터: 401(토큰 만료) 및 403(CSRF 문제) 에러 처리
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -198,9 +196,7 @@ export const customerLoginSocial = async (provider, socialData) => {
     const response = await api.post(
       `/api/customer/login/social/${provider}`,
       socialData,
-      {
-        skipCsrf: true,
-      }
+      { skipCsrf: true }
     );
     const { token, refreshToken } = response.data;
     localStorage.setItem('customerToken', token);

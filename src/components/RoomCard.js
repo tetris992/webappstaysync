@@ -33,8 +33,8 @@ const RoomCard = ({ room, onSelect }) => {
     availableRooms,
     stock,
     activeAmenities,
-    latitude, // 좌표 prop 추가 (미래 사용 대비)
-    longitude, // 좌표 prop 추가 (미래 사용 대비)
+    // latitude, // 좌표 prop 추가 (미래 사용 대비)
+    // longitude, // 좌표 prop 추가 (미래 사용 대비)
   } = room || {};
 
   return (

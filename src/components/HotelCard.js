@@ -286,7 +286,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               colorScheme="teal"
               size="md"
               onClick={onSelect}
-              px={3}
+              px={4}
               py={0.5}
               fontSize="sm"
               fontWeight="medium"

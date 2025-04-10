@@ -1,3 +1,4 @@
+// webapp/src/AppContent.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
@@ -7,8 +8,8 @@ import ReservationConfirmation from './pages/ReservationConfirmation';
 import ReservationHistory from './pages/ReservationHistory';
 import TraditionalLogin from './pages/TraditionalLogin';
 import Register from './pages/Register';
-import AuthCallback from './pages/AuthCallback';
-import PrivacyConsentPage from './pages/PrivacyConsentModal'; // 추가
+import KakaoCallback from './components/KakaoCallback';
+import PrivacyConsentPage from './pages/PrivacyConsentModal';
 import { useAuth } from './contexts/AuthContext';
 import { fetchCustomerHotelSettings } from './api/api';
 
@@ -60,16 +61,14 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<TraditionalLogin />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/auth/:provider/callback" element={<AuthCallback />} />
-        <Route path="/consent" element={<PrivacyConsentPage />} /> {/* 수정 */}
+        {/* 카카오 로그인 후 리다이렉트 처리 라우트 */}
+        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
+        <Route path="/consent" element={<PrivacyConsentPage />} />
         <Route
           path="/hotels"
           element={
             isAuthenticated && customer ? (
-              <HotelList
-                onLogout={logout}
-                loadHotelSettings={loadHotelSettings}
-              />
+              <HotelList onLogout={logout} loadHotelSettings={loadHotelSettings} />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -79,10 +78,7 @@ function AppContent() {
           path="/rooms/:hotelId"
           element={
             isAuthenticated && customer ? (
-              <RoomSelection
-                hotelSettings={hotelSettings}
-                loadHotelSettings={loadHotelSettings}
-              />
+              <RoomSelection hotelSettings={hotelSettings} loadHotelSettings={loadHotelSettings} />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -92,10 +88,7 @@ function AppContent() {
           path="/confirm"
           element={
             isAuthenticated && customer ? (
-              <ReservationConfirmation
-                customer={customer}
-                hotelSettings={hotelSettings}
-              />
+              <ReservationConfirmation customer={customer} hotelSettings={hotelSettings} />
             ) : (
               <Navigate to="/login" replace />
             )
