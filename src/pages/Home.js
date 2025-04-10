@@ -320,7 +320,7 @@ const Home = () => {
               _active={{ bg: 'brand.700', transform: 'scale(0.95)' }}
               transition="all 0.3s ease"
             >
-              검색
+              숙소 예약 하기
             </Button>
           </VStack>
 
