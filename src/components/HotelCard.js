@@ -184,7 +184,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               ))}
             </HStack>
             <Text fontSize="sm" color="gray.700" ml={2}>
-              {hotel.rating || 0} ({hotel.reviewCount || 0} 리뷰)
+              {(hotel.rating || 0).toFixed(1)} ({hotel.reviewCount || 0} 리뷰)
             </Text>
           </Flex>
           <Flex align="center" mb={2}>
@@ -225,8 +225,8 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               {hotel.checkOutTime || 'N/A'}
             </Text>
           </Flex>
-          <Flex align="center" mb={3}>
-            <Icon as={FaMapMarkerAlt} color="teal.500" boxSize={4} mr={2} />
+          <Flex align="center" mb={3} wrap="wrap">
+            <Icon as={FaMapMarkerAlt} color="teal.500" boxSize={4} mr={2} flexShrink={0} alignSelf="flex-start" mt={1} />
             <Button
               variant="link"
               color="teal.600"
@@ -235,10 +235,19 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               fontSize="sm"
               p={0}
               _hover={{ color: 'teal.800', textDecoration: 'underline' }}
+              flex="1"
+              whiteSpace="normal" // 2줄까지 허용
+              overflow="visible"
+              textOverflow="clip"
+              lineHeight="normal"
+              maxH="2.8em" // 2줄 높이 제한
+              display="-webkit-box"
+              WebkitLineClamp={2} // 2줄까지만 표시
+              WebkitBoxOrient="vertical"
             >
               위치: {hotel.address || '주소 정보 없음'}
             </Button>
-            <Flex align="center" ml={4}>
+            <Flex align="center" ml={2} flexShrink={0}>
               <Button
                 variant="link"
                 color="gray.600"
@@ -277,8 +286,8 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               colorScheme="teal"
               size="md"
               onClick={onSelect}
-              px={5}
-              py={2}
+              px={3}
+              py={0.5}
               fontSize="sm"
               fontWeight="medium"
               borderRadius="md"
