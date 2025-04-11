@@ -62,6 +62,7 @@ api.interceptors.request.use(
       '/api/customer/check-duplicate',
       '/api/customer/activate-account',
       '/api/hotel-settings/photos',
+      '/api/customer/logout',
     ];
     const skipCsrf =
       config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;
@@ -198,7 +199,17 @@ export const customerLoginSocial = async (provider, socialData) => {
       socialData,
       { skipCsrf: true }
     );
-    const { token, refreshToken } = response.data;
+    // 백엔드에서 반환된 redirectUrl에서 token과 refreshToken 추출
+    const redirectUrl = response.data.redirectUrl;
+    if (!redirectUrl) {
+      throw new Error('리다이렉트 URL이 없습니다.');
+    }
+    const urlParams = new URLSearchParams(redirectUrl.split('?')[1]);
+    const token = urlParams.get('token');
+    const refreshToken = urlParams.get('refreshToken');
+    if (!token || !refreshToken) {
+      throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
+    }
     localStorage.setItem('customerToken', token);
     localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken (social): ${token}`);
@@ -216,7 +227,16 @@ export const connectSocialAccount = async (provider, socialData) => {
       `/api/customer/connect-social/${provider}`,
       socialData
     );
-    const { token, refreshToken } = response.data;
+    const redirectUrl = response.data.redirectUrl;
+    if (!redirectUrl) {
+      throw new Error('리다이렉트 URL이 없습니다.');
+    }
+    const urlParams = new URLSearchParams(redirectUrl.split('?')[1]);
+    const token = urlParams.get('token');
+    const refreshToken = urlParams.get('refreshToken');
+    if (!token || !refreshToken) {
+      throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
+    }
     localStorage.setItem('customerToken', token);
     localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken (social connect): ${token}`);
