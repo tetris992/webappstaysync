@@ -24,7 +24,8 @@ const SocialLogin = () => {
         console.error('카카오 앱 키가 환경 변수에 설정되지 않았습니다.');
         toast({
           title: '카카오 로그인 오류',
-          description: '카카오 앱 키가 설정되지 않았습니다. 카카오 로그인은 비활성화됩니다.',
+          description:
+            '카카오 앱 키가 설정되지 않았습니다. 카카오 로그인은 비활성화됩니다.',
           status: 'error',
           duration: 3000,
           isClosable: true,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -23,6 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { customerLogin, customerLoginSocial } from '../api/api';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 import useSocialLoginSettings from '../hooks/useSocialLoginSettings';
+import { initKakao } from '../utils/kakao';
 
 const schema = yup.object().shape({
   phoneNumber: yup
@@ -56,34 +57,28 @@ const TraditionalLogin = () => {
   }, [customer, navigate]);
 
   useEffect(() => {
-    if (window.Kakao && !window.Kakao.isInitialized()) {
-      if (!process.env.REACT_APP_KAKAO_APP_KEY) {
-        console.error('카카오 앱 키가 환경 변수에 설정되지 않았습니다.');
+    try {
+      const initialized = initKakao();
+      setIsKakaoEnabled(initialized);
+      if (!initialized) {
         toast({
           title: '카카오 로그인 오류',
-          description:
-            '카카오 앱 키가 설정되지 않았습니다. 카카오 로그인은 비활성화됩니다.',
+          description: '카카오 SDK 초기화에 실패했습니다. 관리자에게 문의하세요.',
           status: 'error',
-          duration: 3000,
+          duration: 5000,
           isClosable: true,
         });
-        setIsKakaoEnabled(false);
-        return;
       }
-      try {
-        window.Kakao.init(process.env.REACT_APP_KAKAO_APP_KEY);
-        console.log('카카오 SDK 초기화 완료');
-      } catch (error) {
-        console.error('카카오 SDK 초기화 실패:', error);
-        toast({
-          title: '카카오 로그인 오류',
-          description: '카카오 SDK 초기화에 실패했습니다.',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-        setIsKakaoEnabled(false);
-      }
+    } catch (error) {
+      console.error('Kakao initialization error:', error);
+      setIsKakaoEnabled(false);
+      toast({
+        title: '카카오 로그인 오류',
+        description: error.message || '카카오 SDK 초기화에 실패했습니다. 배포 환경 설정을 확인하세요.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     }
   }, [toast]);
 
