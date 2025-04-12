@@ -37,7 +37,8 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    setTimeout(() => setIsLoading(false), 0);
+    // AuthContext에서 자동 로그인을 처리하므로 로딩 상태만 관리
+    setTimeout(() => setIsLoading(false), 1000); // AuthContext 초기화 대기
   }, []);
 
   if (isLoading) {
@@ -61,7 +62,6 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<TraditionalLogin />} />
         <Route path="/register" element={<Register />} />
-        {/* 카카오 로그인 후 리다이렉트 처리 라우트 */}
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
         <Route path="/consent" element={<PrivacyConsentPage />} />
         <Route

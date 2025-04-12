@@ -1,3 +1,4 @@
+// webapp/src/pages/TraditionalLogin.js
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -9,7 +10,6 @@ import {
   VStack,
   Text,
   FormControl,
-  FormLabel,
   FormErrorMessage,
   Input,
   Button,
@@ -17,13 +17,18 @@ import {
   useToast,
   Icon,
   Spinner,
+  Select,
+  InputGroup,
+  InputLeftElement,
 } from '@chakra-ui/react';
 import { SiKakao } from 'react-icons/si';
+import { PhoneIcon, LockIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { customerLogin, customerLoginSocial } from '../api/api';
+import { sendOTP, verifyOTP } from '../api/api';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 import useSocialLoginSettings from '../hooks/useSocialLoginSettings';
 import { initKakao } from '../utils/kakao';
+import { getDeviceToken } from '../utils/device';
 
 const schema = yup.object().shape({
   phoneNumber: yup
@@ -33,7 +38,42 @@ const schema = yup.object().shape({
       /^\d{10,11}$|^\d{3}-\d{3,4}-\d{4}$/,
       '전화번호는 10~11자리 숫자여야 합니다.'
     ),
+  otp: yup.string().when('otpSent', {
+    is: true,
+    then: yup.string().required('인증번호를 입력해주세요.'),
+  }),
 });
+
+const countryCodes = [
+  { name: 'South Korea', code: '+82' },
+  { name: 'United States', code: '+1' },
+  { name: 'Japan', code: '+81' },
+  { name: 'China', code: '+86' },
+  { name: 'India', code: '+91' },
+  { name: 'Indonesia', code: '+62' },
+  { name: 'Russia', code: '+7' },
+  { name: 'Brazil', code: '+55' },
+  { name: 'Canada', code: '+1' },
+  { name: 'France', code: '+33' },
+  { name: 'Germany', code: '+49' },
+  { name: 'Italy', code: '+39' },
+  { name: 'United Kingdom', code: '+44' },
+  { name: 'Australia', code: '+61' },
+  { name: 'Saudi Arabia', code: '+966' },
+  { name: 'South Africa', code: '+27' },
+  { name: 'Turkey', code: '+90' },
+  { name: 'Argentina', code: '+54' },
+  { name: 'Mexico', code: '+52' },
+  { name: 'Vietnam', code: '+84' },
+  { name: 'Thailand', code: '+66' },
+  { name: 'Mongolia', code: '+976' },
+  { name: 'Philippines', code: '+63' },
+  { name: 'Malaysia', code: '+60' },
+  { name: 'Singapore', code: '+65' },
+  { name: 'Cambodia', code: '+855' },
+  { name: 'Laos', code: '+856' },
+  { name: 'Myanmar', code: '+95' },
+];
 
 const TraditionalLogin = () => {
   const { login, customer } = useAuth();
@@ -41,7 +81,10 @@ const TraditionalLogin = () => {
   const toast = useToast();
   const [isSocialLoading, setIsSocialLoading] = useState({ kakao: false });
   const [isKakaoEnabled, setIsKakaoEnabled] = useState(true);
-  const { socialLoginSettings, loading } = useSocialLoginSettings();
+  const { loading } = useSocialLoginSettings();
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [countryCode, setCountryCode] = useState('+82');
 
   const {
     register,
@@ -50,6 +93,8 @@ const TraditionalLogin = () => {
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: yupResolver(schema),
+    defaultValues: { phoneNumber: localStorage.getItem('phoneNumber') || '', otp: '' },
+    context: { otpSent },
   });
 
   useEffect(() => {
@@ -93,66 +138,43 @@ const TraditionalLogin = () => {
       });
       return;
     }
+
+    if (isAuthorizing) {
+      toast({
+        title: '로그인 진행 중',
+        description: '이미 로그인 요청이 진행 중입니다. 잠시 기다려주세요.',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsAuthorizing(true);
     setIsSocialLoading((prev) => ({ ...prev, kakao: true }));
+
     try {
       const isProduction = process.env.NODE_ENV === 'production';
       const redirectUri = isProduction
         ? 'https://danjam.in/auth/kakao/callback'
         : 'http://localhost:3000/auth/kakao/callback';
 
-      await new Promise((resolve, reject) => {
-        window.Kakao.Auth.authorize({
-          redirectUri,
-          success: () => resolve(),
-          fail: (error) => reject(error),
-        });
+      window.Kakao.Auth.authorize({
+        redirectUri,
+        scope: 'account_email profile',
+        prompt: 'none',
       });
-      const userInfo = await new Promise((resolve, reject) => {
-        window.Kakao.API.request({
-          url: '/v2/user/me',
-          success: (response) => resolve(response),
-          fail: (error) => reject(error),
-        });
-      });
-      const socialData = {
-        providerId: userInfo.id.toString(),
-        name: userInfo.properties.nickname || '알 수 없음',
-        email: userInfo.kakao_account.email || '',
-      };
-      if (socialLoginSettings?.kakao?.openIdConnectEnabled) {
-        const idToken = window.Kakao.Auth.getIdToken();
-        if (idToken) socialData.idToken = idToken;
-      }
-      const data = await customerLoginSocial('kakao', socialData);
-
-      if (data.redirectUrl) {
-        const urlParams = new URLSearchParams(data.redirectUrl.split('?')[1]);
-        const token = urlParams.get('token');
-        const refreshToken = urlParams.get('refreshToken');
-        const customerData = JSON.parse(
-          decodeURIComponent(urlParams.get('customer'))
-        );
-
-        await login(customerData, token, refreshToken);
-
-        toast({
-          title: '소셜 로그인 성공',
-          description: '카카오로 로그인되었습니다.',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-        navigate('/');
-      } else {
-        throw new Error('리다이렉트 URL이 없습니다.');
-      }
     } catch (error) {
       let errorMessage = '소셜 로그인 중 오류가 발생했습니다.';
       if (error.message.includes('popup_blocked_by_browser')) {
-        errorMessage =
-          '팝업 차단이 활성화되어 있습니다. 팝업 차단을 해제하고 다시 시도해주세요.';
+        errorMessage = '팝업 차단이 활성화되어 있습니다. 팝업 차단을 해제하고 다시 시도해주세요.';
       } else if (error.message.includes('user_cancelled')) {
         errorMessage = '사용자가 로그인을 취소했습니다.';
+      } else if (error.error_code === 'KOE205') {
+        errorMessage = '카카오 서비스 설정 오류(KOE205): 관리자가 설정을 확인해야 합니다.';
+        console.error('KOE205 Error Details:', error);
+      } else if (error.response?.status === 429) {
+        errorMessage = '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.';
       }
       toast({
         title: '소셜 로그인 실패',
@@ -163,13 +185,59 @@ const TraditionalLogin = () => {
       });
     } finally {
       setIsSocialLoading((prev) => ({ ...prev, kakao: false }));
+      setIsAuthorizing(false);
+    }
+  };
+
+  const handlePhoneNumberChange = (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.slice(0, 11);
+    const formatted = formatPhoneNumber(value);
+    setValue('phoneNumber', formatted, { shouldValidate: true });
+  };
+
+  const handleSendOTP = async (data) => {
+    try {
+      let phone = data.phoneNumber.trim();
+      if (countryCode !== '+82') {
+        phone = countryCode + phone;
+      }
+      await sendOTP({ phoneNumber: phone });
+      setOtpSent(true);
+      toast({
+        title: '인증번호 전송',
+        description: 'SMS로 인증번호가 전송되었습니다. 5분 내에 입력해주세요.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: '인증번호 전송 실패',
+        description: error.message || '인증번호 전송에 실패했습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
   const onSubmit = async (data) => {
+    if (!otpSent) {
+      await handleSendOTP(data);
+      return;
+    }
+
     try {
-      const response = await customerLogin({
-        phoneNumber: data.phoneNumber,
+      let phone = data.phoneNumber.trim();
+      if (countryCode !== '+82') {
+        phone = countryCode + phone;
+      }
+      const deviceToken = getDeviceToken();
+      const response = await verifyOTP({
+        phoneNumber: phone,
+        otp: data.otp,
+        deviceToken,
       });
       await login(response.customer, response.token, response.refreshToken);
       toast({
@@ -187,6 +255,11 @@ const TraditionalLogin = () => {
         navigate(error.redirectUrl, { state: { customerId: error.customerId } });
       } else if (error.status === 404) {
         errorMessage = '가입되지 않은 전화번호입니다.';
+      } else if (error.status === 400) {
+        errorMessage = error.message;
+        if (error.message.includes('인증번호가 만료되었습니다')) {
+          setOtpSent(false); // OTP 재요청 유도
+        }
       }
       toast({
         title: '로그인 실패',
@@ -198,22 +271,9 @@ const TraditionalLogin = () => {
     }
   };
 
-  const handlePhoneNumberChange = (e) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 11) value = value.slice(0, 11);
-    const formatted = formatPhoneNumber(value);
-    setValue('phoneNumber', formatted, { shouldValidate: true });
-  };
-
   if (loading) {
     return (
-      <Flex
-        direction="column"
-        justify="center"
-        align="center"
-        minH="100vh"
-        px={{ base: 3, md: 4 }}
-      >
+      <Flex direction="column" justify="center" align="center" minH="100vh" px={{ base: 3, md: 4 }}>
         <Spinner size="md" color="brand.500" />
         <Text mt={4}>소셜 로그인 설정을 불러오는 중...</Text>
       </Flex>
@@ -223,59 +283,88 @@ const TraditionalLogin = () => {
   if (customer) return null;
 
   return (
-    <Flex
-      direction="column"
-      justify="center"
-      align="center"
-      minH="100vh"
-      px={{ base: 3, md: 4 }}
-    >
-      <Box
-        w={{ base: '95%', sm: '85%', md: 'sm' }}
-        p={{ base: 3, md: 4 }}
-        bg="white"
-        borderRadius="lg"
-        boxShadow="md"
-      >
+    <Flex direction="column" justify="center" align="center" minH="100vh" px={{ base: 3, md: 4 }}>
+      <Box w={{ base: '95%', sm: '85%', md: 'sm' }} p={{ base: 3, md: 4 }} bg="white" borderRadius="lg" boxShadow="md">
         <VStack spacing={{ base: 3, md: 4 }} align="stretch">
-          <Text
-            fontSize={{ base: '2xl', md: '2xl' }}
-            fontWeight="bold"
-            textAlign="center"
-            mb={{ base: 6, md: 8 }}
-          >
-            단잠: 편안한 숙박예약
+          <Text fontSize={{ base: '2xl', md: '2xl' }} fontWeight="bold" textAlign="center" mb={{ base: 6, md: 8 }}>
+            Welcome back
           </Text>
           <form onSubmit={handleSubmit(onSubmit)}>
             <VStack spacing={2}>
-              <FormControl isInvalid={!!errors.phoneNumber}>
-                <FormLabel>전화번호</FormLabel>
-                <Input
-                  {...register('phoneNumber')}
-                  placeholder="010-1234-5678"
-                  onChange={handlePhoneNumberChange}
-                  w="full"
-                />
-                <FormErrorMessage>
-                  {errors.phoneNumber?.message}
-                </FormErrorMessage>
+              <FormControl>
+                <Select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  disabled={otpSent}
+                  borderColor="black"
+                  bg="white"
+                  color="black"
+                >
+                  {countryCodes.map((country, index) => (
+                    <option key={`${country.name}-${country.code}-${index}`} value={country.code}>
+                      {`${country.name} (${country.code})`}
+                    </option>
+                  ))}
+                </Select>
               </FormControl>
+              <FormControl isInvalid={!!errors.phoneNumber}>
+                <InputGroup>
+                  <InputLeftElement pointerEvents="none">
+                    <PhoneIcon color="gray.300" />
+                  </InputLeftElement>
+                  <Input
+                    {...register('phoneNumber')}
+                    placeholder="Phone number *"
+                    onChange={handlePhoneNumberChange}
+                    disabled={otpSent}
+                    borderColor="black"
+                    bg="white"
+                    color="black"
+                  />
+                </InputGroup>
+                <FormErrorMessage>{errors.phoneNumber?.message}</FormErrorMessage>
+              </FormControl>
+              {otpSent && (
+                <>
+                  <Text fontSize="sm" color="gray.600">
+                    SMS로 전송된 인증번호를 입력하세요.
+                  </Text>
+                  <FormControl isInvalid={!!errors.otp}>
+                    <InputGroup>
+                      <InputLeftElement pointerEvents="none">
+                        <LockIcon color="gray.300" />
+                      </InputLeftElement>
+                      <Input
+                        {...register('otp')}
+                        placeholder="Enter verification code"
+                        borderColor="black"
+                        bg="white"
+                        color="black"
+                      />
+                    </InputGroup>
+                    <FormErrorMessage>{errors.otp?.message}</FormErrorMessage>
+                  </FormControl>
+                </>
+              )}
               <Button
                 variant="solid"
                 type="submit"
                 w="full"
                 isLoading={isSubmitting}
-                loadingText="처리 중..."
+                loadingText={otpSent ? 'Logging in...' : 'Sending code...'}
                 size="md"
+                bg="green.500"
+                color="white"
+                _hover={{ bg: 'green.600' }}
               >
-                로그인
+                Continue
               </Button>
             </VStack>
           </form>
           <Text textAlign="center" fontSize="sm">
-            회원이 아니신가요?{' '}
+            Don't have an account?{' '}
             <Button as={Link} to="/register" variant="link" fontSize="sm">
-              회원가입
+              Sign Up
             </Button>
           </Text>
           <Divider />
@@ -283,21 +372,25 @@ const TraditionalLogin = () => {
             OR
           </Text>
           <Button
-            variant="kakao"
             w="full"
             size="md"
+            bg="yellow.400"
+            color="black"
             leftIcon={<Icon as={SiKakao} />}
             onClick={() => handleSocialLogin('kakao')}
             isLoading={isSocialLoading.kakao}
             isDisabled={isSocialLoading.kakao || !isKakaoEnabled}
-            loadingText="카카오 로그인 중..."
+            loadingText="Logging in with Kakao..."
           >
-            카카오 로그인으로 계속하기
+            Continue with Kakao
           </Button>
           <Text textAlign="center" fontSize="xs" mt={{ base: 6, md: 8 }}>
-            이용약관 |{' '}
-            <Button as={Link} to="/privacy" variant="link" fontSize="xs">
-              개인정보처리방침
+            <Button as={Link} to="/terms" variant="link" fontSize="xs" color="teal.500">
+              Terms of Use
+            </Button>{' '}
+            |{' '}
+            <Button as={Link} to="/privacy" variant="link" fontSize="xs" color="teal.500">
+              Privacy Policy
             </Button>
           </Text>
         </VStack>

@@ -1,12 +1,11 @@
+// webapp/src/api/api.js
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
 
 const BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
-  (process.env.NODE_ENV === 'production'
-    ? 'https://staysync.org'
-    : 'http://localhost:3004');
+  (process.env.NODE_ENV === 'production' ? 'https://staysync.org' : 'http://localhost:3004');
 console.log('[api.js] BASE_URL:', BASE_URL);
 
 const api = axios.create({
@@ -18,8 +17,7 @@ axiosRetry(api, { retries: 3, retryDelay: (retryCount) => retryCount * 1000 });
 
 const handleApiError = (error, defaultMessage) => {
   const status = error.response?.status || 500;
-  const message =
-    error.response?.data?.message || error.message || defaultMessage;
+  const message = error.response?.data?.message || error.message || defaultMessage;
   throw new ApiError(status, message, error.response?.data);
 };
 
@@ -28,7 +26,6 @@ const getRefreshToken = () => localStorage.getItem('refreshToken');
 const getCsrfToken = () => localStorage.getItem('csrfToken');
 const getCsrfTokenId = () => localStorage.getItem('csrfTokenId');
 
-// 요청 인터셉터: Authorization 및 CSRF 토큰 설정
 api.interceptors.request.use(
   async (config) => {
     console.log('[api.js] Request URL:', `${BASE_URL}${config.url}`);
@@ -47,6 +44,9 @@ api.interceptors.request.use(
         '/api/customer/check-duplicate',
         '/api/csrf-token',
         '/api/customer/activate-account',
+        '/api/customer/send-otp',
+        '/api/customer/verify-otp',
+        '/api/customer/auto-login',
       ];
       if (!noRedirectRoutes.includes(config.url)) {
         throw new ApiError(401, 'No customer token available');
@@ -64,8 +64,7 @@ api.interceptors.request.use(
       '/api/hotel-settings/photos',
       '/api/customer/logout',
     ];
-    const skipCsrf =
-      config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;
+    const skipCsrf = config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;
 
     if (!isGetRequest && !isCsrfTokenRequest && !skipCsrf) {
       let csrfToken = getCsrfToken();
@@ -124,10 +123,13 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = getRefreshToken();
-        if (!refreshToken) throw new ApiError(401, '리프레시 토큰이 없습니다.');
+        const deviceToken = localStorage.getItem('deviceToken');
+        if (!refreshToken || !deviceToken) {
+          throw new ApiError(401, '리프레시 토큰 또는 디바이스 토큰이 없습니다.');
+        }
         const response = await api.post(
           '/api/customer/refresh-token',
-          { refreshToken },
+          { refreshToken, deviceToken },
           { headers: { Authorization: undefined } }
         );
         const { token } = response.data;
@@ -138,9 +140,11 @@ api.interceptors.response.use(
       } catch (err) {
         localStorage.removeItem('customerToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('deviceToken');
+        localStorage.removeItem('phoneNumber');
         localStorage.removeItem('csrfToken');
         localStorage.removeItem('csrfTokenId');
-        throw new ApiError(401, '토큰 갱신 실패');
+        throw new ApiError(401, err.message || '토큰 갱신 실패');
       } finally {
         isRefreshing = false;
       }
@@ -180,11 +184,6 @@ export const customerLogin = async (data) => {
     localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken: ${token}`);
     console.log(`[api.js] Stored refreshToken: ${refreshToken}`);
-    const storedToken = localStorage.getItem('customerToken');
-    if (storedToken !== token) {
-      console.error('[api.js] Failed to store customerToken in localStorage');
-      throw new Error('토큰 저장에 실패했습니다.');
-    }
     return response.data;
   } catch (error) {
     handleApiError(error, '로그인 실패');
@@ -194,22 +193,13 @@ export const customerLogin = async (data) => {
 // 소셜 로그인 API
 export const customerLoginSocial = async (provider, socialData) => {
   try {
-    const response = await api.post(
-      `/api/customer/login/social/${provider}`,
-      socialData,
-      { skipCsrf: true }
-    );
-    // 백엔드에서 반환된 redirectUrl에서 token과 refreshToken 추출
+    const response = await api.post(`/api/customer/login/social/${provider}`, socialData, { skipCsrf: true });
     const redirectUrl = response.data.redirectUrl;
-    if (!redirectUrl) {
-      throw new Error('리다이렉트 URL이 없습니다.');
-    }
+    if (!redirectUrl) throw new Error('리다이렉트 URL이 없습니다.');
     const urlParams = new URLSearchParams(redirectUrl.split('?')[1]);
     const token = urlParams.get('token');
     const refreshToken = urlParams.get('refreshToken');
-    if (!token || !refreshToken) {
-      throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
-    }
+    if (!token || !refreshToken) throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
     localStorage.setItem('customerToken', token);
     localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken (social): ${token}`);
@@ -223,26 +213,17 @@ export const customerLoginSocial = async (provider, socialData) => {
 // 소셜 계정 연결 API
 export const connectSocialAccount = async (provider, socialData) => {
   try {
-    const response = await api.post(
-      `/api/customer/connect-social/${provider}`,
-      socialData
-    );
+    const response = await api.post(`/api/customer/connect-social/${provider}`, socialData);
     const redirectUrl = response.data.redirectUrl;
-    if (!redirectUrl) {
-      throw new Error('리다이렉트 URL이 없습니다.');
-    }
+    if (!redirectUrl) throw new Error('리다이렉트 URL이 없습니다.');
     const urlParams = new URLSearchParams(redirectUrl.split('?')[1]);
     const token = urlParams.get('token');
     const refreshToken = urlParams.get('refreshToken');
-    if (!token || !refreshToken) {
-      throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
-    }
+    if (!token || !refreshToken) throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
     localStorage.setItem('customerToken', token);
     localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken (social connect): ${token}`);
-    console.log(
-      `[api.js] Stored refreshToken (social connect): ${refreshToken}`
-    );
+    console.log(`[api.js] Stored refreshToken (social connect): ${refreshToken}`);
     return response.data;
   } catch (error) {
     handleApiError(error, '소셜 계정 연결 실패');
@@ -253,7 +234,7 @@ export const connectSocialAccount = async (provider, socialData) => {
 export const registerCustomer = async (customerData) => {
   try {
     const response = await api.post('/api/customer/register', customerData);
-    return response.data; // { message, customerId, redirectUrl } 반환
+    return response.data;
   } catch (error) {
     handleApiError(error, '회원가입 실패');
   }
@@ -262,10 +243,7 @@ export const registerCustomer = async (customerData) => {
 // 계정 활성화 API
 export const activateAccount = async (activationData) => {
   try {
-    const response = await api.post(
-      '/api/customer/activate-account',
-      activationData
-    );
+    const response = await api.post('/api/customer/activate-account', activationData);
     return response.data;
   } catch (error) {
     handleApiError(error, '계정 활성화 실패');
@@ -306,10 +284,7 @@ export const fetchHotelList = async () => {
 // 호텔 설정 조회 API
 export const fetchCustomerHotelSettings = async (hotelId) => {
   try {
-    const response = await api.get('/api/customer/hotel-settings', {
-      params: { hotelId },
-    });
-    // 좌표 데이터를 명시적으로 포함하도록 보장
+    const response = await api.get('/api/customer/hotel-settings', { params: { hotelId } });
     const hotelData = {
       ...response.data,
       latitude: response.data.latitude || null,
@@ -325,15 +300,9 @@ export const fetchCustomerHotelSettings = async (hotelId) => {
 export const fetchHotelPhotos = async (hotelId, category, subCategory) => {
   try {
     const startTime = Date.now();
-    const response = await api.get('/api/hotel-settings/photos', {
-      params: { hotelId, category, subCategory },
-    });
+    const response = await api.get('/api/hotel-settings/photos', { params: { hotelId, category, subCategory } });
     const endTime = Date.now();
-    console.log(
-      `[api.js] fetchHotelPhotos for hotelId ${hotelId} took ${
-        endTime - startTime
-      }ms`
-    );
+    console.log(`[api.js] fetchHotelPhotos for hotelId ${hotelId} took ${endTime - startTime}ms`);
     return response.data;
   } catch (error) {
     handleApiError(error, '호텔 사진 불러오기 실패');
@@ -343,9 +312,7 @@ export const fetchHotelPhotos = async (hotelId, category, subCategory) => {
 // 호텔 가용성 조회 API
 export const fetchHotelAvailability = async (hotelId, checkIn, checkOut) => {
   try {
-    const response = await api.get('/api/customer/hotel-availability', {
-      params: { hotelId, checkIn, checkOut },
-    });
+    const response = await api.get('/api/customer/hotel-availability', { params: { hotelId, checkIn, checkOut } });
     return response.data;
   } catch (error) {
     handleApiError(error, '호텔 가용성 조회 실패');
@@ -355,10 +322,7 @@ export const fetchHotelAvailability = async (hotelId, checkIn, checkOut) => {
 // 예약 생성 API
 export const createReservation = async (finalReservationData) => {
   try {
-    const response = await api.post(
-      '/api/customer/reservation',
-      finalReservationData
-    );
+    const response = await api.post('/api/customer/reservation', finalReservationData);
     return response.data;
   } catch (error) {
     handleApiError(error, '예약 저장 실패');
@@ -381,8 +345,8 @@ export const getReservationHistory = async () => {
       hotelName: reservation.hotelName || '알 수 없음',
       checkIn: reservation.checkIn || '',
       checkOut: reservation.checkOut || '',
-      latitude: reservation.latitude || null, // 좌표 추가
-      longitude: reservation.longitude || null, // 좌표 추가
+      latitude: reservation.latitude || null,
+      longitude: reservation.longitude || null,
     }));
     return {
       history: reservations,
@@ -411,9 +375,7 @@ export const checkDuplicate = async ({ phoneNumber, email, nickname }) => {
 // 예약 취소 API
 export const cancelReservation = async (reservationId) => {
   try {
-    const response = await api.delete(
-      `/api/customer/reservation/${reservationId}`
-    );
+    const response = await api.delete(`/api/customer/reservation/${reservationId}`);
     return response.data;
   } catch (error) {
     handleApiError(error, '예약 취소 실패');
@@ -428,19 +390,56 @@ export const logoutCustomer = async () => {
       console.warn('[api.js] No customerToken found, already logged out');
       return { redirect: '/login' };
     }
-    const response = await api.post('/api/customer/logout', {});
+    const response = await api.post('/api/customer/logout', {}, { skipCsrf: true });
     return { redirect: '/login', ...response.data };
   } catch (error) {
     console.error('[api.js] Logout failed:', error);
     return { error: error.message, redirect: '/login' };
   } finally {
     localStorage.removeItem('customerToken');
-    localStorage.removeItem('refreshToken');
     localStorage.removeItem('csrfToken');
     localStorage.removeItem('csrfTokenId');
+    console.log('Logout completed, refreshToken retained:', localStorage.getItem('refreshToken'));
+  }
+};
+
+// OTP 전송 API
+export const sendOTP = async (data) => {
+  try {
+    const response = await api.post('/api/customer/send-otp', data);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '인증번호 전송 실패');
+  }
+};
+
+// OTP 검증 및 로그인 API
+export const verifyOTP = async (data) => {
+  try {
+    const response = await api.post('/api/customer/verify-otp', data);
+    const { token, refreshToken } = response.data;
+    localStorage.setItem('customerToken', token);
+    localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem('phoneNumber', data.phoneNumber);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '인증번호 검증 실패');
+  }
+};
+
+// 자동로그인 API
+export const autoLogin = async (data) => {
+  try {
+    const response = await api.post('/api/customer/auto-login', data);
+    const { token, refreshToken } = response.data;
+    localStorage.setItem('customerToken', token);
+    localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem('phoneNumber', data.phoneNumber);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '자동로그인 실패');
   }
 };
 
 export { getCustomerToken, getCsrfToken, getCsrfTokenId };
-
 export default api;
