@@ -1,4 +1,3 @@
-// webapp/src/pages/TraditionalLogin.js
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -93,14 +92,19 @@ const TraditionalLogin = () => {
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: { phoneNumber: localStorage.getItem('phoneNumber') || '', otp: '' },
+    defaultValues: {
+      phoneNumber: localStorage.getItem('phoneNumber') || '',
+      otp: '',
+    },
     context: { otpSent },
   });
 
+  // 인증된 사용자가 있으면 홈으로 리다이렉션
   useEffect(() => {
     if (customer) navigate('/');
   }, [customer, navigate]);
 
+  // 카카오 SDK 초기화
   useEffect(() => {
     try {
       const initialized = initKakao();
@@ -108,7 +112,8 @@ const TraditionalLogin = () => {
       if (!initialized) {
         toast({
           title: '카카오 로그인 오류',
-          description: '카카오 SDK 초기화에 실패했습니다. 관리자에게 문의하세요.',
+          description:
+            '카카오 SDK 초기화에 실패했습니다. 관리자에게 문의하세요.',
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -119,7 +124,9 @@ const TraditionalLogin = () => {
       setIsKakaoEnabled(false);
       toast({
         title: '카카오 로그인 오류',
-        description: error.message || '카카오 SDK 초기화에 실패했습니다. 배포 환경 설정을 확인하세요.',
+        description:
+          error.message ||
+          '카카오 SDK 초기화에 실패했습니다. 배포 환경 설정을 확인하세요.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -167,14 +174,17 @@ const TraditionalLogin = () => {
     } catch (error) {
       let errorMessage = '소셜 로그인 중 오류가 발생했습니다.';
       if (error.message.includes('popup_blocked_by_browser')) {
-        errorMessage = '팝업 차단이 활성화되어 있습니다. 팝업 차단을 해제하고 다시 시도해주세요.';
+        errorMessage =
+          '팝업 차단이 활성화되어 있습니다. 팝업 차단을 해제하고 다시 시도해주세요.';
       } else if (error.message.includes('user_cancelled')) {
         errorMessage = '사용자가 로그인을 취소했습니다.';
       } else if (error.error_code === 'KOE205') {
-        errorMessage = '카카오 서비스 설정 오류(KOE205): 관리자가 설정을 확인해야 합니다.';
+        errorMessage =
+          '카카오 서비스 설정 오류(KOE205): 관리자가 설정을 확인해야 합니다.';
         console.error('KOE205 Error Details:', error);
       } else if (error.response?.status === 429) {
-        errorMessage = '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.';
+        errorMessage =
+          '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.';
       }
       toast({
         title: '소셜 로그인 실패',
@@ -252,7 +262,9 @@ const TraditionalLogin = () => {
       let errorMessage = '로그인 중 오류가 발생했습니다.';
       if (error.status === 403) {
         errorMessage = error.message;
-        navigate(error.redirectUrl, { state: { customerId: error.customerId } });
+        navigate(error.redirectUrl, {
+          state: { customerId: error.customerId },
+        });
       } else if (error.status === 404) {
         errorMessage = '가입되지 않은 전화번호입니다.';
       } else if (error.status === 400) {
@@ -273,7 +285,13 @@ const TraditionalLogin = () => {
 
   if (loading) {
     return (
-      <Flex direction="column" justify="center" align="center" minH="100vh" px={{ base: 3, md: 4 }}>
+      <Flex
+        direction="column"
+        justify="center"
+        align="center"
+        minH="100vh"
+        px={{ base: 3, md: 4 }}
+      >
         <Spinner size="md" color="brand.500" />
         <Text mt={4}>소셜 로그인 설정을 불러오는 중...</Text>
       </Flex>
@@ -283,10 +301,27 @@ const TraditionalLogin = () => {
   if (customer) return null;
 
   return (
-    <Flex direction="column" justify="center" align="center" minH="100vh" px={{ base: 3, md: 4 }}>
-      <Box w={{ base: '95%', sm: '85%', md: 'sm' }} p={{ base: 3, md: 4 }} bg="white" borderRadius="lg" boxShadow="md">
+    <Flex
+      direction="column"
+      justify="center"
+      align="center"
+      minH="100vh"
+      px={{ base: 3, md: 4 }}
+    >
+      <Box
+        w={{ base: '95%', sm: '85%', md: 'sm' }}
+        p={{ base: 3, md: 4 }}
+        bg="white"
+        borderRadius="lg"
+        boxShadow="md"
+      >
         <VStack spacing={{ base: 3, md: 4 }} align="stretch">
-          <Text fontSize={{ base: '2xl', md: '2xl' }} fontWeight="bold" textAlign="center" mb={{ base: 6, md: 8 }}>
+          <Text
+            fontSize={{ base: '2xl', md: '2xl' }}
+            fontWeight="bold"
+            textAlign="center"
+            mb={{ base: 6, md: 8 }}
+          >
             Welcome back
           </Text>
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -301,7 +336,10 @@ const TraditionalLogin = () => {
                   color="black"
                 >
                   {countryCodes.map((country, index) => (
-                    <option key={`${country.name}-${country.code}-${index}`} value={country.code}>
+                    <option
+                      key={`${country.name}-${country.code}-${index}`}
+                      value={country.code}
+                    >
                       {`${country.name} (${country.code})`}
                     </option>
                   ))}
@@ -322,7 +360,9 @@ const TraditionalLogin = () => {
                     color="black"
                   />
                 </InputGroup>
-                <FormErrorMessage>{errors.phoneNumber?.message}</FormErrorMessage>
+                <FormErrorMessage>
+                  {errors.phoneNumber?.message}
+                </FormErrorMessage>
               </FormControl>
               {otpSent && (
                 <>
@@ -385,11 +425,23 @@ const TraditionalLogin = () => {
             Continue with Kakao
           </Button>
           <Text textAlign="center" fontSize="xs" mt={{ base: 6, md: 8 }}>
-            <Button as={Link} to="/terms" variant="link" fontSize="xs" color="teal.500">
+            <Button
+              as={Link}
+              to="/terms"
+              variant="link"
+              fontSize="xs"
+              color="teal.500"
+            >
               Terms of Use
             </Button>{' '}
             |{' '}
-            <Button as={Link} to="/privacy" variant="link" fontSize="xs" color="teal.500">
+            <Button
+              as={Link}
+              to="/privacy"
+              variant="link"
+              fontSize="xs"
+              color="teal.500"
+            >
               Privacy Policy
             </Button>
           </Text>

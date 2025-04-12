@@ -1,6 +1,5 @@
-// webapp/src/contexts/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { customerLogin, logoutCustomer, autoLogin } from '../api/api';
+import { customerLogin, logoutCustomer } from '../api/api';
 import { getDeviceToken } from '../utils/device';
 
 const AuthContext = createContext();
@@ -9,8 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [customer, setCustomer] = useState(null);
 
-  // 초기 로드 시 디바이스 토큰 확인 및 자동 로그인 시도
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // 초기 로드 시 디바이스 토큰 확인 및 인증 상태 설정
   useEffect(() => {
     // 디바이스 토큰 확인 (없으면 생성)
     getDeviceToken();
@@ -23,54 +21,14 @@ export const AuthProvider = ({ children }) => {
       if (storedCustomer) {
         setCustomer(JSON.parse(storedCustomer));
       }
+    } else {
+      // 자동 로그인 제거, 인증 상태 초기화
+      setIsAuthenticated(false);
+      setCustomer(null);
+      localStorage.removeItem('customerToken');
     }
+  }, []);
 
-    // 자동 로그인 시도
-    const tryAutoLogin = async () => {
-      const storedPhoneNumber = localStorage.getItem('phoneNumber');
-      const refreshToken = localStorage.getItem('refreshToken');
-      const deviceToken = localStorage.getItem('deviceToken');
-
-      if (
-        storedPhoneNumber &&
-        refreshToken &&
-        deviceToken &&
-        !isAuthenticated
-      ) {
-        try {
-          const response = await autoLogin({
-            phoneNumber: storedPhoneNumber,
-            deviceToken,
-          });
-          setIsAuthenticated(true);
-          setCustomer(response.customer);
-          localStorage.setItem('customerToken', response.token);
-          localStorage.setItem('refreshToken', response.refreshToken);
-          localStorage.setItem('customer', JSON.stringify(response.customer));
-          console.log('Auto-login successful on init');
-        } catch (error) {
-          console.error('Auto-login failed on init:', error);
-          setIsAuthenticated(false);
-          setCustomer(null);
-          localStorage.removeItem('customerToken');
-          if (error.message.includes('디바이스 인증 실패')) {
-            // 디바이스 토큰 불일치 시 초기화 후 재시도
-            localStorage.removeItem('deviceToken');
-            getDeviceToken();
-          } else if (
-            error.message.includes('자동로그인 기간이 만료되었습니다')
-          ) {
-            console.log(
-              'Auto-login period expired, user needs to re-authenticate'
-            );
-          }
-        }
-      }
-    };
-
-    tryAutoLogin();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 배열에 인증상태를 넣으면, 로그아웃 안됨
   // 로그인 함수
   const login = async (dataOrCustomer, token, refreshToken) => {
     if (token) {

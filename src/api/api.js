@@ -8,7 +8,10 @@ const BASE_URL =
   (process.env.NODE_ENV === 'production'
     ? 'https://staysync.org'
     : 'http://localhost:3004');
-console.log('[api.js] BASE_URL:', BASE_URL);
+
+// 수정 코드 TEST1
+// const BASE_URL = 'https://staysync.org';
+// console.log('[api.js] BASE_URL:', BASE_URL);
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -49,7 +52,6 @@ api.interceptors.request.use(
         '/api/customer/activate-account',
         '/api/customer/send-otp',
         '/api/customer/verify-otp',
-        '/api/customer/auto-login',
       ];
       if (!noRedirectRoutes.includes(config.url)) {
         throw new ApiError(401, 'No customer token available');
@@ -446,13 +448,26 @@ export const logoutCustomer = async () => {
   }
 };
 
-// OTP 전송 API
+// sendOTP 함수
 export const sendOTP = async (data) => {
   try {
     const response = await api.post('/api/customer/send-otp', data);
     return response.data;
   } catch (error) {
-    handleApiError(error, '인증번호 전송 실패');
+    console.error('[api.js] sendOTP error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      config: error.config,
+      code: error.code,
+      name: error.name,
+      stack: error.stack,
+    });
+    throw new ApiError(
+      error.response?.status || 500,
+      error.message || '인증번호 전송 실패: 서버에 연결할 수 없습니다.',
+      error.response?.data
+    );
   }
 };
 
@@ -471,18 +486,22 @@ export const verifyOTP = async (data) => {
 };
 
 // 자동로그인 API
-export const autoLogin = async (data) => {
-  try {
-    const response = await api.post('/api/customer/auto-login', data);
-    const { token, refreshToken } = response.data;
-    localStorage.setItem('customerToken', token);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('phoneNumber', data.phoneNumber);
-    return response.data;
-  } catch (error) {
-    handleApiError(error, '자동로그인 실패');
-  }
-};
+// export const autoLogin = async (data) => {
+//   try {
+//     const response = await api.post('/api/customer/auto-login', data);
+//     const { token, refreshToken } = response.data;
+//     localStorage.setItem('customerToken', token);
+//     localStorage.setItem('refreshToken', refreshToken);
+//     localStorage.setItem('phoneNumber', data.phoneNumber);
+//     return response.data;
+//   } catch (error) {
+//     console.error(
+//       '[api.js] autoLogin error:',
+//       error.response?.data || error.message
+//     );
+//     handleApiError(error, '자동로그인 실패');
+//   }
+// };
 
 export { getCustomerToken, getCsrfToken, getCsrfTokenId };
 export default api;
