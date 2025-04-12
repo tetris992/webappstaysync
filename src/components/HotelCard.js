@@ -16,7 +16,14 @@ import {
   ModalBody,
   ModalCloseButton,
 } from '@chakra-ui/react';
-import { FaRegStar, FaStar, FaQuestionCircle, FaMapMarkerAlt, FaMapSigns, FaCopy } from 'react-icons/fa';
+import {
+  FaRegStar,
+  FaStar,
+  FaQuestionCircle,
+  FaMapMarkerAlt,
+  FaMapSigns,
+  FaCopy,
+} from 'react-icons/fa';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
@@ -50,7 +57,8 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
       // 좌표가 없는 경우 주소 복사만 가능
       toast({
         title: '위치 정보 없음',
-        description: '호텔 좌표 정보를 찾을 수 없습니다. 주소를 복사할 수 있습니다.',
+        description:
+          '호텔 좌표 정보를 찾을 수 없습니다. 주소를 복사할 수 있습니다.',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -65,7 +73,9 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
       return;
     }
 
-    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${hotel.latitude}&name=${encodeURIComponent(hotel.hotelName || '호텔')}`;
+    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${
+      hotel.latitude
+    }&name=${encodeURIComponent(hotel.hotelName || '호텔')}`;
     console.log('[HotelCard] TMap URL:', tmapUrl);
     window.location.href = tmapUrl;
 
@@ -78,7 +88,8 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
       } else {
         toast({
           title: 'T맵 설치 필요',
-          description: 'T맵 앱이 설치되어 있지 않습니다. 기본 지도를 표시합니다.',
+          description:
+            'T맵 앱이 설치되어 있지 않습니다. 기본 지도를 표시합니다.',
           status: 'info',
           duration: 3000,
           isClosable: true,
@@ -90,23 +101,26 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
 
   const handleCopyAddress = () => {
     if (hotel.address) {
-      navigator.clipboard.writeText(hotel.address).then(() => {
-        toast({
-          title: '주소 복사 완료',
-          description: '호텔 주소가 클립보드에 복사되었습니다.',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
+      navigator.clipboard
+        .writeText(hotel.address)
+        .then(() => {
+          toast({
+            title: '주소 복사 완료',
+            description: '호텔 주소가 클립보드에 복사되었습니다.',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        })
+        .catch((error) => {
+          toast({
+            title: '주소 복사 실패',
+            description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
         });
-      }).catch((error) => {
-        toast({
-          title: '주소 복사 실패',
-          description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-      });
     }
   };
 
@@ -122,7 +136,10 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
     adaptiveHeight: true,
   };
 
-  const photos = hotel.photos && hotel.photos.length > 0 ? hotel.photos : [{ photoUrl: '/assets/default-hotel.jpg' }];
+  const photos =
+    hotel.photos && hotel.photos.length > 0
+      ? hotel.photos
+      : [{ photoUrl: '/assets/default-hotel.jpg' }];
 
   return (
     <>
@@ -155,7 +172,12 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
         </Slider>
         <Box p={5}>
           <Flex justify="space-between" align="center" mb={3}>
-            <Text fontSize="xl" fontWeight="semibold" color="gray.800" isTruncated>
+            <Text
+              fontSize="xl"
+              fontWeight="semibold"
+              color="gray.800"
+              isTruncated
+            >
               {hotel.hotelName || '호텔 이름 없음'}
             </Text>
             <IconButton
@@ -163,7 +185,9 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               onClick={toggleFavorite}
               variant="unstyled"
               bg="transparent"
-              aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              aria-label={
+                isFavorite ? 'Remove from favorites' : 'Add to favorites'
+              }
               fontSize="22px"
               color={isFavorite ? 'yellow.400' : 'gray.400'}
               _focus={{ boxShadow: 'none', outline: 'none' }}
@@ -178,7 +202,11 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
                 <Icon
                   key={i}
                   as={i < Math.floor(hotel.rating || 0) ? FaStar : FaRegStar}
-                  color={i < Math.floor(hotel.rating || 0) ? 'yellow.400' : 'gray.300'}
+                  color={
+                    i < Math.floor(hotel.rating || 0)
+                      ? 'yellow.400'
+                      : 'gray.300'
+                  }
                   boxSize={3.5}
                 />
               ))}
@@ -226,7 +254,15 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
             </Text>
           </Flex>
           <Flex align="center" mb={3} wrap="wrap">
-            <Icon as={FaMapMarkerAlt} color="teal.500" boxSize={4} mr={2} flexShrink={0} alignSelf="flex-start" mt={1} />
+            <Icon
+              as={FaMapMarkerAlt}
+              color="teal.500"
+              boxSize={4}
+              mr={2}
+              flexShrink={0}
+              alignSelf="flex-start"
+              mt={1}
+            />
             <Button
               variant="link"
               color="teal.600"
@@ -242,8 +278,8 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               lineHeight="normal"
               maxH="2.8em" // 2줄 높이 제한
               display="-webkit-box"
-              WebkitLineClamp={2} // 2줄까지만 표시
-              WebkitBoxOrient="vertical"
+              wbkitLineClamp={2} // 2줄까지만 표시
+              webkitBoxOrient="vertical"
             >
               위치: {hotel.address || '주소 정보 없음'}
             </Button>
@@ -266,7 +302,8 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
             {hotel.amenities && hotel.amenities.length > 0 ? (
               <HStack spacing={3}>
                 {hotel.amenities.slice(0, 3).map((amenity, idx) => {
-                  const IconComponent = iconMap[amenity.icon] || FaQuestionCircle;
+                  const IconComponent =
+                    iconMap[amenity.icon] || FaQuestionCircle;
                   return (
                     <Box key={idx} title={amenity.nameKor}>
                       <Icon as={IconComponent} color="teal.500" boxSize={4} />

@@ -5,7 +5,9 @@ import ApiError from '../utils/ApiError';
 
 const BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
-  (process.env.NODE_ENV === 'production' ? 'https://staysync.org' : 'http://localhost:3004');
+  (process.env.NODE_ENV === 'production'
+    ? 'https://staysync.org'
+    : 'http://localhost:3004');
 console.log('[api.js] BASE_URL:', BASE_URL);
 
 const api = axios.create({
@@ -17,7 +19,8 @@ axiosRetry(api, { retries: 3, retryDelay: (retryCount) => retryCount * 1000 });
 
 const handleApiError = (error, defaultMessage) => {
   const status = error.response?.status || 500;
-  const message = error.response?.data?.message || error.message || defaultMessage;
+  const message =
+    error.response?.data?.message || error.message || defaultMessage;
   throw new ApiError(status, message, error.response?.data);
 };
 
@@ -63,8 +66,12 @@ api.interceptors.request.use(
       '/api/customer/activate-account',
       '/api/hotel-settings/photos',
       '/api/customer/logout',
+      '/api/customer/send-otp', // 추가
+      '/api/customer/verify-otp', // 추가
+      '/api/customer/auto-login', // 추가
     ];
-    const skipCsrf = config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;
+    const skipCsrf =
+      config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;
 
     if (!isGetRequest && !isCsrfTokenRequest && !skipCsrf) {
       let csrfToken = getCsrfToken();
@@ -125,7 +132,10 @@ api.interceptors.response.use(
         const refreshToken = getRefreshToken();
         const deviceToken = localStorage.getItem('deviceToken');
         if (!refreshToken || !deviceToken) {
-          throw new ApiError(401, '리프레시 토큰 또는 디바이스 토큰이 없습니다.');
+          throw new ApiError(
+            401,
+            '리프레시 토큰 또는 디바이스 토큰이 없습니다.'
+          );
         }
         const response = await api.post(
           '/api/customer/refresh-token',
@@ -193,13 +203,18 @@ export const customerLogin = async (data) => {
 // 소셜 로그인 API
 export const customerLoginSocial = async (provider, socialData) => {
   try {
-    const response = await api.post(`/api/customer/login/social/${provider}`, socialData, { skipCsrf: true });
+    const response = await api.post(
+      `/api/customer/login/social/${provider}`,
+      socialData,
+      { skipCsrf: true }
+    );
     const redirectUrl = response.data.redirectUrl;
     if (!redirectUrl) throw new Error('리다이렉트 URL이 없습니다.');
     const urlParams = new URLSearchParams(redirectUrl.split('?')[1]);
     const token = urlParams.get('token');
     const refreshToken = urlParams.get('refreshToken');
-    if (!token || !refreshToken) throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
+    if (!token || !refreshToken)
+      throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
     localStorage.setItem('customerToken', token);
     localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken (social): ${token}`);
@@ -213,17 +228,23 @@ export const customerLoginSocial = async (provider, socialData) => {
 // 소셜 계정 연결 API
 export const connectSocialAccount = async (provider, socialData) => {
   try {
-    const response = await api.post(`/api/customer/connect-social/${provider}`, socialData);
+    const response = await api.post(
+      `/api/customer/connect-social/${provider}`,
+      socialData
+    );
     const redirectUrl = response.data.redirectUrl;
     if (!redirectUrl) throw new Error('리다이렉트 URL이 없습니다.');
     const urlParams = new URLSearchParams(redirectUrl.split('?')[1]);
     const token = urlParams.get('token');
     const refreshToken = urlParams.get('refreshToken');
-    if (!token || !refreshToken) throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
+    if (!token || !refreshToken)
+      throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
     localStorage.setItem('customerToken', token);
     localStorage.setItem('refreshToken', refreshToken);
     console.log(`[api.js] Stored customerToken (social connect): ${token}`);
-    console.log(`[api.js] Stored refreshToken (social connect): ${refreshToken}`);
+    console.log(
+      `[api.js] Stored refreshToken (social connect): ${refreshToken}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, '소셜 계정 연결 실패');
@@ -243,7 +264,10 @@ export const registerCustomer = async (customerData) => {
 // 계정 활성화 API
 export const activateAccount = async (activationData) => {
   try {
-    const response = await api.post('/api/customer/activate-account', activationData);
+    const response = await api.post(
+      '/api/customer/activate-account',
+      activationData
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, '계정 활성화 실패');
@@ -284,7 +308,9 @@ export const fetchHotelList = async () => {
 // 호텔 설정 조회 API
 export const fetchCustomerHotelSettings = async (hotelId) => {
   try {
-    const response = await api.get('/api/customer/hotel-settings', { params: { hotelId } });
+    const response = await api.get('/api/customer/hotel-settings', {
+      params: { hotelId },
+    });
     const hotelData = {
       ...response.data,
       latitude: response.data.latitude || null,
@@ -300,9 +326,15 @@ export const fetchCustomerHotelSettings = async (hotelId) => {
 export const fetchHotelPhotos = async (hotelId, category, subCategory) => {
   try {
     const startTime = Date.now();
-    const response = await api.get('/api/hotel-settings/photos', { params: { hotelId, category, subCategory } });
+    const response = await api.get('/api/hotel-settings/photos', {
+      params: { hotelId, category, subCategory },
+    });
     const endTime = Date.now();
-    console.log(`[api.js] fetchHotelPhotos for hotelId ${hotelId} took ${endTime - startTime}ms`);
+    console.log(
+      `[api.js] fetchHotelPhotos for hotelId ${hotelId} took ${
+        endTime - startTime
+      }ms`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, '호텔 사진 불러오기 실패');
@@ -312,7 +344,9 @@ export const fetchHotelPhotos = async (hotelId, category, subCategory) => {
 // 호텔 가용성 조회 API
 export const fetchHotelAvailability = async (hotelId, checkIn, checkOut) => {
   try {
-    const response = await api.get('/api/customer/hotel-availability', { params: { hotelId, checkIn, checkOut } });
+    const response = await api.get('/api/customer/hotel-availability', {
+      params: { hotelId, checkIn, checkOut },
+    });
     return response.data;
   } catch (error) {
     handleApiError(error, '호텔 가용성 조회 실패');
@@ -322,7 +356,10 @@ export const fetchHotelAvailability = async (hotelId, checkIn, checkOut) => {
 // 예약 생성 API
 export const createReservation = async (finalReservationData) => {
   try {
-    const response = await api.post('/api/customer/reservation', finalReservationData);
+    const response = await api.post(
+      '/api/customer/reservation',
+      finalReservationData
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, '예약 저장 실패');
@@ -375,7 +412,9 @@ export const checkDuplicate = async ({ phoneNumber, email, nickname }) => {
 // 예약 취소 API
 export const cancelReservation = async (reservationId) => {
   try {
-    const response = await api.delete(`/api/customer/reservation/${reservationId}`);
+    const response = await api.delete(
+      `/api/customer/reservation/${reservationId}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, '예약 취소 실패');
@@ -390,7 +429,11 @@ export const logoutCustomer = async () => {
       console.warn('[api.js] No customerToken found, already logged out');
       return { redirect: '/login' };
     }
-    const response = await api.post('/api/customer/logout', {}, { skipCsrf: true });
+    const response = await api.post(
+      '/api/customer/logout',
+      {},
+      { skipCsrf: true }
+    );
     return { redirect: '/login', ...response.data };
   } catch (error) {
     console.error('[api.js] Logout failed:', error);
@@ -399,7 +442,10 @@ export const logoutCustomer = async () => {
     localStorage.removeItem('customerToken');
     localStorage.removeItem('csrfToken');
     localStorage.removeItem('csrfTokenId');
-    console.log('Logout completed, refreshToken retained:', localStorage.getItem('refreshToken'));
+    console.log(
+      'Logout completed, refreshToken retained:',
+      localStorage.getItem('refreshToken')
+    );
   }
 };
 
