@@ -3,19 +3,19 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
 
-// const BASE_URL =
-//   process.env.REACT_APP_API_BASE_URL ||
-//   (process.env.NODE_ENV === 'production'
-//     ? 'https://staysync.org'
-//     : 'http://localhost:3004');
+const BASE_URL =
+  process.env.REACT_APP_API_BASE_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://staysync.org'
+    : 'http://localhost:3004');
 
-// //수정 코드 TEST1
+// //수정 코드 TEST1 (개발 - 배포)
 // const BASE_URL = 'https://staysync.org';
 // console.log('[api.js] BASE_URL:', BASE_URL);
 
-//수정 코드 TEST2
-const BASE_URL = 'http://localhost:3004';
-console.log('[api.js] BASE_URL:', BASE_URL);
+//수정 코드 TEST2 (배포 - 개발)
+// const BASE_URL = 'http://localhost:3004';
+// console.log('[api.js] BASE_URL:', BASE_URL);
 
 const api = axios.create({
   baseURL: BASE_URL,
