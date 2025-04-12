@@ -54,8 +54,8 @@ api.interceptors.request.use(
         '/api/customer/check-duplicate',
         '/api/csrf-token',
         '/api/customer/activate-account',
-        // '/api/customer/send-otp',
-        // '/api/customer/verify-otp',
+        '/api/customer/send-otp',
+        '/api/customer/verify-otp',
       ];
       if (!noRedirectRoutes.includes(config.url)) {
         throw new ApiError(401, 'No customer token available');
@@ -72,6 +72,8 @@ api.interceptors.request.use(
       '/api/customer/activate-account',
       '/api/hotel-settings/photos',
       '/api/customer/logout',
+      '/api/customer/send-otp', // 추가
+      '/api/customer/verify-otp', // 추가
     ];
     const skipCsrf =
       config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;
