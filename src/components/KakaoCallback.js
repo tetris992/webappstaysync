@@ -1,69 +1,115 @@
 // webapp/src/components/KakaoCallback.js
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '@chakra-ui/react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useToast, Spinner, Center, Box, Text } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
 import { customerLoginSocial } from '../api/api';
 
 const KakaoCallback = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    // 이미 인증된 상태면 처리하지 않음
+    if (isAuthenticated) {
+      console.log('[KakaoCallback] Already authenticated, redirecting to home');
+      navigate('/');
+      return;
+    }
+
     const handleCallback = async () => {
       try {
-        // URL에서 code 파라미터 추출
-        const urlParams = new URLSearchParams(window.location.search);
+        // 현재 경로가 콜백 URL이 아니면 처리하지 않음
+        if (!location.pathname.includes('/auth/kakao/callback')) {
+          console.log('[KakaoCallback] Not on callback path, skipping');
+          return;
+        }
+
+        const urlParams = new URLSearchParams(location.search);
         const code = urlParams.get('code');
+        
+        console.log('[KakaoCallback] Current URL:', window.location.href);
+        console.log('[KakaoCallback] Code from URL:', code);
+        
         if (!code) {
           throw new Error('카카오 인증 코드가 없습니다.');
         }
 
-        // 백엔드에 code를 전달하여 access_token 및 사용자 정보를 얻음
+        console.log('[KakaoCallback] Processing login with code');
         const response = await customerLoginSocial('kakao', { code });
+        console.log('[KakaoCallback] Login response:', response);
 
-        if (response.redirectUrl) {
-          // 백엔드에서 생성한 절대 리다이렉트 URL을 파싱
-          const redirectParams = new URLSearchParams(response.redirectUrl.split('?')[1]);
-          const token = redirectParams.get('token');
-          const refreshToken = redirectParams.get('refreshToken');
-          const customerData = JSON.parse(decodeURIComponent(redirectParams.get('customer')));
-
-          if (!token || !refreshToken || !customerData) {
-            throw new Error('토큰 정보가 없습니다.');
-          }
-
-          // AuthContext의 login 함수 호출하여 인증 상태 업데이트
-          await login(customerData, token, refreshToken);
-
-          toast({
-            title: '소셜 로그인 성공',
-            description: '카카오로 로그인되었습니다.',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
-          navigate('/');
-        } else {
-          throw new Error('리다이렉트 URL이 없습니다.');
-        }
-      } catch (error) {
+        await login(response.customer, response.token);
+        
         toast({
-          title: '소셜 로그인 실패',
-          description: error.message || '소셜 로그인 중 오류가 발생했습니다.',
-          status: 'error',
+          title: '로그인 성공',
+          description: '카카오 계정으로 로그인되었습니다.',
+          status: 'success',
           duration: 3000,
           isClosable: true,
         });
-        navigate('/login');
+        
+        // 로그인 성공 후 홈으로 이동
+        navigate('/', { replace: true });
+      } catch (error) {
+        // 카카오 인증 코드가 없는 경우는 조용히 처리
+        if (error.message === '카카오 인증 코드가 없습니다.' && !location.pathname.includes('/auth/kakao/callback')) {
+          setLoading(false);
+          return;
+        }
+
+        console.error('[KakaoCallback] Error:', error);
+        setError(error.message);
+        
+        toast({
+          title: '로그인 실패',
+          description: error.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        
+        // 로그인 실패 시 로그인 페이지로 이동
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 3000);
+      } finally {
+        setLoading(false);
       }
     };
 
     handleCallback();
-  }, [navigate, toast, login]);
+  }, [navigate, login, location, isAuthenticated, toast]);
 
-  return <div>카카오 로그인 처리 중...</div>;
+  if (!location.pathname.includes('/auth/kakao/callback')) {
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <Center height="100vh">
+        <Spinner size="xl" color="blue.500" />
+        <Text ml={4}>카카오 로그인 처리 중...</Text>
+      </Center>
+    );
+  }
+
+  if (error) {
+    return (
+      <Center height="100vh">
+        <Box textAlign="center" p={5}>
+          <Text color="red.500" fontSize="lg">{error}</Text>
+          <Text mt={2}>잠시 후 로그인 페이지로 이동합니다...</Text>
+        </Box>
+      </Center>
+    );
+  }
+
+  return null;
 };
 
 export default KakaoCallback;

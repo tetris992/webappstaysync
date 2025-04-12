@@ -29,7 +29,7 @@ import {
   HStack,
 } from '@chakra-ui/react';
 import { CalendarIcon } from '@chakra-ui/icons';
-import { FaMapMarkerAlt, FaMapSigns, FaCopy } from 'react-icons/fa'; // react-icons에서 가져오기
+import { FaMapMarkerAlt, FaMapSigns, FaCopy } from 'react-icons/fa';
 import { DateRange } from 'react-date-range';
 import {
   format,
@@ -255,22 +255,6 @@ const RoomSelection = () => {
     }
   }, [shouldFetchAvailability, hotelSettings, roomPhotosMap, handleCheckAvailability]);
 
-  const handleDateChange = (item) => {
-    const newDateRange = [item.selection];
-    setDateRange(newDateRange);
-    if (item.selection.startDate && item.selection.endDate) {
-      setIsOpen(false);
-      toast({
-        title: '날짜 선택 완료',
-        description: `${format(item.selection.startDate, 'yyyy-MM-dd')} ~ ${format(item.selection.endDate, 'yyyy-MM-dd')}`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-      setShouldFetchAvailability(true);
-    }
-  };
-
   const handleSelectRoom = (roomInfo, perNightPrice) => {
     const nights = differenceInCalendarDays(
       dateRange[0].endDate,
@@ -362,127 +346,220 @@ const RoomSelection = () => {
 
   return (
     <Container
-      maxW="container.sm"
-      py={6}
-      minH="100vh"
+      maxW="container.xl"
+      p={0}
+      h="100vh"
       display="flex"
       flexDirection="column"
+      bg="gray.50"
+      overflow="hidden"
+      position="fixed"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
     >
-      <VStack spacing={4} align="stretch" flex="1">
-        <Flex align="center" justify="center">
+      {/* 상단 헤더 */}
+      <Box 
+        w="100%" 
+        py={3}
+        px={4} 
+        bg="white" 
+        position="sticky"
+        top={0}
+        zIndex={2}
+        borderBottom="1px solid"
+        borderColor="gray.200"
+        boxShadow="sm"
+      >
+        <Flex align="center" justify="space-between">
           <Text
-            fontSize={{ base: '2xl', md: '3xl' }}
-            fontWeight="bold"
-            color="teal.500"
-            textAlign="center"
+            fontSize={{ base: "xl", md: "2xl" }}
+            fontWeight="700"
+            color="gray.900"
           >
             {hotelSettings?.hotelName || '객실 선택'}
           </Text>
-          {hotelSettings && (
+          <HStack spacing={3}>
+            {hotelSettings && (
+              <Button
+                variant="ghost"
+                color="gray.700"
+                onClick={handleAddressClick}
+                _hover={{ color: 'blue.500', bg: 'blue.50' }}
+                size="md"
+                leftIcon={<FaMapMarkerAlt size={16} />}
+                fontWeight="600"
+              >
+                위치보기
+              </Button>
+            )}
             <Button
-              variant="link"
-              color="teal.600"
-              ml={2}
-              onClick={handleAddressClick}
-              _hover={{ color: 'teal.800', textDecoration: 'underline' }}
+              variant="solid"
+              colorScheme="blue"
+              size="md"
+              fontWeight="600"
+              onClick={() => {
+                const sortedRooms = [...availableRooms].sort((a, b) => a.price - b.price);
+                setAvailableRooms(sortedRooms);
+                toast({
+                  title: '객실 정렬',
+                  description: '가격이 낮은 순으로 정렬되었습니다.',
+                  status: 'success',
+                  duration: 2000,
+                  isClosable: true,
+                });
+              }}
+              _hover={{ bg: 'blue.600' }}
             >
-              <FaMapMarkerAlt size={24} />
+              가격순 정렬
             </Button>
-          )}
+          </HStack>
         </Flex>
+      </Box>
 
-        <VStack spacing={2}>
-          <Popover
-            placement="bottom"
-            isOpen={isOpen}
-            onOpen={() => setIsOpen(true)}
-            onClose={() => setIsOpen(false)}
-            closeOnBlur={true}
-          >
-            <PopoverTrigger>
-              <InputGroup
-                w={{ base: '90%', sm: '80%', md: 'sm' }}
-                cursor="pointer"
-                mx="auto"
-              >
-                <InputLeftElement pointerEvents="none">
-                  <CalendarIcon color="gray.300" />
-                </InputLeftElement>
-                <Input
-                  readOnly
-                  borderColor="gray.300"
-                  borderRadius="full"
-                  bg="white"
-                  boxShadow="sm"
-                  _hover={{ borderColor: 'teal.500', boxShadow: 'md' }}
-                  _focus={{
-                    borderColor: 'teal.500',
-                    boxShadow: '0 0 0 2px rgba(49, 151, 149, 0.2)',
-                  }}
-                  pl="2.5rem"
-                  transition="all 0.3s ease"
-                  value={
-                    startLabel && endLabel
-                      ? `${startLabel} ~ ${endLabel}`
-                      : '날짜 선택'
-                  }
-                  aria-label="체크인 및 체크아웃 날짜 선택"
-                />
-              </InputGroup>
-            </PopoverTrigger>
-            <PopoverContent
-              zIndex={1500}
-              w="fit-content"
-              mx="auto"
-              textAlign="center"
+      {/* 날짜 선택 영역 */}
+      <Box 
+        w="100%" 
+        bg="white"
+        position="sticky"
+        top="60px"
+        zIndex={1}
+        borderBottom="1px solid"
+        borderColor="gray.200"
+        boxShadow="sm"
+        p={4}
+      >
+        <VStack spacing={3}>
+          <Box w="100%">
+            <Popover
+              isOpen={isOpen}
+              onClose={() => setIsOpen(false)}
+              closeOnBlur={false}
+              placement="bottom"
+              matchWidth
             >
-              <PopoverArrow />
-              <PopoverBody p={4} display="flex" justifyContent="center">
-                <Box>
-                  <DateRange
-                    editableDateInputs={true}
-                    onChange={handleDateChange}
-                    moveRangeOnFirstSelection={false}
-                    ranges={dateRange}
-                    months={2}
-                    direction="vertical"
-                    scroll={{ enabled: true }}
-                    minDate={startOfDay(new Date())}
-                    maxDate={addMonths(startOfDay(new Date()), 3)}
-                    locale={ko}
+              <PopoverTrigger>
+                <InputGroup>
+                  <InputLeftElement pointerEvents="none">
+                    <CalendarIcon color="gray.600" />
+                  </InputLeftElement>
+                  <Input
+                    readOnly
+                    value={`${startLabel || '체크인'} ~ ${endLabel || '체크아웃'} (${numDays}박)`}
+                    onClick={() => setIsOpen(true)}
+                    placeholder="체크인 - 체크아웃"
+                    bg="white"
+                    color="gray.800"
+                    fontWeight="500"
+                    _hover={{ borderColor: 'blue.500' }}
                   />
-                </Box>
-              </PopoverBody>
-              <PopoverFooter
-                border="0"
-                d="flex"
-                justifyContent="flex-end"
-                pb={4}
+                </InputGroup>
+              </PopoverTrigger>
+              <PopoverContent
+                width={{ base: "95vw", md: "auto" }}
+                maxWidth="95vw"
+                border="none"
+                boxShadow="xl"
+                _focus={{ boxShadow: "xl" }}
+                bg="white"
               >
-                <ChakraButton
-                  size="sm"
-                  colorScheme="gray"
-                  onClick={() => setIsOpen(false)}
-                >
-                  닫기
-                </ChakraButton>
-              </PopoverFooter>
-            </PopoverContent>
-          </Popover>
-
+                <PopoverArrow />
+                <PopoverBody p={0}>
+                  <Box
+                    className="custom-calendar-wrapper"
+                    sx={{
+                      '.rdrCalendarWrapper': {
+                        width: '100%',
+                        fontSize: '14px',
+                        bg: 'white'
+                      },
+                      '.rdrMonth': {
+                        width: '100%'
+                      },
+                      '.rdrDateDisplayWrapper': {
+                        background: 'none'
+                      },
+                      '.rdrDayToday .rdrDayNumber span:after': {
+                        background: 'blue.500'
+                      },
+                      '.rdrDateRangePickerWrapper': {
+                        p: 2
+                      },
+                      '@media (max-width: 480px)': {
+                        '.rdrCalendarWrapper, .rdrMonth': {
+                          width: '100%'
+                        },
+                        '.rdrDateRangeWrapper': {
+                          flexDirection: 'column'
+                        }
+                      }
+                    }}
+                  >
+                    <DateRange
+                      onChange={(item) => {
+                        setDateRange([item.selection]);
+                        const { startDate, endDate } = item.selection;
+                        if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
+                          setIsOpen(false);
+                          setShouldFetchAvailability(true);
+                        }
+                      }}
+                      moveRangeOnFirstSelection={false}
+                      ranges={dateRange}
+                      months={window.innerWidth > 768 ? 2 : 1}
+                      direction={window.innerWidth > 768 ? "horizontal" : "vertical"}
+                      minDate={today}
+                      maxDate={maxDate}
+                      locale={ko}
+                      rangeColors={['#3182CE']}
+                      showSelectionPreview={true}
+                      showDateDisplay={true}
+                      editableDateInputs={true}
+                      retainEndDateOnFirstSelection={true}
+                    />
+                  </Box>
+                </PopoverBody>
+              </PopoverContent>
+            </Popover>
+          </Box>
           <Text fontSize="sm" color="gray.500">
             최대 3개월 이내의 날짜만 예약 가능합니다.
           </Text>
         </VStack>
+      </Box>
 
+      {/* 객실 목록 영역 - 스크롤 가능 */}
+      <Box 
+        flex={1} 
+        overflowY="auto"
+        p={4}
+        minH={0}
+        css={{
+          '&::-webkit-scrollbar': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            width: '6px',
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#CBD5E0',
+            borderRadius: '24px',
+          },
+        }}
+      >
         {isLoading ? (
-          <VStack flex="1" justify="center" align="center">
+          <VStack flex="1" justify="center" align="center" bg="white" rounded="md" shadow="sm" p={8}>
             <Text color="gray.500">객실을 불러오는 중입니다...</Text>
           </VStack>
         ) : isAvailabilityChecked && availableRooms.length === 0 ? (
-          <Text textAlign="center" color="gray.500">
-            선택하신 기간({startLabel} ~ {endLabel})에 이용 가능한 객실이 없습니다. 다른 날짜를 선택해 주세요.
-          </Text>
+          <Box bg="white" rounded="md" shadow="sm" p={8}>
+            <Text textAlign="center" color="gray.500">
+              선택하신 기간({startLabel} ~ {endLabel})에 이용 가능한 객실이 없습니다.
+              <br />다른 날짜를 선택해 주세요.
+            </Text>
+          </Box>
         ) : (
           isAvailabilityChecked && (
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
@@ -501,16 +578,7 @@ const RoomSelection = () => {
             </SimpleGrid>
           )
         )}
-
-        <Button
-          onClick={() => navigate('/hotels')}
-          colorScheme="gray"
-          w="full"
-          size="md"
-        >
-          뒤로가기
-        </Button>
-      </VStack>
+      </Box>
 
       {/* 지도 모달 */}
       <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">

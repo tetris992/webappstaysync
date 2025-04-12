@@ -11,8 +11,7 @@ import {
   Flex,
   IconButton,
 } from '@chakra-ui/react';
-import { keyframes } from '@chakra-ui/system';
-import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { ArrowBackIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import useSocket from '../hooks/useSocket';
 import ReservationCard from '../components/ReservationCard';
@@ -21,26 +20,20 @@ import {
   cancelReservation,
   fetchHotelPhotos,
 } from '../api/api';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSwipeable } from 'react-swipeable';
 
 const MotionBox = motion(Box);
 
-const blink = keyframes`
-  0% { opacity: 0.2; }
-  50% { opacity: 0.5; }
-  100% { opacity: 0.2; }
-`;
-
 const ReservationHistory = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const { customer, logout } = useAuth();
+  const { customer } = useAuth();
   const socket = useSocket();
   const [reservations, setReservations] = useState([]);
-  const [totalVisits, setTotalVisits] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -96,7 +89,6 @@ const ReservationHistory = () => {
       );
 
       setReservations(reservationsWithPhotos);
-      setTotalVisits(response.totalVisits || 0);
     } catch (error) {
       toast({
         title: '예약 내역 로드 실패',
@@ -158,175 +150,263 @@ const ReservationHistory = () => {
     };
   }, [socket, customer, toast, loadHistory]);
 
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (currentIndex < reservations.length - 1) {
+  const paginate = (newDirection) => {
+    if (newDirection === 1 && currentIndex < reservations.length - 1) {
       setCurrentIndex(currentIndex + 1);
+      setDirection(1);
+    } else if (newDirection === -1 && currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setDirection(-1);
     }
   };
 
   const handlers = useSwipeable({
-    onSwipedLeft: () => handleNext(),
-    onSwipedRight: () => handlePrev(),
+    onSwipedLeft: () => paginate(1),
+    onSwipedRight: () => paginate(-1),
     trackMouse: true,
+    preventDefaultTouchmoveEvent: true,
   });
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+  const variants = {
+    enter: (direction) => ({
+      x: direction > 0 ? 1000 : -1000,
+      opacity: 0,
+      scale: 0.9,
+      zIndex: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+      zIndex: 1,
+      transition: {
+        x: { type: "spring", stiffness: 300, damping: 30 },
+        opacity: { duration: 0.2 },
+      },
+    },
+    exit: (direction) => ({
+      x: direction < 0 ? 1000 : -1000,
+      opacity: 0,
+      scale: 0.9,
+      zIndex: 0,
+      transition: {
+        x: { type: "spring", stiffness: 300, damping: 30 },
+      },
+    }),
   };
 
   return (
-    <Container
-      maxW="container.sm"
-      py={6}
+    <Box
       minH="100vh"
-      display="flex"
-      flexDirection="column"
+      bg="gray.50"
+      position="relative"
+      overflow="hidden"
     >
-      <VStack spacing={4} align="stretch" flex="1">
-        <Text
-          fontSize={{ base: '2xl', md: '3xl' }}
-          fontWeight="bold"
-          color="teal.500"
-          textAlign="center"
+      {/* 상단 헤더 */}
+      <Box
+        position="fixed"
+        top={0}
+        left={0}
+        right={0}
+        bg="white"
+        borderBottom="1px solid"
+        borderColor="gray.200"
+        zIndex={1000}
+        boxShadow="sm"
+      >
+        <Container 
+          maxW="container.sm" 
+          px={{ base: 3, sm: 4 }}
+          py={3}
         >
-          예약 내역
-        </Text>
-        <Text fontSize="md" color="gray.600" textAlign="center">
-          총 방문 횟수: {totalVisits}
-        </Text>
-        {isLoading ? (
-          <Box textAlign="center" py={4}>
-            <Spinner size="lg" color="teal.500" />
-          </Box>
-        ) : reservations.length === 0 ? (
-          <Text textAlign="center" color="gray.500">
-            예약 내역이 없습니다.
-          </Text>
-        ) : (
-          <Box position="relative" flex="1">
-            {currentIndex > 0 && (
+          <Flex align="center" justify="space-between">
+            {currentIndex > 0 ? (
               <IconButton
-                icon={<ChevronLeftIcon />}
-                position="absolute"
-                left="-20px"
-                top="50%"
-                transform="translateY(-50%)"
-                zIndex={10}
-                bg="gray.200"
-                opacity={0.3}
-                _hover={{ opacity: 0.7 }}
-                animation={`${blink} 3s infinite`}
-                onClick={handlePrev}
-                aria-label="Previous reservation"
+                icon={<ArrowBackIcon />}
+                variant="ghost"
+                onClick={() => paginate(-1)}
+                aria-label="이전 예약"
+              />
+            ) : (
+              <IconButton
+                icon={<ArrowBackIcon />}
+                variant="ghost"
+                onClick={() => navigate('/')}
+                aria-label="홈으로"
               />
             )}
-            <Box
-              {...handlers}
-              overflow="hidden"
-              width="100%"
-              position="relative"
-              height="auto"
-              css={{
-                '&::-webkit-scrollbar': { display: 'none' },
-                msOverflowStyle: 'none',
-                scrollbarWidth: 'none',
-              }}
+            <Text
+              fontSize="lg"
+              fontWeight="700"
+              color="gray.900"
             >
-              <Flex
-                width="100%"
-                transform={`translateX(-${currentIndex * 100}%)`}
-                transition="transform 0.5s ease-in-out"
-              >
-                {reservations.map((reservation, idx) => (
-                  <MotionBox
-                    key={reservation._id}
-                    minW="100%"
-                    maxW="100%"
-                    px={2}
-                    initial={{ opacity: 0, x: 50 }}
-                    animate={{
-                      opacity: 1,
-                      x: 0,
-                      scale: currentIndex === idx ? 1.05 : 1,
-                    }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <ReservationCard
-                      reservation={reservation}
-                      onCancel={handleCancel}
-                    />
-                  </MotionBox>
-                ))}
+              예약 내역
+            </Text>
+            <Box w="40px" />
+          </Flex>
+        </Container>
+      </Box>
+
+      {/* 메인 컨텐츠 */}
+      <Box
+        pt="65px"
+        minH="100vh"
+        position="relative"
+      >
+        <Container 
+          maxW="container.sm"
+          px={{ base: 2, sm: 3 }}
+          py={2}
+        >
+          <VStack spacing={4} align="stretch">
+            {reservations.length > 0 && (
+              <Flex justify="space-between" align="center" px={1}>
+                <Text fontSize="sm" color="gray.600">
+                  총 {reservations.length}건의 예약
+                </Text>
+                <Text fontSize="sm" color="gray.600">
+                  {currentIndex + 1} / {reservations.length}
+                </Text>
               </Flex>
-            </Box>
-            {currentIndex < reservations.length - 1 && (
-              <IconButton
-                icon={<ChevronRightIcon />}
-                position="absolute"
-                right="-20px"
-                top="50%"
-                transform="translateY(-50%)"
-                zIndex={10}
-                bg="gray.200"
-                opacity={0.3}
-                _hover={{ opacity: 0.7 }}
-                animation={`${blink} 3s infinite`}
-                onClick={handleNext}
-                aria-label="Next reservation"
-              />
             )}
-            <Flex justify="center" mt={2}>
-              {reservations.map((_, idx) => (
-                <Box
-                  key={idx}
-                  w="8px"
-                  h="8px"
-                  bg={currentIndex === idx ? 'teal.500' : 'gray.300'}
-                  borderRadius="full"
-                  mx={1}
-                  transition="background-color 0.3s"
-                />
-              ))}
-            </Flex>
-          </Box>
-        )}
-        <Button
-          colorScheme="gray"
-          variant="outline"
-          onClick={() => navigate('/')}
-          w="full"
-          size="md"
-        >
-          홈으로 돌아가기
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleLogout}
-          w="full"
-          size="md"
-          color="red.400"
-          borderColor="red.200"
-          borderRadius="full"
-          boxShadow="md"
-          _hover={{
-            bg: 'red.50',
-            transform: 'scale(1.05)',
-            boxShadow: 'lg',
-          }}
-          _active={{ transform: 'scale(0.95)' }}
-          transition="all 0.3s ease"
-        >
-          로그아웃
-        </Button>
-      </VStack>
-    </Container>
+
+            {isLoading ? (
+              <Flex justify="center" align="center" minH="500px">
+                <Spinner size="lg" color="blue.500" thickness="3px" />
+              </Flex>
+            ) : reservations.length === 0 ? (
+              <Flex 
+                direction="column" 
+                align="center" 
+                justify="center" 
+                minH="500px"
+                p={6}
+                bg="white"
+                borderRadius="lg"
+                boxShadow="sm"
+              >
+                <Text color="gray.500" fontSize="lg" mb={4}>
+                  예약 내역이 없습니다
+                </Text>
+                <Button
+                  colorScheme="blue"
+                  variant="outline"
+                  onClick={() => navigate('/')}
+                >
+                  숙소 둘러보기
+                </Button>
+              </Flex>
+            ) : (
+              <Box
+                {...handlers}
+                h={{ base: "calc(100vh - 140px)", sm: "calc(100vh - 160px)" }}
+                position="relative"
+                overflow="hidden"
+                mt={2}
+              >
+                <AnimatePresence initial={false} custom={direction}>
+                  <MotionBox
+                    key={currentIndex}
+                    custom={direction}
+                    variants={variants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    position="absolute"
+                    width="100%"
+                    height="100%"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Box
+                      w="100%"
+                      h="100%"
+                      maxH={{ base: "calc(100vh - 180px)", sm: "calc(100vh - 200px)" }}
+                      position="relative"
+                      transform="perspective(1000px)"
+                      style={{
+                        transformStyle: 'preserve-3d',
+                      }}
+                    >
+                      <Box
+                        position="relative"
+                        h="100%"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        px={{ base: 2, sm: 3 }}
+                        py={{ base: 3, sm: 4 }}
+                      >
+                        <Box
+                          w="100%"
+                          maxW={{ base: "100%", sm: "460px" }}
+                          mx="auto"
+                          h="100%"
+                          overflow="auto"
+                          sx={{
+                            '&::-webkit-scrollbar': {
+                              width: '4px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              width: '6px',
+                              background: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              background: 'rgba(0, 0, 0, 0.2)',
+                              borderRadius: '24px',
+                            },
+                          }}
+                        >
+                          <Box px={{ base: 2, sm: 3 }} py={{ base: 2, sm: 3 }}>
+                            <ReservationCard
+                              reservation={reservations[currentIndex]}
+                              onCancel={() => handleCancel(reservations[currentIndex]._id)}
+                            />
+                          </Box>
+                        </Box>
+                      </Box>
+                      {/* 다음 카드 프리뷰 */}
+                      {currentIndex < reservations.length - 1 && (
+                        <Box
+                          position="absolute"
+                          top="50%"
+                          left={0}
+                          right={0}
+                          transform="translateY(-50%) translateX(97%) scale(0.95) rotateY(-10deg)"
+                          height="90%"
+                          bg="white"
+                          borderRadius="lg"
+                          boxShadow="lg"
+                          opacity={0.5}
+                          zIndex={-1}
+                        />
+                      )}
+                      {/* 이전 카드 프리뷰 */}
+                      {currentIndex > 0 && (
+                        <Box
+                          position="absolute"
+                          top="50%"
+                          left={0}
+                          right={0}
+                          transform="translateY(-50%) translateX(-97%) scale(0.95) rotateY(10deg)"
+                          height="90%"
+                          bg="white"
+                          borderRadius="lg"
+                          boxShadow="lg"
+                          opacity={0.5}
+                          zIndex={-1}
+                        />
+                      )}
+                    </Box>
+                  </MotionBox>
+                </AnimatePresence>
+              </Box>
+            )}
+          </VStack>
+        </Container>
+      </Box>
+    </Box>
   );
 };
 

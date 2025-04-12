@@ -206,27 +206,66 @@ export const customerLogin = async (data) => {
 };
 
 // 소셜 로그인 API
-export const customerLoginSocial = async (provider, socialData) => {
+export const customerLoginSocial = async (provider, data) => {
   try {
-    const response = await api.post(
-      `/api/customer/login/social/${provider}`,
-      socialData,
-      { skipCsrf: true }
-    );
-    const redirectUrl = response.data.redirectUrl;
-    if (!redirectUrl) throw new Error('리다이렉트 URL이 없습니다.');
-    const urlParams = new URLSearchParams(redirectUrl.split('?')[1]);
-    const token = urlParams.get('token');
-    const refreshToken = urlParams.get('refreshToken');
-    if (!token || !refreshToken)
-      throw new Error('토큰 또는 리프레시 토큰이 없습니다.');
-    localStorage.setItem('customerToken', token);
-    localStorage.setItem('refreshToken', refreshToken);
-    console.log(`[api.js] Stored customerToken (social): ${token}`);
-    console.log(`[api.js] Stored refreshToken (social): ${refreshToken}`);
+    const endpoint = `/api/customer/login/social/${provider}`;
+    
+    // 데이터 유효성 검사
+    if (!data || !data.code) {
+      console.error('[api.js] Invalid data for social login:', data);
+      throw new Error(`${provider} 인증 코드가 없습니다.`);
+    }
+    
+    // 인증 코드를 명시적으로 문자열로 변환
+    const codeString = String(data.code);
+    
+    console.log(`[api.js] Making social login request to: ${endpoint}`);
+    console.log(`[api.js] Code length: ${codeString.length}`);
+    console.log(`[api.js] Code preview: ${codeString.substring(0, 10)}...`);
+    
+    // API 요청 데이터 형식: JSON
+    const requestData = { 
+      code: codeString,
+      provider 
+    };
+    
+    // 요청 헤더 설정
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+    
+    // API 요청 전송
+    const response = await api.post(endpoint, requestData, { headers });
+    
+    // 응답 데이터 로깅 및 반환
+    console.log('[api.js] Social login successful response:', {
+      status: response.status,
+      data: response.data
+    });
+    
     return response.data;
   } catch (error) {
-    handleApiError(error, '소셜 로그인 실패');
+    console.error('[api.js] Social login error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        data: error.config?.data
+      }
+    });
+    
+    // 서버에서 반환한 오류 메시지가 있으면 사용
+    const errorMessage = 
+      error.response?.data?.message || 
+      error.response?.data?.error || 
+      error.message || 
+      '소셜 로그인 처리 중 오류가 발생했습니다.';
+    
+    throw new Error(errorMessage);
   }
 };
 

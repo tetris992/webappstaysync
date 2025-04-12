@@ -1,91 +1,81 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { customerLogin, logoutCustomer } from '../api/api';
-import { getDeviceToken } from '../utils/device';
+import { useToast } from '@chakra-ui/react';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [customer, setCustomer] = useState(null);
+  const toast = useToast();
 
-  // 초기 로드 시 디바이스 토큰 확인 및 인증 상태 설정
   useEffect(() => {
-    // 디바이스 토큰 확인 (없으면 생성)
-    getDeviceToken();
-
-    // 초기 토큰 확인 및 상태 설정
-    const token = localStorage.getItem('customerToken');
-    if (token) {
-      setIsAuthenticated(true);
+    const checkAuth = () => {
+      const token = localStorage.getItem('customerToken');
       const storedCustomer = localStorage.getItem('customer');
-      if (storedCustomer) {
-        setCustomer(JSON.parse(storedCustomer));
+      if (token && storedCustomer) {
+        try {
+          setIsAuthenticated(true);
+          setCustomer(JSON.parse(storedCustomer));
+        } catch (error) {
+          console.error('Failed to parse stored customer:', error);
+          clearAuthData();
+        }
       }
-    } else {
-      // 자동 로그인 제거, 인증 상태 초기화
-      setIsAuthenticated(false);
-      setCustomer(null);
-      localStorage.removeItem('customerToken');
-    }
+    };
+    checkAuth();
   }, []);
 
-  // 로그인 함수
-  const login = async (dataOrCustomer, token, refreshToken) => {
-    if (token) {
-      // Mode B: 이미 토큰과 고객 객체를 받은 경우 (예: OTP 인증 후)
-      setIsAuthenticated(true);
-      setCustomer(dataOrCustomer);
-      localStorage.setItem('customerToken', token);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('customer', JSON.stringify(dataOrCustomer));
-      if (dataOrCustomer.phoneNumber) {
-        localStorage.setItem('phoneNumber', dataOrCustomer.phoneNumber);
-      }
-      getDeviceToken();
-      localStorage.removeItem('loggedOut');
-      return { token, refreshToken, customer: dataOrCustomer };
-    }
+  const clearAuthData = () => {
+    localStorage.removeItem('customerToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('customer');
+    localStorage.removeItem('deviceToken');
+    setIsAuthenticated(false);
+    setCustomer(null);
+  };
 
-    // Mode A: 백엔드 로그인 API 호출 (현재 사용되지 않음)
+  const login = async (dataOrCustomer, token) => {
     try {
-      const response = await customerLogin(dataOrCustomer);
+      if (!dataOrCustomer) {
+        throw new Error('고객 정보가 제공되지 않았습니다.');
+      }
+
+      // 토큰이 제공된 경우 (소셜 로그인 등)
+      const customerData = { ...dataOrCustomer };
+      
+      // localStorage에 데이터 저장
+      try {
+        if (token) {
+          localStorage.setItem('customerToken', token);
+        }
+        localStorage.setItem('customer', JSON.stringify(customerData));
+      } catch (storageError) {
+        console.error('Failed to store auth data:', storageError);
+        throw new Error('인증 정보 저장에 실패했습니다.');
+      }
+
       setIsAuthenticated(true);
-      setCustomer(response.customer);
-      localStorage.setItem('customerToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('customer', JSON.stringify(response.customer));
-      localStorage.setItem('phoneNumber', dataOrCustomer.phoneNumber);
-      getDeviceToken();
-      return response;
+      setCustomer(customerData);
+      return { token, customer: customerData };
     } catch (error) {
+      clearAuthData();
       throw error;
     }
   };
 
-  // 로그아웃 함수
   const logout = async () => {
     try {
-      await logoutCustomer();
-      setIsAuthenticated(false);
-      setCustomer(null);
-      localStorage.removeItem('customerToken');
-      localStorage.removeItem('csrfToken');
-      localStorage.removeItem('csrfTokenId');
-      localStorage.removeItem('customer');
-      // phoneNumber, deviceToken, refreshToken은 유지
-      console.log('Logout completed, retained values:', {
-        phoneNumber: localStorage.getItem('phoneNumber'),
-        deviceToken: localStorage.getItem('deviceToken'),
-        refreshToken: localStorage.getItem('refreshToken'),
-      });
+      clearAuthData();
+      window.location.href = '/login'; // 카카오 로그인 페이지가 아닌 일반 로그인 페이지로 리다이렉트
     } catch (error) {
-      console.error('[AuthContext] Logout failed:', error);
-      setIsAuthenticated(false);
-      setCustomer(null);
-      localStorage.removeItem('customerToken');
-      localStorage.removeItem('csrfToken');
-      localStorage.removeItem('csrfTokenId');
-      localStorage.removeItem('customer');
+      console.error('Logout failed:', error);
+      toast({
+        title: '로그아웃 실패',
+        description: '로그아웃 처리 중 오류가 발생했습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -96,4 +86,10 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

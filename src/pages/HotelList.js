@@ -189,70 +189,111 @@ const HotelList = ({ loadHotelSettings }) => {
   if (!isAuthenticated || !customer) return <Navigate to="/login" replace />;
 
   return (
-    <Flex direction="column" minH="100vh" bg="gray.50">
-      <Container maxW="container.sm" py={6} flex="1" display="flex" flexDirection="column">
-        <Box mb={4}>
-          <Text fontSize={{ base: '2xl', md: '3xl' }} fontWeight="bold" color="gray.800" textAlign="center">
-            호텔 목록
-          </Text>
-          {searchQuery && (
-            <Text fontSize="md" color="gray.600" textAlign="center" mt={2}>
-              검색어: {searchQuery}
+    <Box minH="100vh" bg="gray.50" position="relative">
+      {/* 상단 헤더 */}
+      <Box
+        position="fixed"
+        top={0}
+        left={0}
+        right={0}
+        bg="white"
+        borderBottom="1px solid"
+        borderColor="gray.200"
+        zIndex={1000}
+        boxShadow="sm"
+      >
+        <Container maxW="container.sm" py={{ base: 4, md: 5 }}>
+          <VStack spacing={1}>
+            <Text
+              fontSize={{ base: 'xl', md: '2xl' }}
+              fontWeight="700"
+              color="gray.900"
+            >
+              편안한 후불예약
             </Text>
-          )}
-        </Box>
+            <Text
+              fontSize={{ base: 'sm', md: 'md' }}
+              color="gray.600"
+              fontWeight="500"
+            >
+              간편하게 예약하고 체크인하세요
+            </Text>
+          </VStack>
+        </Container>
+      </Box>
 
-        <VStack spacing={3} mb={4}>
-          <InputGroup w="full">
-            <InputLeftElement pointerEvents="none">
-              <SearchIcon color="gray.300" />
-            </InputLeftElement>
-            <Input
-              placeholder="호텔 이름 검색"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              borderColor="gray.300"
-              _hover={{ borderColor: 'brand.500' }}
-              _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #319795' }}
-            />
-          </InputGroup>
-          <HStack spacing={2} w="full" flexWrap="wrap">
-            <Select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
-              w={{ base: 'full', md: '30%' }}
-              borderColor="gray.300"
-            >
-              <option value="name">이름순</option>
-              <option value="priceAsc">가격 낮은순</option>
-              <option value="priceDesc">가격 높은순</option>
-              <option value="ratingDesc">평점 높은순</option>
-            </Select>
-            <Select
-              value={priceFilter}
-              onChange={(e) => setPriceFilter(e.target.value)}
-              w={{ base: 'full', md: '30%' }}
-              borderColor="gray.300"
-            >
-              <option value="all">모든 가격</option>
-              <option value="0-50000">0 ~ 50,000원</option>
-              <option value="50000-100000">50,000 ~ 100,000원</option>
-              <option value="100000-">100,000원 이상</option>
-            </Select>
-            <Select
-              value={ratingFilter}
-              onChange={(e) => setRatingFilter(e.target.value)}
-              w={{ base: 'full', md: '30%' }}
-              borderColor="gray.300"
-            >
-              <option value="all">모든 평점</option>
-              <option value="4">4점 이상</option>
-              <option value="3">3점 이상</option>
-            </Select>
-          </HStack>
-        </VStack>
+      {/* 메인 컨텐츠 */}
+      <Box
+        pt={{ base: "80px", sm: "90px", md: "100px" }}
+        pb={{ base: "60px", md: "70px" }}
+        minH="100vh"
+        maxH="100vh"
+        overflowY="auto"
+        position="relative"
+        sx={{
+          '&::-webkit-scrollbar': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            width: '6px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'gray.200',
+            borderRadius: '24px',
+          },
+        }}
+      >
+        <Container maxW="container.sm" py={4}>
+          <VStack spacing={3} mb={4}>
+            <InputGroup w="full">
+              <InputLeftElement pointerEvents="none">
+                <SearchIcon color="gray.300" />
+              </InputLeftElement>
+              <Input
+                placeholder="호텔 이름 검색"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                borderColor="gray.300"
+                _hover={{ borderColor: 'brand.500' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #319795' }}
+              />
+            </InputGroup>
+            <HStack spacing={2} w="full" flexWrap="wrap">
+              <Select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                w={{ base: 'full', md: '30%' }}
+                borderColor="gray.300"
+              >
+                <option value="name">이름순</option>
+                <option value="priceAsc">가격 낮은순</option>
+                <option value="priceDesc">가격 높은순</option>
+                <option value="ratingDesc">평점 높은순</option>
+              </Select>
+              <Select
+                value={priceFilter}
+                onChange={(e) => setPriceFilter(e.target.value)}
+                w={{ base: 'full', md: '30%' }}
+                borderColor="gray.300"
+              >
+                <option value="all">모든 가격</option>
+                <option value="0-50000">0 ~ 50,000원</option>
+                <option value="50000-100000">50,000 ~ 100,000원</option>
+                <option value="100000-">100,000원 이상</option>
+              </Select>
+              <Select
+                value={ratingFilter}
+                onChange={(e) => setRatingFilter(e.target.value)}
+                w={{ base: 'full', md: '30%' }}
+                borderColor="gray.300"
+              >
+                <option value="all">모든 평점</option>
+                <option value="4">4점 이상</option>
+                <option value="3">3점 이상</option>
+              </Select>
+            </HStack>
+          </VStack>
 
-        <Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { display: 'none' }, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           {isLoading ? (
             <Flex justify="center" align="center" h="200px" flexDirection="column">
               <Spinner size="lg" color="brand.500" thickness="4px" />
@@ -285,41 +326,9 @@ const HotelList = ({ loadHotelSettings }) => {
               ))}
             </VStack>
           )}
-        </Box>
-
-        <Box mt={4}>
-          <VStack spacing={2}>
-            <Button
-              colorScheme="teal"
-              variant="outline"
-              onClick={() => navigate('/history')}
-              w="full"
-              size="md"
-            >
-              예약 내역
-            </Button>
-            <Button
-              colorScheme="teal"
-              variant="outline"
-              onClick={() => navigate(-1)}
-              w="full"
-              size="md"
-            >
-              뒤로가기
-            </Button>
-            <Button
-              colorScheme="red"
-              variant="outline"
-              onClick={handleLogout}
-              w="full"
-              size="md"
-            >
-              로그아웃
-            </Button>
-          </VStack>
-        </Box>
-      </Container>
-    </Flex>
+        </Container>
+      </Box>
+    </Box>
   );
 };
 

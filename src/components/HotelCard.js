@@ -264,24 +264,25 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               mt={1}
             />
             <Button
-              variant="link"
-              color="teal.600"
+              variant="ghost"
+              color="gray.600"
               onClick={handleAddressClick}
               textAlign="left"
               fontSize="sm"
-              p={0}
-              _hover={{ color: 'teal.800', textDecoration: 'underline' }}
-              flex="1"
-              whiteSpace="normal" // 2줄까지 허용
-              overflow="visible"
-              textOverflow="clip"
-              lineHeight="normal"
-              maxH="2.8em" // 2줄 높이 제한
+              leftIcon={<Icon as={FaMapMarkerAlt} color="blue.500" />}
+              rightIcon={<Icon as={FaMapSigns} color="green.500" />}
+              whiteSpace="normal"
+              height="auto"
+              py={2}
               display="-webkit-box"
-              wbkitLineClamp={2} // 2줄까지만 표시
-              webkitBoxOrient="vertical"
+              sx={{
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
             >
-              위치: {hotel.address || '주소 정보 없음'}
+              {hotel.address || '주소 정보 없음'}
             </Button>
             <Flex align="center" ml={2} flexShrink={0}>
               <Button
