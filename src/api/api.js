@@ -66,9 +66,6 @@ api.interceptors.request.use(
       '/api/customer/activate-account',
       '/api/hotel-settings/photos',
       '/api/customer/logout',
-      '/api/customer/send-otp', // 추가
-      '/api/customer/verify-otp', // 추가
-      '/api/customer/auto-login', // 추가
     ];
     const skipCsrf =
       config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;

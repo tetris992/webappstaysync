@@ -306,7 +306,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
                     iconMap[amenity.icon] || FaQuestionCircle;
                   return (
                     <Box key={idx} title={amenity.nameKor}>
-                      <Icon as={IconComponent} color="teal.500" boxSize={4} />
+                      <Icon as={IconComponent} color="teal.500" w={4} h={4} />
                     </Box>
                   );
                 })}
