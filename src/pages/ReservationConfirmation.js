@@ -48,15 +48,15 @@ const ReservationConfirmation = () => {
   const [hotelPhoneNumber, setHotelPhoneNumber] = useState(null);
   const [coordinates, setCoordinates] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [reservationId, setReservationId] = useState('');
+  const [reservationId, setReservationId] = useState(null);
   const [roomImage, setRoomImage] = useState('/assets/default-room1.jpg');
+  const [specialRequests, setSpecialRequests] = useState('');
   const [isMapOpen, setIsMapOpen] = useState(false);
 
   // location.state에서 필요한 정보 추출
   const roomInfo = location.state?.roomInfo || '';
   const stateCheckIn = location.state?.checkIn || null;
   const stateCheckOut = location.state?.checkOut || null;
-  const specialRequests = location.state?.specialRequests || null;
 
   // 숙박 일수 계산
   const numNights = stateCheckIn && stateCheckOut
