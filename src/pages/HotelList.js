@@ -54,8 +54,6 @@ const HotelList = ({ loadHotelSettings }) => {
   const location = useLocation();
   const { searchQuery: initialSearchQuery, checkIn, checkOut, guestCount } = location.state || {};
   const { isOpen, onToggle, onClose } = useDisclosure();
-  const [lastScrollY, setLastScrollY] = useState(0);
-
   const [hotels, setHotels] = useState([]);
   const [filteredHotels, setFilteredHotels] = useState([]);
   const [favorites, setFavorites] = useState({});
@@ -224,7 +222,6 @@ const HotelList = ({ loadHotelSettings }) => {
     const mainContent = mainContentRef.current;
     if (!mainContent) return;
 
-    // 스크롤 이벤트 핸들러
     const handleScroll = () => {
       if (isOpen) {
         onClose();
@@ -240,7 +237,7 @@ const HotelList = ({ loadHotelSettings }) => {
       mainContent.removeEventListener('touchstart', handleMainContentInteraction);
       mainContent.removeEventListener('mousedown', handleMainContentInteraction);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, handleMainContentInteraction]);
 
   if (!isAuthenticated || !customer) return <Navigate to="/login" replace />;
 

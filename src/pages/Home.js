@@ -45,7 +45,6 @@ const Home = () => {
   ]);
   const [guestCount, setGuestCount] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
 
   useEffect(() => {
     let lastScrollY = window.pageYOffset;
@@ -53,11 +52,6 @@ const Home = () => {
     const updateScrollPosition = () => {
       const scrollY = window.pageYOffset;
       const direction = scrollY > lastScrollY ? "down" : "up";
-      if (direction === "down" && scrollY > 50) {
-        setIsHeaderVisible(false);
-      } else if (direction === "up") {
-        setIsHeaderVisible(true);
-      }
       lastScrollY = scrollY > 0 ? scrollY : 0;
     };
 

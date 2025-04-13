@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -23,7 +23,7 @@ import {
   IconButton,
   Grid,
 } from '@chakra-ui/react';
-import { FaMapMarkerAlt, FaMapSigns, FaCopy, FaArrowBack, FaPhone } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaMapSigns, FaCopy, FaPhone } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import {
   createReservation,
@@ -36,140 +36,132 @@ import Map from '../components/Map';
 import { ArrowBackIcon } from '@chakra-ui/icons';
 
 const ReservationConfirmation = () => {
-  const { state } = useLocation();
+  const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const toast = useToast();
-  const { customer } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [visitCount, setVisitCount] = useState(0);
+  const [hotelId, setHotelId] = useState(null);
+  const [checkIn, setCheckIn] = useState(null);
+  const [checkOut, setCheckOut] = useState(null);
+  const [price, setPrice] = useState(0);
   const [hotelInfo, setHotelInfo] = useState(null);
+  const [hotelPhoneNumber, setHotelPhoneNumber] = useState(null);
+  const [coordinates, setCoordinates] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [reservationId, setReservationId] = useState('');
-  const [statusText, setStatusText] = useState('');
-  const [formattedCheckIn, setFormattedCheckIn] = useState('');
-  const [formattedCheckOut, setFormattedCheckOut] = useState('');
   const [roomImage, setRoomImage] = useState('/assets/default-room1.jpg');
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [coordinates, setCoordinates] = useState(null);
-  const [hotelPhoneNumber, setHotelPhoneNumber] = useState('');
 
-  const { hotelId, roomInfo, checkIn, checkOut, price, specialRequests } =
-    state || {};
+  // location.state에서 필요한 정보 추출
+  const roomInfo = location.state?.roomInfo || '';
+  const stateCheckIn = location.state?.checkIn || null;
+  const stateCheckOut = location.state?.checkOut || null;
+  const specialRequests = location.state?.specialRequests || null;
 
-  const numNights =
-    checkIn && checkOut
-      ? (() => {
-          const checkInDate = new Date(checkIn);
-          const checkOutDate = new Date(checkOut);
-          let nights = differenceInCalendarDays(checkOutDate, checkInDate);
-          return nights < 1 ? 1 : nights;
-        })()
-      : 1;
+  // 숙박 일수 계산
+  const numNights = stateCheckIn && stateCheckOut
+    ? (() => {
+        const checkInDate = new Date(stateCheckIn);
+        const checkOutDate = new Date(stateCheckOut);
+        let nights = differenceInCalendarDays(checkOutDate, checkInDate);
+        return nights < 1 ? 1 : nights;
+      })()
+    : 1;
 
-  const reservationDate = format(new Date(), 'yyyy-MM-dd HH:mm');
+  // 호텔 정보 및 사진 로드
+  const loadHotelInfoAndPhotos = useCallback(async (hotelId) => {
+    try {
+      // 호텔 목록에서 전화번호 가져오기
+      const hotelList = await fetchHotelList();
+      const hotelData = hotelList.find(hotel => hotel.hotelId === hotelId);
+      if (hotelData && hotelData.phoneNumber) {
+        setHotelPhoneNumber(hotelData.phoneNumber);
+      }
 
-  const formattedReservationId = reservationId
-    ? `WEB-${reservationId.slice(-8)}`
-    : '생성 중...';
+      const hotelSettings = await fetchCustomerHotelSettings(hotelId);
+      console.log('[ReservationConfirmation] Hotel data received:', {
+        hotelId: hotelSettings.hotelId,
+        hotelName: hotelSettings.hotelName,
+        address: hotelSettings.address,
+        latitude: hotelSettings.latitude,
+        longitude: hotelSettings.longitude,
+      });
+      setHotelInfo(hotelSettings);
 
-  useEffect(() => {
-    const loadHotelInfoAndPhotos = async () => {
-      try {
-        // 호텔 목록에서 전화번호 가져오기
-        const hotelList = await fetchHotelList();
-        const hotelData = hotelList.find(hotel => hotel.hotelId === hotelId);
-        if (hotelData && hotelData.phoneNumber) {
-          setHotelPhoneNumber(hotelData.phoneNumber);
-        }
-
-        const hotelSettings = await fetchCustomerHotelSettings(hotelId);
-        console.log('[ReservationConfirmation] Hotel data received:', {
-          hotelId: hotelSettings.hotelId,
-          hotelName: hotelSettings.hotelName,
-          address: hotelSettings.address,
+      // 좌표 초기화
+      if (hotelSettings.latitude && hotelSettings.longitude) {
+        setCoordinates({ lat: hotelSettings.latitude, lng: hotelSettings.longitude });
+        console.log('[ReservationConfirmation] Coordinates set:', {
+          hotelId,
           latitude: hotelSettings.latitude,
           longitude: hotelSettings.longitude,
         });
-        setHotelInfo(hotelSettings);
-
-        // 좌표 초기화
-        if (hotelSettings.latitude && hotelSettings.longitude) {
-          setCoordinates({ lat: hotelSettings.latitude, lng: hotelSettings.longitude });
-          console.log('[ReservationConfirmation] Coordinates set:', {
-            hotelId,
-            latitude: hotelSettings.latitude,
-            longitude: hotelSettings.longitude,
-          });
-        } else {
-          console.log(
-            '[ReservationConfirmation] No coordinates available for hotel:',
-            {
-              hotelId,
-              address: hotelSettings.address,
-            }
-          );
-          toast({
-            title: '좌표 정보 없음',
-            description: '호텔 좌표를 찾을 수 없습니다.',
-            status: 'warning',
-            duration: 3000,
-            isClosable: true,
-          });
-        }
-
-        const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
-        console.log(
-          `[ReservationConfirmation] Photos for room ${roomInfo}:`,
-          photosData
-        );
-        if (photosData?.roomPhotos && photosData.roomPhotos.length > 0) {
-          setRoomImage(photosData.roomPhotos[0].photoUrl);
-        }
-
-        const checkInTime = hotelSettings?.checkInTime || '15:00';
-        const checkOutTime = hotelSettings?.checkOutTime || '11:00';
-
-        const checkInDateTimeStr = checkIn
-          ? `${checkIn}T${checkInTime}:00+09:00`
-          : null;
-        const checkOutDateTimeStr = checkOut
-          ? `${checkOut}T${checkOutTime}:00+09:00`
-          : null;
-
-        const checkInDateTime = checkInDateTimeStr
-          ? new Date(checkInDateTimeStr)
-          : null;
-        const checkOutDateTime = checkOutDateTimeStr
-          ? new Date(checkOutDateTimeStr)
-          : null;
-
-        setFormattedCheckIn(
-          checkInDateTime ? format(checkInDateTime, 'yyyy-MM-dd HH:mm') : 'N/A'
-        );
-        setFormattedCheckOut(
-          checkOutDateTime
-            ? format(checkOutDateTime, 'yyyy-MM-dd HH:mm')
-            : 'N/A'
-        );
-      } catch (error) {
+      } else {
+        console.log('[ReservationConfirmation] No coordinates available for hotel:', {
+          hotelId,
+          address: hotelSettings.address,
+        });
         toast({
-          title: '호텔 정보 로드 실패',
-          description: error.message || '호텔 정보를 불러오지 못했습니다.',
-          status: 'error',
+          title: '좌표 정보 없음',
+          description: '호텔 위치 정보를 불러올 수 없습니다.',
+          status: 'warning',
           duration: 3000,
           isClosable: true,
         });
       }
-    };
 
-    if (hotelId && roomInfo) {
-      loadHotelInfoAndPhotos();
+      const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
+      console.log(
+        `[ReservationConfirmation] Photos for room ${roomInfo}:`,
+        photosData
+      );
+      if (photosData?.roomPhotos && photosData.roomPhotos.length > 0) {
+        setRoomImage(photosData.roomPhotos[0].photoUrl);
+      }
+
+      const checkInTime = hotelSettings?.checkInTime || '15:00';
+      const checkOutTime = hotelSettings?.checkOutTime || '11:00';
+
+      const checkInDateTimeStr = stateCheckIn
+        ? `${stateCheckIn}T${checkInTime}:00+09:00`
+        : null;
+      const checkOutDateTimeStr = stateCheckOut
+        ? `${stateCheckOut}T${checkOutTime}:00+09:00`
+        : null;
+
+      const checkInDateTime = checkInDateTimeStr
+        ? new Date(checkInDateTimeStr)
+        : null;
+      const checkOutDateTime = checkOutDateTimeStr
+        ? new Date(checkOutDateTimeStr)
+        : null;
+
+      setCheckIn(checkInDateTime);
+      setCheckOut(checkOutDateTime);
+    } catch (error) {
+      console.error('[ReservationConfirmation] Error loading hotel info:', error);
+      toast({
+        title: '호텔 정보 로드 실패',
+        description: '호텔 정보를 불러오는 중 오류가 발생했습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
+  }, [stateCheckIn, stateCheckOut, roomInfo, toast]);
 
-    setVisitCount(0);
-  }, [hotelId, roomInfo, checkIn, checkOut, toast]);
+  // 초기 데이터 로드
+  useEffect(() => {
+    if (location.state) {
+      const { hotelId, price } = location.state;
+      setHotelId(hotelId);
+      setPrice(price);
+      loadHotelInfoAndPhotos(hotelId);
+    }
+  }, [location.state, loadHotelInfoAndPhotos]);
 
   const handleConfirm = async () => {
-    if (!customer) {
+    if (!user) {
       toast({
         title: '인증 오류',
         description: '로그인이 필요합니다.',
@@ -184,18 +176,14 @@ const ReservationConfirmation = () => {
     const finalReservationData = {
       hotelId: hotelId,
       siteName: '단잠',
-      customerName: customer.name,
-      phoneNumber: customer.phoneNumber,
+      customerName: user.name,
+      phoneNumber: user.phoneNumber,
       hotelPhoneNumber: hotelPhoneNumber,
       roomInfo: roomInfo,
       originalRoomInfo: '',
       roomNumber: '',
-      checkIn: formattedCheckIn
-        ? `${checkIn}T${hotelInfo?.checkInTime || '15:00'}:00+09:00`
-        : checkIn,
-      checkOut: formattedCheckOut
-        ? `${checkOut}T${hotelInfo?.checkOutTime || '11:00'}:00+09:00`
-        : checkOut,
+      checkIn: checkIn ? format(checkIn, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
+      checkOut: checkOut ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
       reservationDate: new Date().toISOString().replace('Z', '+09:00'),
       reservationStatus: '예약완료',
       price: price,
@@ -223,7 +211,6 @@ const ReservationConfirmation = () => {
       setIsLoading(true);
       const response = await createReservation(finalReservationData);
       setReservationId(response.reservationId);
-      setStatusText('예약확정');
       toast({
         title: '예약 성공',
         description: '예약이 완료되었습니다.',
@@ -337,7 +324,7 @@ const ReservationConfirmation = () => {
     e.target.src = '/assets/default-room1.jpg';
   };
 
-  if (!state) {
+  if (!location.state) {
     return (
       <Container maxW="container.sm" py={6} minH="100vh">
         <Text textAlign="center" color="red.500">
@@ -515,19 +502,19 @@ const ReservationConfirmation = () => {
                 <Divider />
                 <Grid templateColumns="1fr 2fr" gap={3} width="100%">
                   <Text color="gray.600">예약 번호</Text>
-                  <Text fontWeight="medium">{formattedReservationId}</Text>
+                  <Text fontWeight="medium">{reservationId || '생성 중...'}</Text>
                   
                   <Text color="gray.600">예약자</Text>
-                  <Text fontWeight="medium">{customer?.name || '예약자 정보 없음'}</Text>
+                  <Text fontWeight="medium">{user?.name || '예약자 정보 없음'}</Text>
                   
                   <Text color="gray.600">객실</Text>
                   <Text fontWeight="medium">{roomInfo}</Text>
                   
                   <Text color="gray.600">체크인</Text>
-                  <Text fontWeight="medium">{formattedCheckIn}</Text>
+                  <Text fontWeight="medium">{checkIn ? format(checkIn, 'yyyy-MM-dd HH:mm') : 'N/A'}</Text>
                   
                   <Text color="gray.600">체크아웃</Text>
-                  <Text fontWeight="medium">{formattedCheckOut}</Text>
+                  <Text fontWeight="medium">{checkOut ? format(checkOut, 'yyyy-MM-dd HH:mm') : 'N/A'}</Text>
                   
                   <Text color="gray.600">숙박 일수</Text>
                   <Text fontWeight="medium">{numNights}박</Text>
