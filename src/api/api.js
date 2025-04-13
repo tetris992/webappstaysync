@@ -210,6 +210,10 @@ export const customerLoginSocial = async (provider, data) => {
   try {
     const endpoint = `/api/customer/login/social/${provider}`;
     
+    console.log(`[디버깅] 소셜 로그인 시작 - 공급자: ${provider}`);
+    console.log(`[디버깅] 현재 환경: ${process.env.NODE_ENV}`);
+    console.log(`[디버깅] API 기본 URL: ${process.env.REACT_APP_API_BASE_URL}`);
+    
     // 데이터 유효성 검사
     if (!data || !data.code) {
       console.error('[api.js] Invalid data for social login:', data);
@@ -235,16 +239,32 @@ export const customerLoginSocial = async (provider, data) => {
       'Accept': 'application/json'
     };
     
-    // API 요청 전송
-    const response = await api.post(endpoint, requestData, { headers });
+    console.log(`[디버깅] 전체 요청 URL: ${process.env.REACT_APP_API_BASE_URL}${endpoint}`);
+    console.log(`[디버깅] 요청 데이터:`, requestData);
+    console.log(`[디버깅] 요청 헤더:`, headers);
     
-    // 응답 데이터 로깅 및 반환
-    console.log('[api.js] Social login successful response:', {
-      status: response.status,
-      data: response.data
-    });
-    
-    return response.data;
+    // API 요청 전송 - 에러 캐치를 위해 try/catch 추가
+    try {
+      const response = await api.post(endpoint, requestData, { headers });
+      
+      // 응답 데이터 로깅 및 반환
+      console.log('[api.js] Social login successful response:', {
+        status: response.status,
+        data: response.data
+      });
+      
+      return response.data;
+    } catch (requestError) {
+      console.error('[디버깅] 요청 실패 상세:', {
+        message: requestError.message,
+        status: requestError.response?.status,
+        statusText: requestError.response?.statusText,
+        data: requestError.response?.data,
+        url: requestError.config?.url,
+        method: requestError.config?.method
+      });
+      throw requestError;
+    }
   } catch (error) {
     console.error('[api.js] Social login error:', {
       message: error.message,
