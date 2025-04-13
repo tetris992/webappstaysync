@@ -7,7 +7,6 @@ import {
   Button,
   useToast,
   Icon,
-  Input,
   HStack,
   Heading,
   Container,
@@ -16,7 +15,7 @@ import { SiKakao } from 'react-icons/si';
 import { FaPhone } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { initKakao } from '../utils/kakao';
-import { sendOTP, verifyOTP } from '../api/api';
+import { verifyOTP } from '../api/api';
 
 const Login = () => {
   const { customer } = useAuth();
@@ -24,9 +23,6 @@ const Login = () => {
   const toast = useToast();
   const [isKakaoLoading, setIsKakaoLoading] = useState(false);
   const [isKakaoEnabled, setIsKakaoEnabled] = useState(true);
-  const [showPhoneInput, setShowPhoneInput] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
 
   useEffect(() => {
     if (customer) navigate('/');
@@ -151,71 +147,6 @@ const Login = () => {
         </VStack>
       </Container>
     </Box>
-  );
-};
-
-const OTPVerificationForm = ({ phoneNumber, onSuccess }) => {
-  const [otp, setOtp] = useState('');
-  const toast = useToast();
-
-  const handleVerify = async () => {
-    if (!otp) {
-      toast({
-        title: "인증번호를 입력해주세요",
-        status: "warning",
-        duration: 3000,
-      });
-      return;
-    }
-
-    try {
-      const response = await verifyOTP({
-        phoneNumber: phoneNumber.replace(/[^0-9]/g, ''),
-        otp
-      });
-
-      if (response.success) {
-        toast({
-          title: "로그인 성공",
-          status: "success",
-          duration: 3000,
-        });
-        onSuccess(response);
-      }
-    } catch (error) {
-      console.error('OTP 검증 오류:', error);
-      toast({
-        title: error.message || '인증 실패',
-        status: "error",
-        duration: 3000,
-      });
-    }
-  };
-
-  return (
-    <VStack spacing={4} w="100%">
-      <Input
-        type="number"
-        value={otp}
-        onChange={(e) => setOtp(e.target.value)}
-        placeholder="인증번호 6자리 입력"
-        size="lg"
-        h="50px"
-        bg="white"
-        borderColor="gray.200"
-      />
-      <Button
-        w="100%"
-        h="50px"
-        colorScheme="blue"
-        onClick={handleVerify}
-        isDisabled={!otp}
-        fontSize="16px"
-        fontWeight="600"
-      >
-        인증하기
-      </Button>
-    </VStack>
   );
 };
 
