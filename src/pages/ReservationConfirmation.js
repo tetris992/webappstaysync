@@ -50,7 +50,7 @@ const ReservationConfirmation = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [reservationId, setReservationId] = useState(null);
   const [roomImage, setRoomImage] = useState('/assets/default-room1.jpg');
-  const [specialRequests, setSpecialRequests] = useState(null);
+  const specialRequests = null;
   const [isMapOpen, setIsMapOpen] = useState(false);
 
   // location.state에서 필요한 정보 추출
