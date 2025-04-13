@@ -26,10 +26,10 @@ import {
 import { FaMapMarkerAlt, FaMapSigns, FaCopy, FaPhone } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  createReservation,
   fetchCustomerHotelSettings,
   fetchHotelPhotos,
   fetchHotelList,
+  createReservation,
 } from '../api/api';
 import { differenceInCalendarDays, format } from 'date-fns';
 import Map from '../components/Map';
@@ -38,7 +38,7 @@ import { ArrowBackIcon } from '@chakra-ui/icons';
 const ReservationConfirmation = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user: customer } = useAuth();
   const toast = useToast();
   const [hotelId, setHotelId] = useState(null);
   const [checkIn, setCheckIn] = useState(null);
@@ -48,15 +48,15 @@ const ReservationConfirmation = () => {
   const [hotelPhoneNumber, setHotelPhoneNumber] = useState(null);
   const [coordinates, setCoordinates] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [reservationId, setReservationId] = useState('');
+  const [reservationId, setReservationId] = useState(null);
   const [roomImage, setRoomImage] = useState('/assets/default-room1.jpg');
+  const [specialRequests, setSpecialRequests] = useState('');
   const [isMapOpen, setIsMapOpen] = useState(false);
 
   // location.state에서 필요한 정보 추출
   const roomInfo = location.state?.roomInfo || '';
   const stateCheckIn = location.state?.checkIn || null;
   const stateCheckOut = location.state?.checkOut || null;
-  const specialRequests = location.state?.specialRequests || null;
 
   // 숙박 일수 계산
   const numNights = stateCheckIn && stateCheckOut
@@ -152,78 +152,61 @@ const ReservationConfirmation = () => {
 
   // 초기 데이터 로드
   useEffect(() => {
+    if (!customer) {
+      toast({
+        title: "로그인이 필요합니다",
+        description: "예약을 진행하려면 로그인이 필요합니다.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
     if (location.state) {
       const { hotelId, price } = location.state;
       setHotelId(hotelId);
       setPrice(price);
       loadHotelInfoAndPhotos(hotelId);
     }
-  }, [location.state, loadHotelInfoAndPhotos]);
+  }, [location.state, loadHotelInfoAndPhotos, customer, navigate, location, toast]);
 
   const handleConfirm = async () => {
-    if (!user) {
-      toast({
-        title: '인증 오류',
-        description: '로그인이 필요합니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      navigate('/login');
-      return;
-    }
-
-    const finalReservationData = {
-      hotelId: hotelId,
-      siteName: '단잠',
-      customerName: user.name,
-      phoneNumber: user.phoneNumber,
-      hotelPhoneNumber: hotelPhoneNumber,
-      roomInfo: roomInfo,
-      originalRoomInfo: '',
-      roomNumber: '',
-      checkIn: checkIn ? format(checkIn, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
-      checkOut: checkOut ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
-      reservationDate: new Date().toISOString().replace('Z', '+09:00'),
-      reservationStatus: '예약완료',
-      price: price,
-      specialRequests: specialRequests || null,
-      additionalFees: 0,
-      couponInfo: null,
-      paymentStatus: '미결제',
-      paymentMethod: '현장결제',
-      isCancelled: false,
-      type: 'stay',
-      duration: numNights,
-      isCheckedIn: false,
-      isCheckedOut: false,
-      manuallyCheckedOut: false,
-      paymentHistory: [],
-      remainingBalance: price,
-      notificationHistory: [],
-      sentCreate: false,
-      sentCancel: false,
-      hotelName: hotelInfo?.hotelName || '알 수 없음',
-      address: hotelInfo?.address || '주소 정보 없음',
-    };
-
+    console.log("Customer found, proceeding with reservation");
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const response = await createReservation(finalReservationData);
-      setReservationId(response.reservationId);
+      const reservationData = {
+        hotelId: location.state.hotelId,
+        customerName: customer.name,
+        phoneNumber: customer.phoneNumber,
+        email: customer.email,
+        roomId: location.state.roomInfo._id,
+        checkIn: location.state.checkIn,
+        checkOut: location.state.checkOut,
+        price: location.state.price,
+        numNights: location.state.numNights,
+        specialRequests: specialRequests
+      };
+      
+      console.log("Sending reservation data:", reservationData);
+
+      const reservationResponse = await createReservation(reservationData);
+      setReservationId(reservationResponse._id);
       toast({
-        title: '예약 성공',
-        description: '예약이 완료되었습니다.',
-        status: 'success',
+        title: "예약이 완료되었습니다",
+        description: "예약 내역은 예약 목록에서 확인할 수 있습니다.",
+        status: "success",
         duration: 3000,
         isClosable: true,
       });
-      navigate('/history');
+      navigate("/reservations");
     } catch (error) {
+      console.error("Reservation error:", error);
       toast({
-        title: '예약 실패',
-        description: error.message || '예약을 완료하지 못했습니다.',
-        status: 'error',
+        title: "예약 실패",
+        description: error.response?.data?.message || "예약 처리 중 오류가 발생했습니다.",
+        status: "error",
         duration: 3000,
         isClosable: true,
       });
@@ -505,7 +488,7 @@ const ReservationConfirmation = () => {
                   <Text fontWeight="medium">{reservationId || '생성 중...'}</Text>
                   
                   <Text color="gray.600">예약자</Text>
-                  <Text fontWeight="medium">{user?.name || '예약자 정보 없음'}</Text>
+                  <Text fontWeight="medium">{customer?.name || '예약자 정보 없음'}</Text>
                   
                   <Text color="gray.600">객실</Text>
                   <Text fontWeight="medium">{roomInfo}</Text>
