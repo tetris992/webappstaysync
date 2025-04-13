@@ -203,7 +203,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                 colorScheme="gray"
                 onClick={handleCancelClick}
                 w="100%"
-                _hover={{ bg: 'gray.600' }}
+                _hover={{ bg: 'gray.200', color: 'red.500' }}
               >
                 예약 취소
               </Button>

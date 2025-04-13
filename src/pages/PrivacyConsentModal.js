@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   VStack,
@@ -11,7 +11,6 @@ import {
   useColorModeValue,
   useToast,
 } from '@chakra-ui/react';
-import { activateAccount } from '../api/api';
 
 const PrivacyConsentPage = () => {
   const [agreements, setAgreements] = useState({
@@ -22,8 +21,6 @@ const PrivacyConsentPage = () => {
   const [allAgreed, setAllAgreed] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
-  const location = useLocation();
-  const { formData } = location.state || {}; // 회원가입 정보가 없을 수도 있음
   const bottomRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const cardBg = useColorModeValue('white', 'gray.700');
@@ -66,7 +63,7 @@ const PrivacyConsentPage = () => {
     if (!agreements.terms || !agreements.privacy) {
       toast({
         title: '동의 필요',
-        description: '필수 약관에 동의해야 회원가입이 가능합니다.',
+        description: '필수 약관에 동의해야 서비스 이용이 가능합니다.',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -74,40 +71,13 @@ const PrivacyConsentPage = () => {
       return;
     }
 
-    if (!formData || !formData.customerId) {
-      toast({
-        title: '회원가입 정보 없음',
-        description:
-          '회원가입 정보를 찾을 수 없습니다. 회원가입 페이지로 돌아갑니다.',
-        status: 'info',
-        duration: 4000,
-        isClosable: true,
-      });
-      navigate('/register');
-      return;
-    }
-
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
-      const data = {
-        ...formData,
-        agreements: {
-          terms: agreements.terms,
-          privacy: agreements.privacy,
-          marketing: agreements.marketing || false,
-        },
-      };
-
-      await activateAccount({
-        customerId: formData.customerId,
-        agreements: data.agreements,
-      });
-      console.log('Account activation response:', data);
-
+      // 카카오 로그인은 별도의 계정 활성화 과정이 필요 없음
       toast({
-        title: '회원가입 성공',
+        title: '약관 동의 완료',
         description: '약관 동의가 완료되었습니다. 로그인 페이지로 이동합니다.',
         status: 'success',
         duration: 3000,
@@ -116,12 +86,10 @@ const PrivacyConsentPage = () => {
 
       navigate('/login');
     } catch (error) {
-      console.error('Account activation error:', error);
+      console.error('Error:', error);
       toast({
-        title: '회원가입 실패',
-        description:
-          error.message ||
-          '계정 활성화 중 오류가 발생했습니다. 다시 시도해주세요.',
+        title: '오류 발생',
+        description: '처리 중 오류가 발생했습니다. 다시 시도해주세요.',
         status: 'error',
         duration: 5000,
         isClosable: true,

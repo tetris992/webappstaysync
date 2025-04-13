@@ -40,10 +40,8 @@ export const AuthProvider = ({ children }) => {
         throw new Error('고객 정보가 제공되지 않았습니다.');
       }
 
-      // 토큰이 제공된 경우 (소셜 로그인 등)
       const customerData = { ...dataOrCustomer };
       
-      // localStorage에 데이터 저장
       try {
         if (token) {
           localStorage.setItem('customerToken', token);
@@ -66,7 +64,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       clearAuthData();
-      window.location.href = '/login'; // 카카오 로그인 페이지가 아닌 일반 로그인 페이지로 리다이렉트
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout failed:', error);
       toast({

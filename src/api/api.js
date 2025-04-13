@@ -71,9 +71,7 @@ api.interceptors.request.use(
       '/api/customer/check-duplicate',
       '/api/customer/activate-account',
       '/api/hotel-settings/photos',
-      '/api/customer/logout',
-      '/api/customer/send-otp', // 추가
-      '/api/customer/verify-otp', // 추가
+      '/api/customer/logout'
     ];
     const skipCsrf =
       config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;
@@ -315,29 +313,6 @@ export const connectSocialAccount = async (provider, socialData) => {
   }
 };
 
-// 회원 가입 API
-export const registerCustomer = async (customerData) => {
-  try {
-    const response = await api.post('/api/customer/register', customerData);
-    return response.data;
-  } catch (error) {
-    handleApiError(error, '회원가입 실패');
-  }
-};
-
-// 계정 활성화 API
-export const activateAccount = async (activationData) => {
-  try {
-    const response = await api.post(
-      '/api/customer/activate-account',
-      activationData
-    );
-    return response.data;
-  } catch (error) {
-    handleApiError(error, '계정 활성화 실패');
-  }
-};
-
 // 동의 항목 수정 API
 export const updateCustomer = async (agreements) => {
   try {
@@ -458,21 +433,6 @@ export const getReservationHistory = async () => {
   }
 };
 
-// 중복 체크 API 호출 함수 추가
-export const checkDuplicate = async ({ phoneNumber, email, nickname }) => {
-  try {
-    console.log('checkDuplicate input:', { phoneNumber, email, nickname });
-    const response = await api.post('/api/customer/check-duplicate', {
-      phoneNumber,
-      email: email || null,
-      nickname: nickname || null,
-    });
-    return response.data;
-  } catch (error) {
-    handleApiError(error, '중복 체크 실패');
-  }
-};
-
 // 예약 취소 API
 export const cancelReservation = async (reservationId) => {
   try {
@@ -512,85 +472,6 @@ export const logoutCustomer = async () => {
     );
   }
 };
-
-// sendOTP 함수 개선
-export const sendOTP = async (data) => {
-  try {
-    console.log('[api.js] Sending OTP request:', {
-      phoneNumber: data.phoneNumber,
-      url: '/api/customer/send-otp'
-    });
-
-    const response = await api.post('/api/customer/send-otp', {
-      phoneNumber: data.phoneNumber.replace(/[^0-9]/g, '')
-    });
-
-    console.log('[api.js] OTP send response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('[api.js] sendOTP error:', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        headers: error.config?.headers,
-        data: error.config?.data
-      }
-    });
-
-    // 구체적인 에러 메시지 처리
-    let errorMessage;
-    if (error.response?.status === 404) {
-      errorMessage = '인증번호 전송 서비스를 찾을 수 없습니다.';
-    } else if (error.response?.status === 400) {
-      errorMessage = error.response.data.message || '잘못된 전화번호 형식입니다.';
-    } else if (error.response?.status === 429) {
-      errorMessage = '너무 많은 인증 시도입니다. 잠시 후 다시 시도해주세요.';
-    } else {
-      errorMessage = error.response?.data?.message || '인증번호 전송에 실패했습니다.';
-    }
-
-    throw new ApiError(
-      error.response?.status || 500,
-      errorMessage,
-      error.response?.data
-    );
-  }
-};
-
-// OTP 검증 및 로그인 API
-export const verifyOTP = async (data) => {
-  try {
-    const response = await api.post('/api/customer/verify-otp', data);
-    const { token, refreshToken } = response.data;
-    localStorage.setItem('customerToken', token);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('phoneNumber', data.phoneNumber);
-    return response.data;
-  } catch (error) {
-    handleApiError(error, '인증번호 검증 실패');
-  }
-};
-
-// 자동로그인 API
-// export const autoLogin = async (data) => {
-//   try {
-//     const response = await api.post('/api/customer/auto-login', data);
-//     const { token, refreshToken } = response.data;
-//     localStorage.setItem('customerToken', token);
-//     localStorage.setItem('refreshToken', refreshToken);
-//     localStorage.setItem('phoneNumber', data.phoneNumber);
-//     return response.data;
-//   } catch (error) {
-//     console.error(
-//       '[api.js] autoLogin error:',
-//       error.response?.data || error.message
-//     );
-//     handleApiError(error, '자동로그인 실패');
-//   }
-// };
 
 export { getCustomerToken, getCsrfToken, getCsrfTokenId };
 export default api;

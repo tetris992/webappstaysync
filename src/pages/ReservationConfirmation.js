@@ -38,7 +38,7 @@ import { ArrowBackIcon } from '@chakra-ui/icons';
 const ReservationConfirmation = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { customer } = useAuth();
   const toast = useToast();
   const [hotelId, setHotelId] = useState(null);
   const [checkIn, setCheckIn] = useState(null);
@@ -161,7 +161,7 @@ const ReservationConfirmation = () => {
   }, [location.state, loadHotelInfoAndPhotos]);
 
   const handleConfirm = async () => {
-    if (!user) {
+    if (!customer) {
       toast({
         title: '인증 오류',
         description: '로그인이 필요합니다.',
@@ -176,8 +176,8 @@ const ReservationConfirmation = () => {
     const finalReservationData = {
       hotelId: hotelId,
       siteName: '단잠',
-      customerName: user.name,
-      phoneNumber: user.phoneNumber,
+      customerName: customer.name,
+      phoneNumber: customer.phoneNumber,
       hotelPhoneNumber: hotelPhoneNumber,
       roomInfo: roomInfo,
       originalRoomInfo: '',
@@ -505,7 +505,7 @@ const ReservationConfirmation = () => {
                   <Text fontWeight="medium">{reservationId || '생성 중...'}</Text>
                   
                   <Text color="gray.600">예약자</Text>
-                  <Text fontWeight="medium">{user?.name || '예약자 정보 없음'}</Text>
+                  <Text fontWeight="medium">{customer?.name || '예약자 정보 없음'}</Text>
                   
                   <Text color="gray.600">객실</Text>
                   <Text fontWeight="medium">{roomInfo}</Text>

@@ -12,7 +12,6 @@ import {
   Container,
 } from '@chakra-ui/react';
 import { SiKakao } from 'react-icons/si';
-import { FaPhone } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { initKakao } from '../utils/kakao';
 
@@ -71,16 +70,6 @@ const Login = () => {
     }
   };
 
-  const handlePhoneLoginAttempt = () => {
-    toast({
-      title: "카카오톡으로 로그인해주세요",
-      description: "현재 일반 전화번호 로그인은 준비 중입니다. 카카오톡으로 로그인해주세요.",
-      status: "info",
-      duration: 5000,
-      isClosable: true,
-    });
-  };
-
   if (customer) return null;
 
   return (
@@ -118,19 +107,6 @@ const Login = () => {
               fontWeight="600"
             >
               카카오로 시작하기
-            </Button>
-
-            <Button
-              leftIcon={<Icon as={FaPhone} />}
-              w="100%"
-              h="50px"
-              colorScheme="blue"
-              variant="outline"
-              onClick={handlePhoneLoginAttempt}
-              fontSize="16px"
-              fontWeight="600"
-            >
-              전화번호로 로그인
             </Button>
             
             <Text fontSize="sm" color="gray.600" textAlign="center">
