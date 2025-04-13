@@ -15,7 +15,6 @@ import { SiKakao } from 'react-icons/si';
 import { FaPhone } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { initKakao } from '../utils/kakao';
-import { verifyOTP } from '../api/api';
 
 const Login = () => {
   const { customer } = useAuth();
