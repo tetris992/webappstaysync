@@ -1,5 +1,5 @@
 // webapp/src/components/KakaoCallback.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast, Spinner, Center, Box, Text } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,7 @@ const KakaoCallback = () => {
   const { login, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const processingRef = useRef(false); // 처리 중인지 여부를 추적하는 ref
 
   useEffect(() => {
     // 이미 인증된 상태면 처리하지 않음
@@ -21,14 +22,24 @@ const KakaoCallback = () => {
       return;
     }
 
-    const handleCallback = async () => {
-      try {
-        // 현재 경로가 콜백 URL이 아니면 처리하지 않음
-        if (!location.pathname.includes('/auth/kakao/callback')) {
-          console.log('[KakaoCallback] Not on callback path, skipping');
-          return;
-        }
+    // 현재 경로가 콜백 URL이 아니면 처리하지 않음
+    if (!location.pathname.includes('/auth/kakao/callback')) {
+      console.log('[KakaoCallback] Not on callback path, skipping');
+      setLoading(false);
+      return;
+    }
 
+    // 이미 처리 중이면 중복 처리 방지
+    if (processingRef.current) {
+      console.log('[KakaoCallback] Already processing, skipping duplicate');
+      return;
+    }
+
+    const handleCallback = async () => {
+      // 처리 시작 표시
+      processingRef.current = true;
+      
+      try {
         const urlParams = new URLSearchParams(location.search);
         const code = urlParams.get('code');
         
@@ -40,28 +51,26 @@ const KakaoCallback = () => {
         }
 
         console.log('[KakaoCallback] Processing login with code');
+        // 재시도 없이 한 번만 요청
         const response = await customerLoginSocial('kakao', { code });
         console.log('[KakaoCallback] Login response:', response);
 
-        await login(response.customer, response.token);
-        
-        toast({
-          title: '로그인 성공',
-          description: '카카오 계정으로 로그인되었습니다.',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-        
-        // 로그인 성공 후 홈으로 이동
-        navigate('/', { replace: true });
-      } catch (error) {
-        // 카카오 인증 코드가 없는 경우는 조용히 처리
-        if (error.message === '카카오 인증 코드가 없습니다.' && !location.pathname.includes('/auth/kakao/callback')) {
-          setLoading(false);
-          return;
+        // 로그인 성공했을 때만 상태 업데이트
+        if (response && response.success) {
+          await login(response.customer, response.token);
+          
+          toast({
+            title: '로그인 성공',
+            description: '카카오 계정으로 로그인되었습니다.',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+          
+          // 로그인 성공 후 홈으로 이동
+          navigate('/', { replace: true });
         }
-
+      } catch (error) {
         console.error('[KakaoCallback] Error:', error);
         setError(error.message);
         
@@ -79,6 +88,8 @@ const KakaoCallback = () => {
         }, 3000);
       } finally {
         setLoading(false);
+        // 처리 완료 표시
+        processingRef.current = false;
       }
     };
 
