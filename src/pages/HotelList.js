@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -212,11 +212,11 @@ const HotelList = ({ loadHotelSettings }) => {
   };
 
   // 본문 영역 스크롤 및 상호작용 핸들러
-  const handleMainContentInteraction = () => {
+  const handleMainContentInteraction = useCallback(() => {
     if (isOpen) {
       onClose();
     }
-  };
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     const mainContent = mainContentRef.current;

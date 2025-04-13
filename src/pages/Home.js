@@ -51,7 +51,6 @@ const Home = () => {
 
     const updateScrollPosition = () => {
       const scrollY = window.pageYOffset;
-      const direction = scrollY > lastScrollY ? "down" : "up";
       lastScrollY = scrollY > 0 ? scrollY : 0;
     };
 
