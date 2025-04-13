@@ -165,72 +165,61 @@ const Home = () => {
     <Box
       minH="100vh"
       bg="gray.50"
-      position="relative"
-      overflow="hidden"
+      position="fixed"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      display="flex"
+      flexDirection="column"
       w="100%"
     >
       <Box
-        position="fixed"
-        top={0}
-        left={0}
-        right={0}
         bg="white"
         borderBottom="1px solid"
         borderColor="gray.200"
-        transform={isHeaderVisible ? "translateY(0)" : "translateY(-100%)"}
-        transition="transform 0.3s ease"
-        zIndex={1000}
-        boxShadow="sm"
         width="100%"
+        py={4}
       >
-        <Container 
-          maxW="100%"
-          px={4}
-          py={3}
-          mx="auto"
-        >
-          <VStack spacing={1} width="100%">
+        <Container maxW="container.sm">
+          <Flex align="center" justify="center" position="relative">
             <Text
-              fontSize={{ base: 'lg', md: 'xl' }}
-              fontWeight="700"
-              color="gray.900"
+              fontSize={{ base: "xl", md: "2xl" }}
+              fontWeight="bold"
               textAlign="center"
-              width="100%"
             >
-              편안한 후불예약
+              단 잠
             </Text>
-            <Text
-              fontSize={{ base: 'xs', md: 'sm' }}
-              color="gray.600"
-              textAlign="center"
-              width="100%"
-            >
-              간편하게 예약하고 체크인시 결제하세요
-            </Text>
-          </VStack>
+          </Flex>
         </Container>
       </Box>
 
       <Box
-        pt={{ base: "70px", sm: "80px", md: "90px" }}
-        pb={{ base: "70px", md: "80px" }}
-        minH="100vh"
-        h="100%"
-        position="relative"
-        overflowX="hidden"
+        flex={1}
+        overflowY="auto"
+        sx={{
+          '&::-webkit-scrollbar': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'gray.300',
+            borderRadius: '24px',
+          },
+        }}
       >
         <Container
-          maxW={{ base: "100%", sm: "95%", md: "container.sm" }}
-          h="100%"
-          py={{ base: 2, sm: 3 }}
+          maxW={{ base: "100%", sm: "95%", md: "container.md" }}
+          py={{ base: 4, sm: 6 }}
           px={{ base: 4, sm: 6 }}
-          display="flex"
-          flexDirection="column"
         >
           <VStack
-            spacing={{ base: 4, md: 5 }}
+            spacing={4}
             align="stretch"
             w="100%"
+            pb={{ base: "90px", md: "100px" }}
           >
             <VStack 
               spacing={{ base: 3, sm: 4 }} 

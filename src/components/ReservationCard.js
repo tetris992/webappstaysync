@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Image,
@@ -17,13 +17,15 @@ import {
   Flex,
   Icon,
   HStack,
+  Grid,
+  IconButton,
 } from '@chakra-ui/react';
-import { FaMapMarkerAlt, FaMapSigns, FaCopy } from 'react-icons/fa';
-import { format, isAfter } from 'date-fns';
+import { FaMapMarkerAlt, FaMapSigns, FaCopy, FaPhone } from 'react-icons/fa';
+import { format } from 'date-fns';
 import { useToast } from '@chakra-ui/react';
 import Map from './Map';
 
-const ReservationCard = ({ reservation, onCancel }) => {
+const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
   const {
     _id,
     hotelName = '알 수 없음',
@@ -33,76 +35,24 @@ const ReservationCard = ({ reservation, onCancel }) => {
     checkOut,
     numDays,
     price,
-    reservationStatus,
-    isCancelled,
     paymentMethod = '현장결제',
     address,
-    phoneNumber,
     photoUrl,
     customerName,
-    checkInTime = '15:00',
-    checkOutTime = '11:00',
-    latitude, // 좌표 추가
-    longitude, // 좌표 추가
+    latitude,
+    longitude,
+    hotelPhoneNumber,
   } = reservation || {};
 
   const safePrice = typeof price === 'number' ? price : 0;
   const thumbnail = photoUrl || '../assets/default-room1.jpg';
   const cardBg = useColorModeValue('white', 'gray.700');
   const toast = useToast();
-
-  const [statusText, setStatusText] = useState('');
   const [isMapOpen, setIsMapOpen] = useState(false);
 
-  useEffect(() => {
-    const currentDateTime = new Date();
-
-    const checkInDateTimeStr = checkIn
-      ? `${checkIn.split(' ')[0]}T${checkInTime}:00+09:00`
-      : null;
-    const checkOutDateTimeStr = checkOut
-      ? `${checkOut.split(' ')[0]}T${checkOutTime}:00+09:00`
-      : null;
-
-    const checkInDateTime = checkInDateTimeStr
-      ? new Date(checkInDateTimeStr)
-      : null;
-    const checkOutDateTime = checkOutDateTimeStr
-      ? new Date(checkOutDateTimeStr)
-      : null;
-
-    const checkInDeadline = checkInDateTime
-      ? new Date(
-          checkInDateTime.getFullYear(),
-          checkInDateTime.getMonth(),
-          checkInDateTime.getDate(),
-          14,
-          0,
-          0
-        )
-      : null;
-
-    if (isCancelled) {
-      setStatusText('취소됨');
-    } else if (checkOutDateTime && isAfter(currentDateTime, checkOutDateTime)) {
-      setStatusText('사용완료');
-    } else if (checkInDeadline && isAfter(currentDateTime, checkInDeadline)) {
-      setStatusText('예약확정');
-    } else if (checkInDateTime && isAfter(currentDateTime, checkInDateTime)) {
-      setStatusText('예약확정');
-    } else {
-      setStatusText(reservationStatus || '확인필요');
-    }
-  }, [checkIn, checkOut, checkInTime, checkOutTime, isCancelled, reservationStatus]);
-
   const handleCancelClick = () => {
-    if (
-      onCancel &&
-      !isCancelled &&
-      statusText !== '예약확정' &&
-      statusText !== '사용완료'
-    ) {
-      onCancel(_id);
+    if (!isConfirmed && onCancelReservation && _id) {
+      onCancelReservation(_id);
     }
   };
 
@@ -177,21 +127,25 @@ const ReservationCard = ({ reservation, onCancel }) => {
 
   return (
     <Box
-      w="full"
-      maxW="sm"
+      w="100%"
+      maxW={{ base: "100%", sm: "95%", md: "container.md" }}
       mx="auto"
       borderWidth="1px"
       borderRadius="lg"
       overflow="hidden"
-      bg={cardBg}
+      bg={isConfirmed ? 'gray.50' : cardBg}
       shadow="md"
       p={4}
+      transition="background-color 0.2s"
+      _hover={{
+        bg: isConfirmed ? 'gray.100' : 'gray.50'
+      }}
     >
       <VStack align="stretch" spacing={3}>
         <Image
           src={thumbnail}
           alt="thumbnail"
-          h="150px"
+          h={{ base: "180px", sm: "200px", md: "250px" }}
           w="100%"
           objectFit="cover"
           borderRadius="md"
@@ -201,81 +155,99 @@ const ReservationCard = ({ reservation, onCancel }) => {
             {hotelName} ({hotelId})
           </Text>
           <Divider />
-          <Text fontSize="sm" color="gray.600">
-            예약 번호: {`WEB-${_id.slice(-8)}`}
-          </Text>
-          <Text fontSize="sm" color="gray.600">
-            예약자: {customerName || '예약자 정보 없음'}
-          </Text>
-          <Text fontSize="sm" color="gray.600">
-            객실: {roomInfo}
-          </Text>
-          <Text fontSize="sm" color="gray.600">
-            결제: {paymentMethod}
-          </Text>
-          <Text fontSize="sm" color="gray.600">
-            체크인:{' '}
-            {checkIn ? format(new Date(checkIn), 'yyyy-MM-dd HH:mm') : 'N/A'}
-          </Text>
-          <Text fontSize="sm" color="gray.600">
-            체크아웃:{' '}
-            {checkOut ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm') : 'N/A'}
-          </Text>
-          <Text fontSize="sm" color="gray.600">
-            숙박 일수: {numDays || 1}박
-          </Text>
-          <Text fontWeight="semibold" color="blue.500">
-            총 가격: {safePrice.toLocaleString()}원
-          </Text>
-          {address && (
-            <Flex align="center" mb={2}>
-              <Icon as={FaMapMarkerAlt} color="teal.500" boxSize={4} mr={2} />
-              <Button
-                variant="link"
-                color="teal.600"
-                onClick={handleAddressClick}
-                textAlign="left"
-                fontSize="sm"
-                p={0}
-                _hover={{ color: 'teal.800', textDecoration: 'underline' }}
-              >
-                위치: {address}
-              </Button>
-            </Flex>
-          )}
+          <Grid templateColumns="auto 1fr" gap={2} width="100%" pl={4}>
+            <Text fontSize="sm" color="gray.600">예약 번호:</Text>
+            <Text fontSize="sm">{`WEB-${_id.slice(-8)}`}</Text>
+
+            <Text fontSize="sm" color="gray.600">예약자:</Text>
+            <Text fontSize="sm">{customerName || '예약자 정보 없음'}</Text>
+
+            <Text fontSize="sm" color="gray.600">객실:</Text>
+            <Text fontSize="sm">{roomInfo}</Text>
+
+            <Text fontSize="sm" color="gray.600">결제:</Text>
+            <Text fontSize="sm">{paymentMethod}</Text>
+
+            <Text fontSize="sm" color="gray.600">체크인:</Text>
+            <Text fontSize="sm">
+              {checkIn ? format(new Date(checkIn), 'yyyy-MM-dd HH:mm') : 'N/A'}
+            </Text>
+
+            <Text fontSize="sm" color="gray.600">체크아웃:</Text>
+            <Text fontSize="sm">
+              {checkOut ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm') : 'N/A'}
+            </Text>
+
+            <Text fontSize="sm" color="gray.600">숙박 일수:</Text>
+            <Text fontSize="sm">{numDays || 1}박</Text>
+
+            <Text fontSize="sm" color="gray.600">총 가격:</Text>
+            <Text fontSize="sm" fontWeight="semibold" color="blue.500">
+              {safePrice.toLocaleString()}원
+            </Text>
+          </Grid>
         </VStack>
         <Divider />
-        <VStack align="start" spacing={2}>
-          <Text
-            fontSize="sm"
-            color={
-              statusText === '취소됨'
-                ? 'red.500'
-                : statusText === '사용완료'
-                ? 'gray.500'
-                : statusText === '예약확정'
-                ? 'blue.500'
-                : 'green.600'
-            }
-          >
-            상태: {statusText}
-          </Text>
-          {paymentMethod === '현장결제' && (
-            <Text fontSize="xs" color="gray.500">
-              후불예약은 당일 14시 전까지 무료 취소 가능합니다.
+        <VStack align="start" spacing={2} w="100%">
+          {isConfirmed ? (
+            <Text fontSize="md" color="green.500" fontWeight="semibold" w="100%" textAlign="center">
+              예약이 확정되었습니다
             </Text>
-          )}
-          <Text fontSize="xs" color="gray.500">
-            문의: {phoneNumber || '정보 없음'}
-          </Text>
-          <Divider />
-          {!isCancelled &&
-            statusText !== '예약확정' &&
-            statusText !== '사용완료' && (
-              <Button size="sm" colorScheme="red" onClick={handleCancelClick}>
+          ) : (
+            <>
+              <Text fontSize="xs" color="gray.500">
+                후불예약은 당일 14시 전까지 무료 취소 가능합니다.
+              </Text>
+              <Button
+                size="sm"
+                colorScheme="gray"
+                onClick={handleCancelClick}
+                w="100%"
+                _hover={{ bg: 'gray.600' }}
+              >
                 예약 취소
               </Button>
-            )}
+            </>
+          )}
+          {address && (
+            <Flex align="center" w="100%">
+              <Icon as={FaMapMarkerAlt} color="teal.500" boxSize={4} mr={2} />
+              <Text
+                flex="1"
+                fontSize="sm"
+                color="teal.600"
+                cursor="pointer"
+                onClick={handleAddressClick}
+                _hover={{ color: 'teal.800', textDecoration: 'underline' }}
+              >
+                {address}
+              </Text>
+              <IconButton
+                icon={<FaCopy />}
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyAddress}
+                aria-label="주소 복사"
+                color="gray.500"
+                _hover={{ color: 'teal.600' }}
+              />
+            </Flex>
+          )}
+          {hotelPhoneNumber && (
+            <Flex align="center" w="100%">
+              <Icon as={FaPhone} color="blue.500" boxSize={4} mr={2} />
+              <Text
+                flex="1"
+                fontSize="sm"
+                color="blue.600"
+                cursor="pointer"
+                onClick={() => window.location.href = `tel:${hotelPhoneNumber.replace(/[^0-9]/g, '')}`}
+                _hover={{ color: 'blue.800', textDecoration: 'underline' }}
+              >
+                {hotelPhoneNumber}
+              </Text>
+            </Flex>
+          )}
         </VStack>
       </VStack>
 

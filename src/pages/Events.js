@@ -8,7 +8,10 @@ import {
   Image,
   Badge,
   Flex,
+  Heading,
+  IconButton,
 } from '@chakra-ui/react';
+import { FaArrowLeft } from 'react-icons/fa';
 
 const Events = () => {
   const navigate = useNavigate();
@@ -36,9 +39,25 @@ const Events = () => {
   ];
 
   return (
-    <Box bg="white" minH="100vh">
-      <Container maxW="container.sm" py={4}>
-        <SimpleGrid columns={1} spacing={6}>
+    <Box bg="gray.50" minH="100vh">
+      <Box bg="white" borderBottom="1px" borderColor="gray.200" mb={6}>
+        <Container maxW="container.lg" py={4}>
+          <Flex position="relative" align="center" justify="center">
+            <IconButton
+              icon={<FaArrowLeft />}
+              variant="ghost"
+              position="absolute"
+              left={0}
+              aria-label="뒤로 가기"
+              onClick={() => navigate(-1)}
+            />
+            <Heading size="lg" color="gray.800">이벤트</Heading>
+          </Flex>
+        </Container>
+      </Box>
+
+      <Container maxW="container.lg" py={4}>
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
           {eventHotels.map((hotel) => (
             <Box
               key={hotel.id}
@@ -46,6 +65,7 @@ const Events = () => {
               borderRadius="2xl"
               overflow="hidden"
               boxShadow="sm"
+              bg="white"
               onClick={() => navigate(`/rooms/${hotel.id}`)}
               cursor="pointer"
               transition="all 0.2s"

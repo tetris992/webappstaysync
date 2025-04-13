@@ -15,6 +15,7 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
+  VStack,
 } from '@chakra-ui/react';
 import {
   FaRegStar,
@@ -30,6 +31,9 @@ import 'slick-carousel/slick/slick-theme.css';
 import { useToast } from '@chakra-ui/react';
 import iconMap from '../utils/iconMap';
 import Map from './Map';
+import { motion } from 'framer-motion';
+
+const MotionBox = motion(Box);
 
 const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -57,8 +61,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
       // 좌표가 없는 경우 주소 복사만 가능
       toast({
         title: '위치 정보 없음',
-        description:
-          '호텔 좌표 정보를 찾을 수 없습니다. 주소를 복사할 수 있습니다.',
+        description: '호텔 좌표 정보를 찾을 수 없습니다. 주소를 복사할 수 있습니다.',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -73,9 +76,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
       return;
     }
 
-    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${
-      hotel.latitude
-    }&name=${encodeURIComponent(hotel.hotelName || '호텔')}`;
+    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${hotel.latitude}&name=${encodeURIComponent(hotel.hotelName || '호텔')}`;
     console.log('[HotelCard] TMap URL:', tmapUrl);
     window.location.href = tmapUrl;
 
@@ -88,8 +89,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
       } else {
         toast({
           title: 'T맵 설치 필요',
-          description:
-            'T맵 앱이 설치되어 있지 않습니다. 기본 지도를 표시합니다.',
+          description: 'T맵 앱이 설치되어 있지 않습니다. 기본 지도를 표시합니다.',
           status: 'info',
           duration: 3000,
           isClosable: true,
@@ -99,10 +99,10 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
     }, 2000);
   };
 
-  const handleCopyAddress = () => {
+  const handleCopyAddress = (e) => {
+    e.stopPropagation();
     if (hotel.address) {
-      navigator.clipboard
-        .writeText(hotel.address)
+      navigator.clipboard.writeText(hotel.address)
         .then(() => {
           toast({
             title: '주소 복사 완료',
@@ -143,162 +143,109 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
 
   return (
     <>
-      <Box
-        borderWidth="0"
-        borderRadius="xl"
+      <MotionBox
+        whileHover={{ scale: 1.02 }}
+        transition={{ duration: 0.2 }}
+        borderWidth="1px"
+        borderRadius="lg"
         overflow="hidden"
-        shadow="sm"
         bg="white"
-        transition="all 0.4s ease"
-        _hover={{ shadow: 'xl', transform: 'translateY(-8px)' }}
+        shadow="sm"
+        _hover={{ shadow: 'lg' }}
       >
         <Slider {...sliderSettings}>
           {photos.map((photo, idx) => (
-            <Box key={idx}>
+            <Box key={idx} height="200px">
               <Image
                 src={photo.photoUrl}
                 alt={`${hotel.hotelName} - ${idx + 1}`}
-                h="150px"
-                w="100%"
+                height="100%"
+                width="100%"
                 objectFit="cover"
                 loading="lazy"
                 onError={(e) => {
                   e.target.src = '/assets/default-hotel.jpg';
                 }}
-                boxShadow="sm"
               />
             </Box>
           ))}
         </Slider>
-        <Box p={5}>
+        <Box p={4}>
           <Flex justify="space-between" align="center" mb={3}>
             <Text
               fontSize="xl"
               fontWeight="semibold"
               color="gray.800"
-              isTruncated
+              noOfLines={1}
             >
               {hotel.hotelName || '호텔 이름 없음'}
             </Text>
             <IconButton
               icon={isFavorite ? <FaStar /> : <FaRegStar />}
-              onClick={toggleFavorite}
-              variant="unstyled"
-              bg="transparent"
-              aria-label={
-                isFavorite ? 'Remove from favorites' : 'Add to favorites'
-              }
-              fontSize="22px"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFavorite();
+              }}
+              variant="ghost"
+              aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 등록'}
               color={isFavorite ? 'yellow.400' : 'gray.400'}
-              _focus={{ boxShadow: 'none', outline: 'none' }}
-              _hover={{ bg: 'transparent', transform: 'scale(1.1)' }}
-              _active={{ bg: 'transparent' }}
-              transition="all 0.3s ease"
             />
           </Flex>
-          <Flex align="center" mb={3}>
-            <HStack spacing={1}>
-              {[...Array(5)].map((_, i) => (
-                <Icon
-                  key={i}
-                  as={i < Math.floor(hotel.rating || 0) ? FaStar : FaRegStar}
-                  color={
-                    i < Math.floor(hotel.rating || 0)
-                      ? 'yellow.400'
-                      : 'gray.300'
-                  }
-                  boxSize={3.5}
-                />
-              ))}
-            </HStack>
-            <Text fontSize="sm" color="gray.700" ml={2}>
+          <HStack spacing={1} mb={3}>
+            {[...Array(5)].map((_, i) => (
+              <Icon
+                key={i}
+                as={i < Math.floor(hotel.rating || 0) ? FaStar : FaRegStar}
+                color={i < Math.floor(hotel.rating || 0) ? 'yellow.400' : 'gray.300'}
+                boxSize={4}
+              />
+            ))}
+            <Text fontSize="sm" color="gray.600" ml={2}>
               {(hotel.rating || 0).toFixed(1)} ({hotel.reviewCount || 0} 리뷰)
             </Text>
-          </Flex>
-          <Flex align="center" mb={2}>
-            <Text fontSize="sm" color="gray.700" fontWeight="medium">
-              가격:
-            </Text>
-            <Text fontSize="sm" color="gray.600" ml={2}>
-              {(hotel.price || 0).toLocaleString()}원 / 박
-            </Text>
-          </Flex>
-          <Flex align="center" mb={2}>
-            <Text fontSize="sm" color="gray.700" fontWeight="medium">
-              전화번호:
-            </Text>
-            <Text fontSize="sm" color="gray.600" ml={2}>
-              {hotel.phoneNumber || '전화번호 정보 없음'}
-            </Text>
-          </Flex>
-          <Flex align="center" mb={2}>
-            <Text fontSize="sm" color="gray.700" fontWeight="medium">
-              이메일:
-            </Text>
-            <Text fontSize="sm" color="gray.600" ml={2}>
-              {hotel.email || '이메일 정보 없음'}
-            </Text>
-          </Flex>
-          <Flex align="center" mb={2}>
-            <Text fontSize="sm" color="gray.700" fontWeight="medium">
-              체크인:
-            </Text>
-            <Text fontSize="sm" color="gray.600" ml={2}>
-              {hotel.checkInTime || 'N/A'}
-            </Text>
-            <Text fontSize="sm" color="gray.700" fontWeight="medium" ml={2}>
-              체크아웃:
-            </Text>
-            <Text fontSize="sm" color="gray.600" ml={2}>
-              {hotel.checkOutTime || 'N/A'}
-            </Text>
-          </Flex>
-          <Flex align="center" mb={3} wrap="wrap">
-            <Icon
-              as={FaMapMarkerAlt}
-              color="teal.500"
-              boxSize={4}
-              mr={2}
-              flexShrink={0}
-              alignSelf="flex-start"
-              mt={1}
-            />
-            <Button
-              variant="ghost"
-              color="gray.600"
-              onClick={handleAddressClick}
-              textAlign="left"
-              fontSize="sm"
-              leftIcon={<Icon as={FaMapMarkerAlt} color="blue.500" />}
-              rightIcon={<Icon as={FaMapSigns} color="green.500" />}
-              whiteSpace="normal"
-              height="auto"
-              py={2}
-              display="-webkit-box"
-              sx={{
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {hotel.address || '주소 정보 없음'}
-            </Button>
-            <Flex align="center" ml={2} flexShrink={0}>
-              <Button
-                variant="link"
-                color="gray.600"
-                onClick={handleCopyAddress}
-                fontSize="sm"
-                p={0}
-                _hover={{ color: 'gray.800', textDecoration: 'underline' }}
-                display="flex"
-                alignItems="center"
-              >
-                <Icon as={FaCopy} color="gray.500" boxSize={4} />
-              </Button>
+          </HStack>
+          <VStack spacing={2} align="stretch" mb={3}>
+            <Flex justify="space-between">
+              <Text fontSize="sm" color="gray.600">체크인</Text>
+              <Text fontSize="sm" fontWeight="medium">{hotel.checkInTime || 'N/A'}</Text>
             </Flex>
-          </Flex>
+            <Flex justify="space-between">
+              <Text fontSize="sm" color="gray.600">체크아웃</Text>
+              <Text fontSize="sm" fontWeight="medium">{hotel.checkOutTime || 'N/A'}</Text>
+            </Flex>
+            <Flex justify="space-between">
+              <Text fontSize="sm" color="gray.600">1박 요금</Text>
+              <Text fontSize="sm" fontWeight="bold" color="blue.600">
+                {(hotel.price || 0).toLocaleString()}원
+              </Text>
+            </Flex>
+          </VStack>
+          <Box mb={3}>
+            <Flex align="center" mb={2}>
+              <Icon as={FaMapMarkerAlt} color="teal.500" mr={2} />
+              <Text fontSize="sm" color="gray.600" flex="1" noOfLines={2}>
+                {hotel.address || '주소 정보 없음'}
+              </Text>
+              <IconButton
+                icon={<FaCopy />}
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyAddress}
+                aria-label="주소 복사"
+              />
+            </Flex>
+            <Button
+              size="sm"
+              width="full"
+              variant="outline"
+              colorScheme="teal"
+              leftIcon={<FaMapSigns />}
+              onClick={handleAddressClick}
+              mt={1}
+            >
+              길찾기
+            </Button>
+          </Box>
           <Flex justify="space-between" align="center">
             {hotel.amenities && hotel.amenities.length > 0 ? (
               <HStack spacing={3}>
@@ -322,25 +269,14 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
             )}
             <Button
               colorScheme="teal"
-              size="md"
               onClick={onSelect}
-              px={4}
-              py={0.5}
-              fontSize="sm"
-              fontWeight="medium"
-              borderRadius="md"
-              transition="all 0.3s ease"
-              _hover={{
-                bg: 'teal.600',
-                transform: 'scale(1.05)',
-                boxShadow: 'md',
-              }}
+              ml="auto"
             >
-              선택
+              예약하기
             </Button>
           </Flex>
         </Box>
-      </Box>
+      </MotionBox>
 
       {/* 지도 모달 (T맵 설치되지 않은 경우 표시) */}
       <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">
@@ -372,7 +308,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
             <HStack spacing={2}>
               <Button
                 variant="outline"
-                color="teal.600"
+                colorScheme="teal"
                 leftIcon={<FaMapSigns />}
                 onClick={handleTMapNavigation}
               >
@@ -380,13 +316,13 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               </Button>
               <Button
                 variant="outline"
-                color="gray.600"
+                colorScheme="gray"
                 leftIcon={<FaCopy />}
                 onClick={handleCopyAddress}
-              />
-              <Button colorScheme="gray" onClick={() => setIsMapOpen(false)}>
-                닫기
+              >
+                주소 복사
               </Button>
+              <Button onClick={() => setIsMapOpen(false)}>닫기</Button>
             </HStack>
           </ModalFooter>
         </ModalContent>

@@ -19,11 +19,8 @@ import {
   getReservationHistory,
   cancelReservation,
   fetchHotelPhotos,
+  fetchCustomerHotelSettings,
 } from '../api/api';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSwipeable } from 'react-swipeable';
-
-const MotionBox = motion(Box);
 
 const ReservationHistory = () => {
   const navigate = useNavigate();
@@ -32,13 +29,22 @@ const ReservationHistory = () => {
   const socket = useSocket();
   const [reservations, setReservations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
+
+  const isReservationConfirmed = useCallback((reservation) => {
+    const checkInDate = new Date(reservation.checkIn);
+    const currentDate = new Date();
+    const checkInDeadline = new Date(checkInDate);
+    checkInDeadline.setHours(14, 0, 0, 0); // 당일 오후 2시
+
+    return currentDate >= checkInDeadline;
+  }, []);
 
   const loadHistory = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await getReservationHistory();
+      console.log('예약 내역 응답:', response);
+
       const sortedReservations = (response.history || []).sort(
         (a, b) => new Date(b.reservationDate) - new Date(a.reservationDate)
       );
@@ -46,43 +52,50 @@ const ReservationHistory = () => {
       const reservationsWithPhotos = await Promise.all(
         sortedReservations.map(async (reservation) => {
           try {
-            const photosData = await fetchHotelPhotos(
-              reservation.hotelId,
-              'room',
-              reservation.roomInfo
-            );
-            console.log(
-              `[ReservationHistory] Photos for room ${reservation.roomInfo}:`,
-              photosData
-            );
+            const [photosData, hotelSettings] = await Promise.all([
+              fetchHotelPhotos(
+                reservation.hotelId,
+                'room',
+                reservation.roomInfo
+              ),
+              fetchCustomerHotelSettings(reservation.hotelId)
+            ]);
+
+            console.log(`호텔 ${reservation.hotelId} 설정:`, hotelSettings);
+
             const photoUrl =
               photosData?.roomPhotos && photosData.roomPhotos.length > 0
                 ? photosData.roomPhotos[0].photoUrl
                 : '/assets/default-room1.jpg';
-            return { 
+
+            // 호텔 설정에서 전화번호를 가져오거나, 예약 데이터의 전화번호를 사용
+            const hotelPhoneNumber = hotelSettings?.phoneNumber || reservation.phoneNumber || '연락처 준비중';
+
+            console.log(`호텔 ${reservation.hotelId} 최종 전화번호:`, hotelPhoneNumber);
+
+            const updatedReservation = { 
               ...reservation, 
               photoUrl,
-              latitude: reservation.latitude || null, // 좌표 추가
-              longitude: reservation.longitude || null // 좌표 추가
+              isConfirmed: isReservationConfirmed(reservation),
+              latitude: reservation.latitude || null,
+              longitude: reservation.longitude || null,
+              hotelPhoneNumber
             };
+
+            console.log(`호텔 ${reservation.hotelId} 최종 데이터:`, updatedReservation);
+            return updatedReservation;
           } catch (error) {
             console.error(
-              `[ReservationHistory] Failed to fetch photos for room ${reservation.roomInfo}:`,
+              `[ReservationHistory] Failed to fetch hotel data for ${reservation.hotelId}:`,
               error
             );
-            toast({
-              title: '사진 로드 실패',
-              description:
-                '예약 사진을 불러오지 못했습니다. 기본 이미지를 표시합니다.',
-              status: 'warning',
-              duration: 3000,
-              isClosable: true,
-            });
             return { 
               ...reservation, 
               photoUrl: '/assets/default-room1.jpg',
+              isConfirmed: isReservationConfirmed(reservation),
               latitude: reservation.latitude || null,
-              longitude: reservation.longitude || null
+              longitude: reservation.longitude || null,
+              hotelPhoneNumber: reservation.phoneNumber || '연락처 준비중'
             };
           }
         })
@@ -100,27 +113,32 @@ const ReservationHistory = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, isReservationConfirmed]);
 
   const handleCancel = useCallback(
     async (reservationId) => {
       try {
+        setIsLoading(true);
         await cancelReservation(reservationId);
         toast({
           title: '예약 취소 완료',
+          description: '예약이 성공적으로 취소되었습니다.',
           status: 'success',
           duration: 3000,
           isClosable: true,
         });
-        loadHistory();
+        await loadHistory();
       } catch (error) {
+        console.error('예약 취소 실패:', error);
         toast({
-          title: '취소 실패',
+          title: '예약 취소 실패',
           description: error.message || '예약 취소에 실패했습니다.',
           status: 'error',
           duration: 3000,
           isClosable: true,
         });
+      } finally {
+        setIsLoading(false);
       }
     },
     [loadHistory, toast]
@@ -150,258 +168,95 @@ const ReservationHistory = () => {
     };
   }, [socket, customer, toast, loadHistory]);
 
-  const paginate = (newDirection) => {
-    if (newDirection === 1 && currentIndex < reservations.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setDirection(1);
-    } else if (newDirection === -1 && currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setDirection(-1);
-    }
-  };
-
-  const handlers = useSwipeable({
-    onSwipedLeft: () => paginate(1),
-    onSwipedRight: () => paginate(-1),
-    trackMouse: true,
-    preventDefaultTouchmoveEvent: true,
-  });
-
-  const variants = {
-    enter: (direction) => ({
-      x: direction > 0 ? 1000 : -1000,
-      opacity: 0,
-      scale: 0.9,
-      zIndex: 0,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      scale: 1,
-      zIndex: 1,
-      transition: {
-        x: { type: "spring", stiffness: 300, damping: 30 },
-        opacity: { duration: 0.2 },
-      },
-    },
-    exit: (direction) => ({
-      x: direction < 0 ? 1000 : -1000,
-      opacity: 0,
-      scale: 0.9,
-      zIndex: 0,
-      transition: {
-        x: { type: "spring", stiffness: 300, damping: 30 },
-      },
-    }),
-  };
-
   return (
     <Box
       minH="100vh"
       bg="gray.50"
-      position="relative"
-      overflow="hidden"
+      position="fixed"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      display="flex"
+      flexDirection="column"
+      w="100%"
     >
-      {/* 상단 헤더 */}
+      {/* 헤더 */}
       <Box
-        position="fixed"
-        top={0}
-        left={0}
-        right={0}
         bg="white"
         borderBottom="1px solid"
         borderColor="gray.200"
-        zIndex={1000}
-        boxShadow="sm"
+        width="100%"
+        py={4}
       >
-        <Container 
-          maxW="container.sm" 
-          px={{ base: 3, sm: 4 }}
-          py={3}
-        >
-          <Flex align="center" justify="space-between">
-            {currentIndex > 0 ? (
-              <IconButton
-                icon={<ArrowBackIcon />}
-                variant="ghost"
-                onClick={() => paginate(-1)}
-                aria-label="이전 예약"
-              />
-            ) : (
-              <IconButton
-                icon={<ArrowBackIcon />}
-                variant="ghost"
-                onClick={() => navigate('/')}
-                aria-label="홈으로"
-              />
-            )}
+        <Container maxW="container.sm">
+          <Flex align="center" justify="center" position="relative">
+            <IconButton
+              icon={<ArrowBackIcon />}
+              variant="ghost"
+              position="absolute"
+              left={0}
+              onClick={() => navigate('/')}
+              aria-label="홈으로 가기"
+            />
             <Text
-              fontSize="lg"
-              fontWeight="700"
-              color="gray.900"
+              fontSize={{ base: "xl", md: "2xl" }}
+              fontWeight="bold"
+              textAlign="center"
             >
-              예약 내역
+              MY HISTORY
             </Text>
-            <Box w="40px" />
           </Flex>
         </Container>
       </Box>
 
-      {/* 메인 컨텐츠 */}
+      {/* 스크롤되는 본문 영역 */}
       <Box
-        pt="65px"
-        minH="100vh"
-        position="relative"
+        flex={1}
+        overflowY="auto"
+        sx={{
+          '&::-webkit-scrollbar': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'gray.300',
+            borderRadius: '24px',
+          },
+        }}
       >
-        <Container 
-          maxW="container.sm"
-          px={{ base: 2, sm: 3 }}
-          py={2}
+        <Container
+          maxW={{ base: "100%", sm: "95%", md: "container.md" }}
+          py={{ base: 4, sm: 6 }}
+          px={{ base: 4, sm: 6 }}
         >
-          <VStack spacing={4} align="stretch">
-            {reservations.length > 0 && (
-              <Flex justify="space-between" align="center" px={1}>
-                <Text fontSize="sm" color="gray.600">
-                  총 {reservations.length}건의 예약
-                </Text>
-                <Text fontSize="sm" color="gray.600">
-                  {currentIndex + 1} / {reservations.length}
-                </Text>
-              </Flex>
-            )}
-
+          <VStack
+            spacing={4}
+            align="stretch"
+            w="100%"
+            pb={{ base: "90px", md: "100px" }}
+          >
             {isLoading ? (
-              <Flex justify="center" align="center" minH="500px">
-                <Spinner size="lg" color="blue.500" thickness="3px" />
+              <Flex justify="center" py={8}>
+                <Spinner size="xl" color="brand.500" />
               </Flex>
-            ) : reservations.length === 0 ? (
-              <Flex 
-                direction="column" 
-                align="center" 
-                justify="center" 
-                minH="500px"
-                p={6}
-                bg="white"
-                borderRadius="lg"
-                boxShadow="sm"
-              >
-                <Text color="gray.500" fontSize="lg" mb={4}>
-                  예약 내역이 없습니다
-                </Text>
-                <Button
-                  colorScheme="blue"
-                  variant="outline"
-                  onClick={() => navigate('/')}
-                >
-                  숙소 둘러보기
-                </Button>
-              </Flex>
+            ) : reservations.length > 0 ? (
+              reservations.map((reservation) => (
+                <ReservationCard
+                  key={reservation.id}
+                  reservation={reservation}
+                  onCancelReservation={handleCancel}
+                  isConfirmed={reservation.isConfirmed}
+                />
+              ))
             ) : (
-              <Box
-                {...handlers}
-                h={{ base: "calc(100vh - 140px)", sm: "calc(100vh - 160px)" }}
-                position="relative"
-                overflow="hidden"
-                mt={2}
-              >
-                <AnimatePresence initial={false} custom={direction}>
-                  <MotionBox
-                    key={currentIndex}
-                    custom={direction}
-                    variants={variants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    position="absolute"
-                    width="100%"
-                    height="100%"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Box
-                      w="100%"
-                      h="100%"
-                      maxH={{ base: "calc(100vh - 180px)", sm: "calc(100vh - 200px)" }}
-                      position="relative"
-                      transform="perspective(1000px)"
-                      style={{
-                        transformStyle: 'preserve-3d',
-                      }}
-                    >
-                      <Box
-                        position="relative"
-                        h="100%"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        px={{ base: 2, sm: 3 }}
-                        py={{ base: 3, sm: 4 }}
-                      >
-                        <Box
-                          w="100%"
-                          maxW={{ base: "100%", sm: "460px" }}
-                          mx="auto"
-                          h="100%"
-                          overflow="auto"
-                          sx={{
-                            '&::-webkit-scrollbar': {
-                              width: '4px',
-                            },
-                            '&::-webkit-scrollbar-track': {
-                              width: '6px',
-                              background: 'rgba(0, 0, 0, 0.1)',
-                            },
-                            '&::-webkit-scrollbar-thumb': {
-                              background: 'rgba(0, 0, 0, 0.2)',
-                              borderRadius: '24px',
-                            },
-                          }}
-                        >
-                          <Box px={{ base: 2, sm: 3 }} py={{ base: 2, sm: 3 }}>
-                            <ReservationCard
-                              reservation={reservations[currentIndex]}
-                              onCancel={() => handleCancel(reservations[currentIndex]._id)}
-                            />
-                          </Box>
-                        </Box>
-                      </Box>
-                      {/* 다음 카드 프리뷰 */}
-                      {currentIndex < reservations.length - 1 && (
-                        <Box
-                          position="absolute"
-                          top="50%"
-                          left={0}
-                          right={0}
-                          transform="translateY(-50%) translateX(97%) scale(0.95) rotateY(-10deg)"
-                          height="90%"
-                          bg="white"
-                          borderRadius="lg"
-                          boxShadow="lg"
-                          opacity={0.5}
-                          zIndex={-1}
-                        />
-                      )}
-                      {/* 이전 카드 프리뷰 */}
-                      {currentIndex > 0 && (
-                        <Box
-                          position="absolute"
-                          top="50%"
-                          left={0}
-                          right={0}
-                          transform="translateY(-50%) translateX(-97%) scale(0.95) rotateY(10deg)"
-                          height="90%"
-                          bg="white"
-                          borderRadius="lg"
-                          boxShadow="lg"
-                          opacity={0.5}
-                          zIndex={-1}
-                        />
-                      )}
-                    </Box>
-                  </MotionBox>
-                </AnimatePresence>
-              </Box>
+              <VStack spacing={4} py={8}>
+                <Text color="gray.500" textAlign="center">
+                  예약 내역이 없습니다.
+                </Text>
+              </VStack>
             )}
           </VStack>
         </Container>

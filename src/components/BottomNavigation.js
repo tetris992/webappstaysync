@@ -1,73 +1,94 @@
 import React from 'react';
-import { Box, Flex, Text, Icon } from '@chakra-ui/react';
+import { Box, Flex, Text, Icon, useColorModeValue } from '@chakra-ui/react';
+import { FaHome, FaHistory, FaSignOutAlt, FaHotel } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FaHistory, FaHome, FaHotel, FaUser } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
+  const bg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  const menus = [
-    { icon: FaHome, label: '홈', path: '/' },
-    { icon: FaHotel, label: '숙소', path: '/hotels' },
-    { icon: FaHistory, label: '예약내역', path: '/history' },
-    { icon: FaUser, label: '로그아웃', path: '/logout', action: () => {
-      logout();
-      navigate('/login');
-    }},
-  ];
-
-  const handleMenuClick = (menu) => {
-    if (menu.action) {
-      menu.action();
-    } else {
-      navigate(menu.path);
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
     }
   };
 
+  const isActive = (path) => location.pathname === path;
+
+  const menuItems = [
+    {
+      icon: FaHome,
+      label: '홈',
+      onClick: () => navigate('/'),
+      path: '/'
+    },
+    {
+      icon: FaHotel,
+      label: '숙소',
+      onClick: () => navigate('/hotels'),
+      path: '/hotels'
+    },
+    {
+      icon: FaSignOutAlt,
+      label: '로그아웃',
+      onClick: handleLogout,
+      path: '/logout'
+    },
+    {
+      icon: FaHistory,
+      label: '나의 내역',
+      onClick: () => navigate('/history'),
+      path: '/history'
+    }
+  ];
+
   return (
-    <Box 
-      position="fixed" 
-      bottom={0} 
-      left={0} 
-      right={0} 
-      height="60px"
-      bg="white"
+    <Box
+      position="fixed"
+      bottom={0}
+      left={0}
+      right={0}
+      bg={bg}
       borderTop="1px solid"
-      borderColor="gray.200"
+      borderColor={borderColor}
+      px={4}
+      py={2}
       zIndex={1000}
-      boxShadow="0 -2px 10px rgba(0, 0, 0, 0.05)"
+      height="60px"
     >
-      <Flex h="100%" justify="space-around" align="center">
-        {menus.map((menu) => (
+      <Flex justify="space-around" align="center" height="100%">
+        {menuItems.map((item, index) => (
           <Flex
-            key={menu.path}
+            key={index}
             direction="column"
             align="center"
             justify="center"
-            flex={1}
-            py={1}
             cursor="pointer"
-            onClick={() => handleMenuClick(menu)}
-            transition="all 0.2s"
-            color={location.pathname === menu.path ? "blue.500" : "gray.800"}
-            _hover={{ color: "blue.500" }}
+            onClick={item.onClick}
+            color={isActive(item.path) ? 'blue.500' : 'gray.500'}
+            _hover={{ color: 'blue.600' }}
+            role="group"
+            flex={1}
           >
-            <Icon 
-              as={menu.icon} 
-              boxSize="24px" 
+            <Icon
+              as={item.icon}
+              boxSize={5}
               mb={1}
-              transition="transform 0.2s"
-              _hover={{ transform: 'scale(1.1)' }}
+              transition="all 0.2s"
+              _groupHover={{ transform: 'scale(1.1)' }}
             />
-            <Text 
-              fontSize="13px" 
-              fontWeight="600"
-              color="inherit"
+            <Text
+              fontSize="xs"
+              fontWeight={isActive(item.path) ? 'bold' : 'normal'}
             >
-              {menu.label}
+              {item.label}
             </Text>
           </Flex>
         ))}
