@@ -643,44 +643,88 @@ const Home = () => {
               <Box
                 position="relative"
                 w="100%"
-                h={{ base: "240px", sm: "300px", md: "400px" }}
-                bg="black"
+                h={{ base: "80px", sm: "100px", md: "133px" }}
+                bg="gray.900"
                 borderRadius="xl"
                 overflow="hidden"
                 boxShadow="md"
-                onClick={(e) => {
-                  // Create ripple effect
-                  const ripple = document.createElement('div');
-                  ripple.className = 'ripple';
-                  ripple.style.left = `${e.clientX - e.currentTarget.getBoundingClientRect().left}px`;
-                  ripple.style.top = `${e.clientY - e.currentTarget.getBoundingClientRect().top}px`;
-                  e.currentTarget.appendChild(ripple);
+                cursor="pointer"
+                onClick={() => {
+                  const container = document.getElementById('animation-container');
+                  const elements = container.querySelectorAll('.animation-element');
                   
-                  // Remove ripple after animation completes
+                  // 애니메이션 요소들이 퍼져나가는 효과
+                  elements.forEach((element, index) => {
+                    element.style.animation = `spreadOut 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards`;
+                    element.style.animationDelay = `${index * 0.05}s`;
+                  });
+                  
+                  // 이벤트 페이지 확장 애니메이션
+                  const eventPage = document.createElement('div');
+                  eventPage.className = 'event-page-expand';
+                  
+                  // 애니메이션 영역의 위치와 크기 정보 가져오기
+                  const rect = container.getBoundingClientRect();
+                  eventPage.style.top = `${rect.top}px`;
+                  eventPage.style.left = `${rect.left}px`;
+                  eventPage.style.width = `${rect.width}px`;
+                  eventPage.style.height = `${rect.height}px`;
+                  
+                  document.body.appendChild(eventPage);
+                  
+                  // 애니메이션 시작
                   setTimeout(() => {
-                    ripple.remove();
-                  }, 1000);
+                    eventPage.classList.add('expanded');
+                  }, 100);
+                  
+                  setTimeout(() => {
+                    navigate('/events');
+                  }, 1500);
+                }}
+                id="animation-container"
+                _hover={{
+                  transform: 'scale(1.02)',
+                  boxShadow: '0 6px 16px rgba(159, 122, 234, 0.4)',
+                }}
+                _active={{
+                  transform: 'scale(0.98)',
                 }}
                 sx={{
-                  position: 'relative',
-                  cursor: 'pointer',
-                  '.ripple': {
-                    position: 'absolute',
-                    borderRadius: '50%',
-                    transform: 'scale(0)',
-                    animation: 'ripple 1s linear',
-                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                    zIndex: 10,
-                  },
-                  '@keyframes ripple': {
-                    to: {
-                      transform: 'scale(4)',
+                  '@keyframes spreadOut': {
+                    '0%': { 
+                      transform: 'translate(0, 0) scale(1)',
+                      opacity: 1,
+                      backgroundColor: 'var(--original-color, white)'
+                    },
+                    '50%': { 
+                      transform: 'translate(var(--spread-x, 100px), var(--spread-y, -100px)) scale(1.5)',
+                      opacity: 0.8,
+                      backgroundColor: 'var(--spread-color, #FF6B6B)'
+                    },
+                    '100%': { 
+                      transform: 'translate(var(--spread-x, 100px), var(--spread-y, -100px)) scale(0)',
                       opacity: 0,
+                      backgroundColor: 'var(--spread-color, #FF6B6B)'
+                    }
+                  },
+                  '.event-page-expand': {
+                    position: 'fixed',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    zIndex: 1000,
+                    borderRadius: 'xl',
+                    overflow: 'hidden',
+                    transition: 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&.expanded': {
+                      top: '0',
+                      left: '0',
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: '0',
                     }
                   }
                 }}
               >
-                {/* Cosmic Space Animation */}
+                {/* Dynamic Animation Area */}
                 <Box
                   position="absolute"
                   top={0}
@@ -688,443 +732,127 @@ const Home = () => {
                   right={0}
                   bottom={0}
                   overflow="hidden"
-                  bg="black"
                 >
-                  {/* Space Background with Stars */}
+                  {/* Animated Background */}
                   <Box
                     position="absolute"
                     top={0}
                     left={0}
                     right={0}
                     bottom={0}
-                    bgGradient="radial(circle at center, blue.900, black)"
-                    opacity="0.8"
+                    bgGradient="linear(to-r, purple.600, blue.400, teal.300)"
+                    animation="gradientMove 15s ease infinite"
+                    className="animation-element"
+                    sx={{
+                      '--spread-x': '200px',
+                      '--spread-y': '-200px',
+                      '--spread-color': '#FF6B6B',
+                      '@keyframes gradientMove': {
+                        '0%': { transform: 'scale(1.5) rotate(0deg)' },
+                        '50%': { transform: 'scale(1.8) rotate(180deg)' },
+                        '100%': { transform: 'scale(1.5) rotate(360deg)' }
+                      }
+                    }}
                   />
-                  
-                  {/* Stars */}
-                  {[...Array(100)].map((_, i) => (
+
+                  {/* Animated Patterns */}
+                  {[...Array(20)].map((_, i) => (
                     <Box
                       key={i}
                       position="absolute"
-                      w={`${Math.random() * 3 + 1}px`}
-                      h={`${Math.random() * 3 + 1}px`}
-                      bg="white"
-                      borderRadius="full"
-                      boxShadow={`0 0 ${Math.random() * 5 + 2}px rgba(255, 255, 255, ${Math.random() * 0.5 + 0.5})`}
-                      animation={`starTwinkle${i} ${Math.random() * 5 + 3}s infinite alternate`}
+                      w={`${Math.random() * 100 + 50}px`}
+                      h={`${Math.random() * 100 + 50}px`}
+                      bg="rgba(255, 255, 255, 0.1)"
+                      backdropFilter="blur(5px)"
+                      borderRadius="lg"
+                      className="animation-element"
+                      animation={`floatPattern${i} ${Math.random() * 10 + 15}s infinite linear`}
                       sx={{
+                        '--spread-x': `${Math.random() * 400 - 200}px`,
+                        '--spread-y': `${Math.random() * 400 - 200}px`,
+                        '--spread-color': i % 3 === 0 ? '#FF6B6B' : i % 3 === 1 ? '#4ECDC4' : '#FFE66D',
+                        '--original-color': 'rgba(255, 255, 255, 0.1)',
                         top: `${Math.random() * 100}%`,
                         left: `${Math.random() * 100}%`,
-                        [`@keyframes starTwinkle${i}`]: {
-                          '0%': { opacity: 0.3, transform: 'scale(1)' },
-                          '100%': { opacity: 1, transform: 'scale(1.5)' }
+                        transform: `rotate(${Math.random() * 360}deg)`,
+                        [`@keyframes floatPattern${i}`]: {
+                          '0%': { 
+                            transform: `translate(0, 0) rotate(${Math.random() * 360}deg)`,
+                            opacity: Math.random() * 0.5 + 0.3
+                          },
+                          '50%': { 
+                            transform: `translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px) rotate(${Math.random() * 360}deg)`,
+                            opacity: Math.random() * 0.8 + 0.2
+                          },
+                          '100%': { 
+                            transform: `translate(0, 0) rotate(${Math.random() * 360}deg)`,
+                            opacity: Math.random() * 0.5 + 0.3
+                          }
                         }
                       }}
                     />
                   ))}
-                  
-                  {/* Nebula Clouds */}
+
+                  {/* Light Beams */}
                   {[...Array(5)].map((_, i) => (
                     <Box
                       key={i}
                       position="absolute"
-                      w={`${Math.random() * 200 + 100}px`}
-                      h={`${Math.random() * 200 + 100}px`}
-                      borderRadius="full"
-                      bgGradient={`radial(circle at center, ${i % 3 === 0 ? 'purple.500' : i % 3 === 1 ? 'pink.500' : 'blue.500'}, transparent)`}
-                      opacity="0.3"
-                      animation={`nebulaFloat${i} ${Math.random() * 20 + 20}s infinite alternate`}
-                      sx={{
-                        top: `${Math.random() * 100}%`,
-                        left: `${Math.random() * 100}%`,
-                        [`@keyframes nebulaFloat${i}`]: {
-                          '0%': { transform: 'translate(0, 0) scale(1)' },
-                          '100%': { transform: 'translate(20px, 20px) scale(1.2)' }
-                        }
-                      }}
-                    />
-                  ))}
-                  
-                  {/* Central Portal */}
-                  <Box
-                    position="absolute"
-                    top="50%"
-                    left="50%"
-                    transform="translate(-50%, -50%)"
-                    w="150px"
-                    h="150px"
-                    borderRadius="full"
-                    bgGradient="radial(circle at center, blue.400, purple.600)"
-                    boxShadow="0 0 30px rgba(66, 153, 225, 0.8)"
-                    animation="portalPulse 5s infinite alternate"
-                    sx={{
-                      '@keyframes portalPulse': {
-                        '0%': { transform: 'translate(-50%, -50%) scale(1)', boxShadow: '0 0 30px rgba(66, 153, 225, 0.8)' },
-                        '100%': { transform: 'translate(-50%, -50%) scale(1.2)', boxShadow: '0 0 50px rgba(66, 153, 225, 0.8)' }
-                      }
-                    }}
-                  >
-                    {/* Event Button */}
-                    <Box
-                      position="absolute"
-                      top="50%"
-                      left="50%"
-                      transform="translate(-50%, -50%)"
-                      w="60px"
-                      h="60px"
-                      borderRadius="full"
-                      bg="rgba(255, 255, 255, 0.1)"
-                      backdropFilter="blur(5px)"
-                      border="2px solid rgba(255, 255, 255, 0.2)"
-                      display="flex"
-                      justifyContent="center"
-                      alignItems="center"
-                      cursor="pointer"
-                      transition="all 0.3s ease"
-                      zIndex={20}
-                      _hover={{
-                        bg: "rgba(255, 255, 255, 0.2)",
-                        transform: "translate(-50%, -50%) scale(1.1)",
-                      }}
-                      onClick={() => {
-                        const button = document.getElementById('portal-event-button');
-                        button.style.animation = 'bounceAroundAndDisappear 4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
-                        
-                        // 애니메이션이 끝나고 페이지 이동
-                        setTimeout(() => {
-                          navigate('/events');
-                        }, 3800);
-                      }}
-                      id="portal-event-button"
-                      sx={{
-                        '@keyframes bounceAroundAndDisappear': {
-                          '0%': { 
-                            transform: 'translate(-50%, -50%) scale(1)',
-                            opacity: 1 
-                          },
-                          '10%': { 
-                            transform: 'translate(-200%, -150%) scale(1.2)',
-                            opacity: 0.9 
-                          },
-                          '20%': { 
-                            transform: 'translate(150%, -100%) scale(0.9)',
-                            opacity: 0.9 
-                          },
-                          '30%': { 
-                            transform: 'translate(-150%, 150%) scale(1.1)',
-                            opacity: 0.9 
-                          },
-                          '40%': { 
-                            transform: 'translate(200%, 100%) scale(0.8)',
-                            opacity: 0.9 
-                          },
-                          '50%': { 
-                            transform: 'translate(-100%, -200%) scale(1.2)',
-                            opacity: 0.9 
-                          },
-                          '60%': { 
-                            transform: 'translate(100%, 150%) scale(0.9)',
-                            opacity: 0.9 
-                          },
-                          '70%': { 
-                            transform: 'translate(-150%, -50%) scale(1.1)',
-                            opacity: 0.9 
-                          },
-                          '80%': { 
-                            transform: 'translate(-50%, -50%) scale(1.2)',
-                            opacity: 0.9 
-                          },
-                          '85%': { 
-                            transform: 'translate(-50%, -50%) scale(1)',
-                            opacity: 0.8
-                          },
-                          '90%': { 
-                            transform: 'translate(-50%, -50%) scale(0.8)',
-                            opacity: 0.6,
-                            filter: 'brightness(1.2)'
-                          },
-                          '95%': { 
-                            transform: 'translate(-50%, -50%) scale(0.4)',
-                            opacity: 0.3,
-                            filter: 'brightness(1.5)'
-                          },
-                          '100%': { 
-                            transform: 'translate(-50%, -50%) scale(0)',
-                            opacity: 0,
-                            filter: 'brightness(2)'
-                          }
-                        }
-                      }}
-                    >
-                      <Box
-                        fontSize="1.5em"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        color="white"
-                        opacity={0.9}
-                      >
-                        🎉
-                        <Box
-                          position="absolute"
-                          top="-2px"
-                          right="-2px"
-                          w="8px"
-                          h="8px"
-                          bg="yellow.300"
-                          borderRadius="full"
-                          boxShadow="0 0 0 2px rgba(255, 255, 255, 0.8)"
-                          animation="pulse 1.5s infinite"
-                          sx={{
-                            '@keyframes pulse': {
-                              '0%': { transform: 'scale(1)', opacity: 1 },
-                              '50%': { transform: 'scale(1.2)', opacity: 0.8 },
-                              '100%': { transform: 'scale(1)', opacity: 1 },
-                            }
-                          }}
-                        />
-                      </Box>
-                    </Box>
-
-                    {/* Portal Rings */}
-                    {[...Array(3)].map((_, i) => (
-                      <Box
-                        key={i}
-                        position="absolute"
-                        top="50%"
-                        left="50%"
-                        transform="translate(-50%, -50%)"
-                        w={`${150 + i * 30}px`}
-                        h={`${150 + i * 30}px`}
-                        borderRadius="full"
-                        border={`2px solid ${i % 3 === 0 ? 'blue.300' : i % 3 === 1 ? 'purple.300' : 'pink.300'}`}
-                        opacity="0.5"
-                        animation={`ringRotate${i} ${10 + i * 5}s infinite linear`}
-                        sx={{
-                          [`@keyframes ringRotate${i}`]: {
-                            '0%': { transform: 'translate(-50%, -50%) rotate(0deg)' },
-                            '100%': { transform: 'translate(-50%, -50%) rotate(360deg)' }
-                          }
-                        }}
-                      />
-                    ))}
-                    
-                    {/* Portal Core */}
-                    <Box
-                      position="absolute"
-                      top="50%"
-                      left="50%"
-                      transform="translate(-50%, -50%)"
-                      w="50px"
-                      h="50px"
-                      borderRadius="full"
+                      w="2px"
+                      h="100%"
                       bg="white"
-                      boxShadow="0 0 20px rgba(255, 255, 255, 0.8)"
-                      animation="corePulse 2s infinite alternate"
+                      opacity="0.3"
+                      className="animation-element"
+                      animation={`lightBeam${i} ${Math.random() * 5 + 5}s infinite linear`}
                       sx={{
-                        '@keyframes corePulse': {
-                          '0%': { transform: 'translate(-50%, -50%) scale(1)', opacity: 0.8 },
-                          '100%': { transform: 'translate(-50%, -50%) scale(1.5)', opacity: 0.4 }
-                        }
-                      }}
-                    />
-                  </Box>
-                  
-                  {/* Floating Elements */}
-                  {/* Geometric Shapes */}
-                  {[...Array(10)].map((_, i) => (
-                    <Box
-                      key={i}
-                      position="absolute"
-                      w={`${Math.random() * 30 + 20}px`}
-                      h={`${Math.random() * 30 + 20}px`}
-                      bg={i % 5 === 0 ? "blue.400" : i % 5 === 1 ? "purple.400" : i % 5 === 2 ? "pink.400" : i % 5 === 3 ? "teal.400" : "yellow.400"}
-                      opacity="0.7"
-                      animation={`shapeFloat${i} ${Math.random() * 15 + 10}s infinite alternate`}
-                      sx={{
-                        top: `${Math.random() * 100}%`,
+                        '--spread-x': `${Math.random() * 300 - 150}px`,
+                        '--spread-y': `${Math.random() * 300 - 150}px`,
+                        '--spread-color': '#FF9F1C',
+                        '--original-color': 'white',
                         left: `${Math.random() * 100}%`,
-                        clipPath: i % 3 === 0 ? "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)" : 
-                                 i % 3 === 1 ? "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)" : 
-                                 "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-                        [`@keyframes shapeFloat${i}`]: {
-                          '0%': { transform: 'translate(0, 0) rotate(0deg)' },
-                          '100%': { transform: 'translate(20px, 20px) rotate(360deg)' }
+                        [`@keyframes lightBeam${i}`]: {
+                          '0%': { transform: 'translateY(-100%) rotate(45deg)', opacity: 0 },
+                          '50%': { opacity: 0.3 },
+                          '100%': { transform: 'translateY(100%) rotate(45deg)', opacity: 0 }
                         }
                       }}
                     />
                   ))}
-                  
-                  {/* Energy Particles */}
-                  {[...Array(20)].map((_, i) => (
+
+                  {/* Interactive Particles */}
+                  {[...Array(30)].map((_, i) => (
                     <Box
                       key={i}
                       position="absolute"
                       w="4px"
                       h="4px"
-                      bg={i % 4 === 0 ? "blue.300" : i % 4 === 1 ? "purple.300" : i % 4 === 2 ? "pink.300" : "teal.300"}
-                      borderRadius="full"
-                      boxShadow={`0 0 ${Math.random() * 5 + 2}px ${i % 4 === 0 ? "rgba(66, 153, 225, 0.8)" : i % 4 === 1 ? "rgba(159, 122, 234, 0.8)" : i % 4 === 2 ? "rgba(237, 100, 166, 0.8)" : "rgba(49, 151, 149, 0.8)"}`}
-                      animation={`particleMove${i} ${Math.random() * 10 + 5}s infinite linear`}
-                      sx={{
-                        top: `${Math.random() * 100}%`,
-                        left: `${Math.random() * 100}%`,
-                        [`@keyframes particleMove${i}`]: {
-                          '0%': { transform: 'translate(0, 0)' },
-                          '25%': { transform: 'translate(20px, -20px)' },
-                          '50%': { transform: 'translate(40px, 0)' },
-                          '75%': { transform: 'translate(20px, 20px)' },
-                          '100%': { transform: 'translate(0, 0)' }
-                        }
-                      }}
-                    />
-                  ))}
-                  
-                  {/* Floating Text Elements */}
-                  {[...Array(5)].map((_, i) => (
-                    <Box
-                      key={i}
-                      position="absolute"
-                      color="white"
-                      fontSize={`${Math.random() * 10 + 10}px`}
-                      fontWeight="bold"
-                      opacity="0.7"
-                      animation={`textFloat${i} ${Math.random() * 20 + 15}s infinite alternate`}
-                      sx={{
-                        top: `${Math.random() * 100}%`,
-                        left: `${Math.random() * 100}%`,
-                        [`@keyframes textFloat${i}`]: {
-                          '0%': { transform: 'translate(0, 0) rotate(0deg)' },
-                          '100%': { transform: 'translate(30px, 30px) rotate(10deg)' }
-                        }
-                      }}
-                    >
-                      {i === 0 ? "EXPLORE" : i === 1 ? "DREAM" : i === 2 ? "DISCOVER" : i === 3 ? "JOURNEY" : "ADVENTURE"}
-                    </Box>
-                  ))}
-                  
-                  {/* Interactive Cursor Trail */}
-                  <Box
-                    position="absolute"
-                    top={0}
-                    left={0}
-                    right={0}
-                    bottom={0}
-                    sx={{
-                      '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        width: '10px',
-                        height: '10px',
-                        background: 'rgba(255, 255, 255, 0.5)',
-                        borderRadius: '50%',
-                        pointerEvents: 'none',
-                        transform: 'translate(-50%, -50%)',
-                        transition: 'all 0.1s ease',
-                        zIndex: 5,
-                      }
-                    }}
-                    onMouseMove={(e) => {
-                      const trail = document.createElement('div');
-                      trail.className = 'cursor-trail';
-                      trail.style.left = `${e.clientX - e.currentTarget.getBoundingClientRect().left}px`;
-                      trail.style.top = `${e.clientY - e.currentTarget.getBoundingClientRect().top}px`;
-                      e.currentTarget.appendChild(trail);
-                      
-                      setTimeout(() => {
-                        trail.remove();
-                      }, 1000);
-                    }}
-                  >
-                    <style>
-                      {`
-                        .cursor-trail {
-                          position: absolute;
-                          width: 5px;
-                          height: 5px;
-                          background: rgba(255, 255, 255, 0.8);
-                          border-radius: 50%;
-                          pointer-events: none;
-                          animation: trailFade 1s linear forwards;
-                          z-index: 5;
-                        }
-                        
-                        @keyframes trailFade {
-                          0% {
-                            transform: scale(1);
-                            opacity: 0.8;
-                          }
-                          100% {
-                            transform: scale(0);
-                            opacity: 0;
-                          }
-                        }
-                      `}
-                    </style>
-                  </Box>
-                  
-                  {/* Shooting Stars */}
-                  {[...Array(3)].map((_, i) => (
-                    <Box
-                      key={i}
-                      position="absolute"
-                      w="2px"
-                      h="2px"
                       bg="white"
-                      boxShadow="0 0 10px rgba(255, 255, 255, 0.8)"
-                      animation={`shootingStar${i} ${Math.random() * 10 + 10}s infinite linear`}
+                      borderRadius="full"
+                      className="animation-element"
+                      animation={`particle${i} ${Math.random() * 20 + 10}s infinite linear`}
                       sx={{
-                        top: `${Math.random() * 50}%`,
-                        left: `${Math.random() * 50}%`,
-                        [`@keyframes shootingStar${i}`]: {
-                          '0%': { transform: 'translate(0, 0) rotate(0deg)', opacity: 0 },
-                          '10%': { opacity: 1 },
-                          '20%': { transform: 'translate(100px, 100px) rotate(45deg)', opacity: 1 },
-                          '100%': { transform: 'translate(500px, 500px) rotate(45deg)', opacity: 0 }
-                        }
-                      }}
-                    />
-                  ))}
-                  
-                  {/* Cosmic Dust */}
-                  {[...Array(15)].map((_, i) => (
-                    <Box
-                      key={i}
-                      position="absolute"
-                      w={`${Math.random() * 3 + 1}px`}
-                      h={`${Math.random() * 3 + 1}px`}
-                      bg="gray.300"
-                      opacity="0.5"
-                      animation={`dustFloat${i} ${Math.random() * 30 + 20}s infinite linear`}
-                      sx={{
+                        '--spread-x': `${Math.random() * 500 - 250}px`,
+                        '--spread-y': `${Math.random() * 500 - 250}px`,
+                        '--spread-color': i % 5 === 0 ? '#FF6B6B' : 
+                                         i % 5 === 1 ? '#4ECDC4' : 
+                                         i % 5 === 2 ? '#FFE66D' : 
+                                         i % 5 === 3 ? '#FF9F1C' : '#A8E6CF',
+                        '--original-color': 'white',
                         top: `${Math.random() * 100}%`,
                         left: `${Math.random() * 100}%`,
-                        [`@keyframes dustFloat${i}`]: {
-                          '0%': { transform: 'translate(0, 0)' },
-                          '100%': { transform: 'translate(100px, 100px)' }
-                        }
-                      }}
-                    />
-                  ))}
-                  
-                  {/* Energy Waves */}
-                  {[...Array(3)].map((_, i) => (
-                    <Box
-                      key={i}
-                      position="absolute"
-                      top="50%"
-                      left="50%"
-                      transform="translate(-50%, -50%)"
-                      w={`${200 + i * 50}px`}
-                      h={`${200 + i * 50}px`}
-                      borderRadius="full"
-                      border={`1px solid ${i % 3 === 0 ? 'blue.300' : i % 3 === 1 ? 'purple.300' : 'pink.300'}`}
-                      opacity="0.3"
-                      animation={`waveExpand${i} ${5 + i * 2}s infinite ease-out`}
-                      sx={{
-                        [`@keyframes waveExpand${i}`]: {
-                          '0%': { transform: 'translate(-50%, -50%) scale(0.5)', opacity: 0.5 },
-                          '100%': { transform: 'translate(-50%, -50%) scale(1.5)', opacity: 0 }
+                        [`@keyframes particle${i}`]: {
+                          '0%': { 
+                            transform: 'scale(1) translate(0, 0)',
+                            opacity: Math.random() * 0.5 + 0.3
+                          },
+                          '50%': { 
+                            transform: `scale(${Math.random() + 0.5}) translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px)`,
+                            opacity: Math.random() * 0.8 + 0.2
+                          },
+                          '100%': { 
+                            transform: 'scale(1) translate(0, 0)',
+                            opacity: Math.random() * 0.5 + 0.3
+                          }
                         }
                       }}
                     />
