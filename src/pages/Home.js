@@ -513,7 +513,7 @@ const Home = () => {
                   {recommendedHotels.map((hotel) => (
                     <Box
                       key={hotel.id}
-                      onClick={() => navigate(`/rooms/${hotel.id}`)}
+                      onClick={() => navigate('/hotels')}
                       position="relative"
                       cursor="pointer"
                       h={{ base: "240px", sm: "300px", md: "400px" }}
