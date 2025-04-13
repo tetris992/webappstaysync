@@ -45,8 +45,20 @@ const PrivacyConsentPage = () => {
       privacy: checked,
       marketing: checked,
     });
+    
     if (checked) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // 동의 메시지 표시
+      toast({
+        title: "동의되었습니다",
+        status: "success",
+        duration: 1000,
+        isClosable: false,
+      });
+      
+      // 1초 후 로그인 페이지로 자동 이동
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 1000);
     }
   };
 
@@ -174,8 +186,8 @@ const PrivacyConsentPage = () => {
                   </Text>
                   <Text fontSize="sm" color="gray.600">
                     본 약관은 단잠 서비스 이용자가 주식회사 제로투원(이하
-                    “회사”라 함)이 제공하는 온라인 숙박 예약관리 인터넷 서비스인
-                    “단잠” (이하 “서비스”라 함)을 이용함에 있어 회사와 이용자의
+                    "회사"라 함)이 제공하는 온라인 숙박 예약관리 인터넷 서비스인
+                    "단잠" (이하 "서비스"라 함)을 이용함에 있어 회사와 이용자의
                     권리, 의무 및 책임사항을 규정합니다.
                   </Text>
                 </Box>
@@ -1240,9 +1252,9 @@ const PrivacyConsentPage = () => {
                       - 다른 사람의 생명, 신체를 해할 우려가 있거나 다른 사람의
                       재산과 그 밖의 이익을 부당하게 침해할 우려가 있는 경우
                       <br />
-                      2. 회원의 정보는 서비스에서 로그인 후 ‘설정’ 메뉴를 통해
+                      2. 회원의 정보는 서비스에서 로그인 후 '설정' 메뉴를 통해
                       조회, 수정, 가입해지(탈퇴)가 가능합니다. 호텔 예약 정보는
-                      ‘예약 내역’ 메뉴에서 조회 및 취소가 가능합니다.
+                      '예약 내역' 메뉴에서 조회 및 취소가 가능합니다.
                       <br />
                       3. 이용자가 개인정보의 오류에 대한 정정을 요청한 경우에는
                       정정을 완료하기 전까지 개인정보를 이용 또는 제공하지
@@ -1408,8 +1420,8 @@ const PrivacyConsentPage = () => {
                       행사방법)
                     </Text>
                     <Text fontSize="sm">
-                      1. 회사는 아래의 경우에 해당하는 이용자(이하 “8세 이하의
-                      아동 등”이라 함)의 보호의무자가 8세 이하의 아동 등의 생명
+                      1. 회사는 아래의 경우에 해당하는 이용자(이하 "8세 이하의
+                      아동 등"이라 함)의 보호의무자가 8세 이하의 아동 등의 생명
                       또는 신체보호를 위하여 개인위치정보의 이용 또는 제공에
                       동의하는 경우에는 본인의 동의가 있는 것으로 봅니다:
                       <br />
@@ -1503,23 +1515,11 @@ const PrivacyConsentPage = () => {
           </VStack>
         </Box>
 
-        {/* 하단 버튼: 회원가입 페이지로 돌아가기 링크 추가 */}
-        <Button
-          variant="outline"
-          onClick={() => navigate('/register')}
-          w="full"
-          size="md"
-          color="gray.600"
-          borderColor="gray.300"
-        >
-          회원가입 페이지로 돌아가기
-        </Button>
         <Button
           colorScheme="teal"
           onClick={handleAgree}
           w="full"
           size="md"
-          mt={2}
           ref={bottomRef}
         >
           전체 동의

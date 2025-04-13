@@ -4,7 +4,6 @@ import {
   Container,
   VStack,
   Text,
-  Button,
   useToast,
   Box,
   Flex,
@@ -46,7 +45,7 @@ const normalizeAddress = (address) => {
 };
 
 const HotelList = ({ loadHotelSettings }) => {
-  const { logout, isAuthenticated, customer } = useAuth();
+  const { isAuthenticated, customer } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const location = useLocation();
@@ -179,11 +178,6 @@ const HotelList = ({ loadHotelSettings }) => {
   const handleNavigate = (hotelId) => {
     loadHotelSettings(hotelId);
     navigate(`/rooms/${hotelId}`, { state: { checkIn, checkOut, guestCount } });
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
   };
 
   if (!isAuthenticated || !customer) return <Navigate to="/login" replace />;

@@ -493,24 +493,48 @@ export const logoutCustomer = async () => {
   }
 };
 
-// sendOTP 함수
+// sendOTP 함수 개선
 export const sendOTP = async (data) => {
   try {
-    const response = await api.post('/api/customer/send-otp', data);
+    console.log('[api.js] Sending OTP request:', {
+      phoneNumber: data.phoneNumber,
+      url: '/api/customer/send-otp'
+    });
+
+    const response = await api.post('/api/customer/send-otp', {
+      phoneNumber: data.phoneNumber.replace(/[^0-9]/g, '')
+    });
+
+    console.log('[api.js] OTP send response:', response.data);
     return response.data;
   } catch (error) {
     console.error('[api.js] sendOTP error:', {
       status: error.response?.status,
       data: error.response?.data,
       message: error.message,
-      config: error.config,
-      code: error.code,
-      name: error.name,
-      stack: error.stack,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        data: error.config?.data
+      }
     });
+
+    // 구체적인 에러 메시지 처리
+    let errorMessage;
+    if (error.response?.status === 404) {
+      errorMessage = '인증번호 전송 서비스를 찾을 수 없습니다.';
+    } else if (error.response?.status === 400) {
+      errorMessage = error.response.data.message || '잘못된 전화번호 형식입니다.';
+    } else if (error.response?.status === 429) {
+      errorMessage = '너무 많은 인증 시도입니다. 잠시 후 다시 시도해주세요.';
+    } else {
+      errorMessage = error.response?.data?.message || '인증번호 전송에 실패했습니다.';
+    }
+
     throw new ApiError(
       error.response?.status || 500,
-      error.message || '인증번호 전송 실패: 서버에 연결할 수 없습니다.',
+      errorMessage,
       error.response?.data
     );
   }

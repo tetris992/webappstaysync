@@ -16,8 +16,6 @@ import {
   PopoverContent,
   PopoverBody,
   PopoverArrow,
-  PopoverFooter,
-  Button as ChakraButton,
   Flex,
   Modal,
   ModalOverlay,

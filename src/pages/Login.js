@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   VStack,
@@ -16,7 +16,7 @@ import { SiKakao } from 'react-icons/si';
 import { FaPhone } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { initKakao } from '../utils/kakao';
-import axios from 'axios';
+import { sendOTP, verifyOTP } from '../api/api';
 
 const Login = () => {
   const { customer } = useAuth();
@@ -76,36 +76,14 @@ const Login = () => {
     }
   };
 
-  const handlePhoneLogin = async () => {
-    if (!phoneNumber) {
-      toast({
-        title: "전화번호를 입력해주세요",
-        status: "warning",
-        duration: 3000,
-      });
-      return;
-    }
-
-    try {
-      const response = await axios.post('/api/customer/send-otp', { 
-        phoneNumber: phoneNumber.replace(/[^0-9]/g, '') 
-      });
-      
-      if (response.data.success) {
-        setOtpSent(true);
-        toast({
-          title: "인증번호가 발송되었습니다",
-          status: "success",
-          duration: 3000,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: error.response?.data?.message || '인증번호 발송 중 오류가 발생했습니다',
-        status: "error",
-        duration: 3000,
-      });
-    }
+  const handlePhoneLoginAttempt = () => {
+    toast({
+      title: "카카오톡으로 로그인해주세요",
+      description: "현재 일반 전화번호 로그인은 준비 중입니다. 카카오톡으로 로그인해주세요.",
+      status: "info",
+      duration: 5000,
+      isClosable: true,
+    });
   };
 
   if (customer) return null;
@@ -147,79 +125,28 @@ const Login = () => {
               카카오로 시작하기
             </Button>
 
-            {!showPhoneInput ? (
-              <Button
-                leftIcon={<FaPhone />}
-                w="100%"
-                h="50px"
-                variant="outline"
-                borderColor="gray.300"
-                borderWidth="1px"
-                bg="white"
-                _hover={{ bg: "gray.50", borderColor: "gray.400" }}
-                onClick={() => setShowPhoneInput(true)}
-                fontSize="16px"
-                fontWeight="600"
-              >
-                전화번호 로그인
-              </Button>
-            ) : (
-              <VStack w="100%" spacing={4}>
-                <Input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="전화번호 입력 (- 없이)"
-                  size="lg"
-                  h="50px"
-                  bg="white"
-                  borderColor="gray.200"
-                />
-                
-                <Button
-                  w="100%"
-                  h="50px"
-                  colorScheme="blue"
-                  onClick={handlePhoneLogin}
-                  fontSize="16px"
-                  fontWeight="600"
-                >
-                  {otpSent ? '인증번호 재전송' : '인증번호 받기'}
-                </Button>
-
-                {otpSent && (
-                  <OTPVerificationForm 
-                    phoneNumber={phoneNumber}
-                    onSuccess={(data) => {
-                      if (data.token) {
-                        localStorage.setItem('token', data.token);
-                        localStorage.setItem('refreshToken', data.refreshToken);
-                        window.location.href = '/';
-                      }
-                    }}
-                  />
-                )}
-
-                <Button
-                  w="100%"
-                  variant="ghost"
-                  onClick={() => {
-                    setShowPhoneInput(false);
-                    setOtpSent(false);
-                    setPhoneNumber('');
-                  }}
-                  fontSize="14px"
-                >
-                  뒤로가기
-                </Button>
-              </VStack>
-            )}
+            <Button
+              leftIcon={<Icon as={FaPhone} />}
+              w="100%"
+              h="50px"
+              colorScheme="blue"
+              variant="outline"
+              onClick={handlePhoneLoginAttempt}
+              fontSize="16px"
+              fontWeight="600"
+            >
+              전화번호로 로그인
+            </Button>
+            
+            <Text fontSize="sm" color="gray.600" textAlign="center">
+              카카오 로그인 시 별도의 회원가입이 필요하지 않습니다
+            </Text>
           </VStack>
 
           <HStack justify="center" spacing={4} fontSize="sm" color="gray.600">
-            <Link to="/consent">이용약관</Link>
+            <Text as="a" href="/consent">이용약관</Text>
             <Text>|</Text>
-            <Link to="/consent">개인정보처리방침</Link>
+            <Text as="a" href="/consent">개인정보처리방침</Text>
           </HStack>
         </VStack>
       </Container>
@@ -242,22 +169,23 @@ const OTPVerificationForm = ({ phoneNumber, onSuccess }) => {
     }
 
     try {
-      const response = await axios.post('/api/customer/verify-otp', {
+      const response = await verifyOTP({
         phoneNumber: phoneNumber.replace(/[^0-9]/g, ''),
         otp
       });
 
-      if (response.data.success) {
+      if (response.success) {
         toast({
           title: "로그인 성공",
           status: "success",
           duration: 3000,
         });
-        onSuccess(response.data);
+        onSuccess(response);
       }
     } catch (error) {
+      console.error('OTP 검증 오류:', error);
       toast({
-        title: error.response?.data?.message || '인증 실패',
+        title: error.message || '인증 실패',
         status: "error",
         duration: 3000,
       });
