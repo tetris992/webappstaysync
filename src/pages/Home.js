@@ -47,11 +47,9 @@ const Home = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    let lastScrollY = window.pageYOffset;
-
+    // 스크롤 이벤트 리스너 추가 (필요한 경우 사용)
     const updateScrollPosition = () => {
-      const scrollY = window.pageYOffset;
-      lastScrollY = scrollY > 0 ? scrollY : 0;
+      // 스크롤 위치 업데이트 로직
     };
 
     window.addEventListener("scroll", updateScrollPosition);
