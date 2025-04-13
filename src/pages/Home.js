@@ -16,10 +16,9 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-  PopoverBody,
   PopoverArrow,
-  useToast,
   Badge,
+  PopoverCloseButton,
 } from '@chakra-ui/react';
 import { SearchIcon, CalendarIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,7 +26,7 @@ import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { DateRange } from 'react-date-range';
-import { format, addDays, startOfDay, addMonths, isValid } from 'date-fns';
+import { format, addMonths, isValid } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
@@ -35,17 +34,16 @@ import 'react-date-range/dist/theme/default.css';
 const Home = () => {
   const navigate = useNavigate();
   const { customer } = useAuth();
-  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState([
     {
-      startDate: startOfDay(new Date()),
-      endDate: addDays(startOfDay(new Date()), 1),
-      key: 'selection',
-    },
+      startDate: new Date(),
+      endDate: new Date(),
+      key: 'selection'
+    }
   ]);
   const [guestCount, setGuestCount] = useState(1);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
     // 스크롤 이벤트 리스너 추가 (필요한 경우 사용)
@@ -77,17 +75,7 @@ const Home = () => {
 
   const handleDateChange = (item) => {
     setDateRange([item.selection]);
-    const { startDate, endDate } = item.selection;
-    if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
-      setIsOpen(false);
-      toast({
-        title: '날짜 선택 완료',
-        description: `${format(startDate, 'yyyy-MM-dd')} ~ ${format(endDate, 'yyyy-MM-dd')}`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
+    setIsCalendarOpen(false);
   };
 
   const sliderSettings = {
@@ -234,13 +222,6 @@ const Home = () => {
     },
   ];
 
-  const startLabel = isValid(dateRange[0].startDate)
-    ? format(dateRange[0].startDate, 'yyyy-MM-dd')
-    : '';
-  const endLabel = isValid(dateRange[0].endDate)
-    ? format(dateRange[0].endDate, 'yyyy-MM-dd')
-    : '';
-
   return (
     <Box
       minH="100vh"
@@ -371,18 +352,23 @@ const Home = () => {
 
               <Popover
                 placement="bottom"
-                isOpen={isOpen}
-                onOpen={() => setIsOpen(true)}
-                onClose={() => setIsOpen(false)}
-                closeOnBlur={true}
+                isOpen={isCalendarOpen}
+                onClose={() => setIsCalendarOpen(false)}
               >
                 <PopoverTrigger>
-                  <InputGroup size={{ base: "sm", md: "md" }} w="100%" cursor="pointer">
-                    <InputLeftElement pointerEvents="none">
+                  <InputGroup size={{ base: "sm", md: "md" }} w="100%">
+                    <InputLeftElement pointerEvents="none" h="100%" display="flex" alignItems="center">
                       <CalendarIcon color="gray.400" />
                     </InputLeftElement>
                     <Input
                       readOnly
+                      value={
+                        dateRange[0].startDate && dateRange[0].endDate
+                          ? `${format(dateRange[0].startDate, 'yyyy년 MM월 dd일')} ~ ${format(dateRange[0].endDate, 'yyyy년 MM월 dd일')}`
+                          : '날짜 선택'
+                      }
+                      placeholder="날짜 선택"
+                      onClick={() => setIsCalendarOpen(true)}
                       borderColor="gray.200"
                       borderRadius="full"
                       bg="white"
@@ -393,46 +379,49 @@ const Home = () => {
                         boxShadow: '0 0 0 1px rgba(49, 151, 149, 0.2)',
                       }}
                       fontSize={{ base: "sm", md: "md" }}
-                      h={{ base: "40px", md: "45px" }}
-                      value={startLabel && endLabel ? `${startLabel} ~ ${endLabel}` : '날짜 선택'}
+                      h={{ base: "48px", md: "52px" }}
+                      pl="40px"
+                      display="flex"
+                      alignItems="center"
                     />
                   </InputGroup>
                 </PopoverTrigger>
-                <PopoverContent
-                  zIndex={1500}
-                  w="fit-content"
-                  maxW="95vw"
-                  mx="auto"
-                  textAlign="center"
-                >
+                <PopoverContent w="auto" p={4}>
                   <PopoverArrow />
-                  <PopoverBody p={{ base: 2, md: 4 }}>
-                    <Box
-                      maxW="100%"
-                      overflowX="auto"
-                      sx={{
-                        '.rdrMonth': {
-                          width: { base: '100%', md: 'auto' }
-                        }
-                      }}
-                    >
-                      <DateRange
-                        editableDateInputs={true}
-                        onChange={handleDateChange}
-                        moveRangeOnFirstSelection={false}
-                        ranges={dateRange}
-                        months={window.innerWidth > 768 ? 2 : 1}
-                        direction={window.innerWidth > 768 ? "horizontal" : "vertical"}
-                        locale={ko}
-                        minDate={startOfDay(new Date())}
-                        maxDate={addMonths(startOfDay(new Date()), 3)}
-                        rangeColors={['#3182CE']}
-                        showSelectionPreview={true}
-                        showDateDisplay={true}
-                        retainEndDateOnFirstSelection={true}
-                      />
-                    </Box>
-                  </PopoverBody>
+                  <PopoverCloseButton />
+                  <Box
+                    sx={{
+                      '.rdrMonth': {
+                        width: { base: '280px', md: '320px' }
+                      },
+                      '.rdrDay': {
+                        height: { base: '40px', md: '45px' },
+                        fontSize: { base: '16px', md: '18px' }
+                      },
+                      '.rdrDayNumber': {
+                        fontSize: { base: '16px', md: '18px' },
+                        padding: { base: '8px', md: '10px' }
+                      },
+                      '.rdrWeekDay': {
+                        fontSize: { base: '14px', md: '16px' },
+                        padding: { base: '8px', md: '10px' }
+                      }
+                    }}
+                  >
+                    <DateRange
+                      onChange={handleDateChange}
+                      moveRangeOnFirstSelection={false}
+                      months={1}
+                      direction="vertical"
+                      minDate={new Date()}
+                      maxDate={addMonths(new Date(), 3)}
+                      ranges={dateRange}
+                      rangeColors={['#3182CE']}
+                      showDateDisplay={true}
+                      showSelectionPreview={true}
+                      locale={ko}
+                    />
+                  </Box>
                 </PopoverContent>
               </Popover>
 
@@ -513,7 +502,7 @@ const Home = () => {
                   {recommendedHotels.map((hotel) => (
                     <Box
                       key={hotel.id}
-                      onClick={() => navigate('/hotels')}
+                      onClick={() => navigate(`/rooms/${hotel.id}`)}
                       position="relative"
                       cursor="pointer"
                       h={{ base: "240px", sm: "300px", md: "400px" }}
@@ -650,38 +639,14 @@ const Home = () => {
                 boxShadow="md"
                 cursor="pointer"
                 onClick={() => {
-                  const container = document.getElementById('animation-container');
-                  const elements = container.querySelectorAll('.animation-element');
-                  
-                  // 애니메이션 요소들이 퍼져나가는 효과
-                  elements.forEach((element, index) => {
-                    element.style.animation = `spreadOut 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards`;
-                    element.style.animationDelay = `${index * 0.05}s`;
-                  });
-                  
-                  // 이벤트 페이지 확장 애니메이션
-                  const eventPage = document.createElement('div');
-                  eventPage.className = 'event-page-expand';
-                  
-                  // 애니메이션 영역의 위치와 크기 정보 가져오기
-                  const rect = container.getBoundingClientRect();
-                  eventPage.style.top = `${rect.top}px`;
-                  eventPage.style.left = `${rect.left}px`;
-                  eventPage.style.width = `${rect.width}px`;
-                  eventPage.style.height = `${rect.height}px`;
-                  
-                  document.body.appendChild(eventPage);
-                  
-                  // 애니메이션 시작
-                  setTimeout(() => {
-                    eventPage.classList.add('expanded');
-                  }, 100);
+                  const button = document.getElementById('animation-button');
+                  button.style.animation = 'bounceAndDisappear 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
                   
                   setTimeout(() => {
                     navigate('/events');
-                  }, 1500);
+                  }, 1300);
                 }}
-                id="animation-container"
+                id="animation-button"
                 _hover={{
                   transform: 'scale(1.02)',
                   boxShadow: '0 6px 16px rgba(159, 122, 234, 0.4)',
@@ -690,37 +655,13 @@ const Home = () => {
                   transform: 'scale(0.98)',
                 }}
                 sx={{
-                  '@keyframes spreadOut': {
-                    '0%': { 
-                      transform: 'translate(0, 0) scale(1)',
-                      opacity: 1,
-                      backgroundColor: 'var(--original-color, white)'
-                    },
-                    '50%': { 
-                      transform: 'translate(var(--spread-x, 100px), var(--spread-y, -100px)) scale(1.5)',
-                      opacity: 0.8,
-                      backgroundColor: 'var(--spread-color, #FF6B6B)'
-                    },
-                    '100%': { 
-                      transform: 'translate(var(--spread-x, 100px), var(--spread-y, -100px)) scale(0)',
-                      opacity: 0,
-                      backgroundColor: 'var(--spread-color, #FF6B6B)'
-                    }
-                  },
-                  '.event-page-expand': {
-                    position: 'fixed',
-                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                    zIndex: 1000,
-                    borderRadius: 'xl',
-                    overflow: 'hidden',
-                    transition: 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                    '&.expanded': {
-                      top: '0',
-                      left: '0',
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '0',
-                    }
+                  '@keyframes bounceAndDisappear': {
+                    '0%': { transform: 'scale(1)', opacity: 1 },
+                    '20%': { transform: 'scale(1.2) translateY(-20px)', opacity: 0.9 },
+                    '40%': { transform: 'scale(0.9) translateY(10px)', opacity: 0.8 },
+                    '60%': { transform: 'scale(1.1) translateY(-10px)', opacity: 0.7 },
+                    '80%': { transform: 'scale(0.8) translateY(5px)', opacity: 0.5 },
+                    '100%': { transform: 'scale(0)', opacity: 0 }
                   }
                 }}
               >
@@ -742,11 +683,7 @@ const Home = () => {
                     bottom={0}
                     bgGradient="linear(to-r, purple.600, blue.400, teal.300)"
                     animation="gradientMove 15s ease infinite"
-                    className="animation-element"
                     sx={{
-                      '--spread-x': '200px',
-                      '--spread-y': '-200px',
-                      '--spread-color': '#FF6B6B',
                       '@keyframes gradientMove': {
                         '0%': { transform: 'scale(1.5) rotate(0deg)' },
                         '50%': { transform: 'scale(1.8) rotate(180deg)' },
@@ -765,13 +702,8 @@ const Home = () => {
                       bg="rgba(255, 255, 255, 0.1)"
                       backdropFilter="blur(5px)"
                       borderRadius="lg"
-                      className="animation-element"
                       animation={`floatPattern${i} ${Math.random() * 10 + 15}s infinite linear`}
                       sx={{
-                        '--spread-x': `${Math.random() * 400 - 200}px`,
-                        '--spread-y': `${Math.random() * 400 - 200}px`,
-                        '--spread-color': i % 3 === 0 ? '#FF6B6B' : i % 3 === 1 ? '#4ECDC4' : '#FFE66D',
-                        '--original-color': 'rgba(255, 255, 255, 0.1)',
                         top: `${Math.random() * 100}%`,
                         left: `${Math.random() * 100}%`,
                         transform: `rotate(${Math.random() * 360}deg)`,
@@ -802,13 +734,8 @@ const Home = () => {
                       h="100%"
                       bg="white"
                       opacity="0.3"
-                      className="animation-element"
                       animation={`lightBeam${i} ${Math.random() * 5 + 5}s infinite linear`}
                       sx={{
-                        '--spread-x': `${Math.random() * 300 - 150}px`,
-                        '--spread-y': `${Math.random() * 300 - 150}px`,
-                        '--spread-color': '#FF9F1C',
-                        '--original-color': 'white',
                         left: `${Math.random() * 100}%`,
                         [`@keyframes lightBeam${i}`]: {
                           '0%': { transform: 'translateY(-100%) rotate(45deg)', opacity: 0 },
@@ -828,16 +755,8 @@ const Home = () => {
                       h="4px"
                       bg="white"
                       borderRadius="full"
-                      className="animation-element"
                       animation={`particle${i} ${Math.random() * 20 + 10}s infinite linear`}
                       sx={{
-                        '--spread-x': `${Math.random() * 500 - 250}px`,
-                        '--spread-y': `${Math.random() * 500 - 250}px`,
-                        '--spread-color': i % 5 === 0 ? '#FF6B6B' : 
-                                         i % 5 === 1 ? '#4ECDC4' : 
-                                         i % 5 === 2 ? '#FFE66D' : 
-                                         i % 5 === 3 ? '#FF9F1C' : '#A8E6CF',
-                        '--original-color': 'white',
                         top: `${Math.random() * 100}%`,
                         left: `${Math.random() * 100}%`,
                         [`@keyframes particle${i}`]: {
