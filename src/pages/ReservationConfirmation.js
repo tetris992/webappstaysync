@@ -152,13 +152,25 @@ const ReservationConfirmation = () => {
 
   // 초기 데이터 로드
   useEffect(() => {
+    if (!user) {
+      toast({
+        title: '인증 오류',
+        description: '로그인이 필요합니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+
     if (location.state) {
       const { hotelId, price } = location.state;
       setHotelId(hotelId);
       setPrice(price);
       loadHotelInfoAndPhotos(hotelId);
     }
-  }, [location.state, loadHotelInfoAndPhotos]);
+  }, [location.state, loadHotelInfoAndPhotos, user, navigate, location, toast]);
 
   const handleConfirm = async () => {
     if (!user) {
