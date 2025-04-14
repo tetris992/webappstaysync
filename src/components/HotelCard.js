@@ -22,8 +22,8 @@ import {
   FaStar,
   FaQuestionCircle,
   FaMapMarkerAlt,
-  FaMapSigns,
   FaCopy,
+  FaRoute,
 } from 'react-icons/fa';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
@@ -234,17 +234,6 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
                 aria-label="주소 복사"
               />
             </Flex>
-            <Button
-              size="sm"
-              width="full"
-              variant="outline"
-              colorScheme="teal"
-              leftIcon={<FaMapSigns />}
-              onClick={handleAddressClick}
-              mt={1}
-            >
-              길찾기
-            </Button>
           </Box>
           <Flex justify="space-between" align="center">
             {hotel.amenities && hotel.amenities.length > 0 ? (
@@ -268,13 +257,24 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               <Box flex="1" />
             )}
             <Button
+              size="sm"
+              variant="outline"
               colorScheme="teal"
-              onClick={onSelect}
-              ml="auto"
+              leftIcon={<FaRoute />}
+              onClick={handleAddressClick}
+              color="blue.500"
             >
-              예약하기
+              T맵
             </Button>
           </Flex>
+          <Button
+            width="full"
+            colorScheme="teal"
+            onClick={onSelect}
+            mt={3}
+          >
+            자세히 보기
+          </Button>
         </Box>
       </MotionBox>
 
@@ -309,10 +309,11 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
               <Button
                 variant="outline"
                 colorScheme="teal"
-                leftIcon={<FaMapSigns />}
+                leftIcon={<FaRoute />}
                 onClick={handleTMapNavigation}
+                color="blue.500"
               >
-                T맵으로 길찾기
+                T맵
               </Button>
               <Button
                 variant="outline"

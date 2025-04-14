@@ -519,6 +519,11 @@ const ReservationConfirmation = () => {
                   <Text color="gray.600">숙박 일수</Text>
                   <Text fontWeight="medium">{numNights}박</Text>
                   
+                  <Text color="gray.600">예약 시간</Text>
+                  <Text fontWeight="medium" color="gray.400">
+                    {format(new Date(), 'yyyy-MM-dd HH:mm')} (한국 현재 시간)
+                  </Text>
+                  
                   <Text color="gray.600">결제</Text>
                   <Text fontWeight="medium">현장결제</Text>
                 </Grid>

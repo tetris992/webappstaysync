@@ -25,6 +25,13 @@ import { format } from 'date-fns';
 import { useToast } from '@chakra-ui/react';
 import Map from './Map';
 
+// 한국 시간으로 Date 객체 생성하는 함수
+const getKoreanDate = () => {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utc + (9 * 60 * 60 * 1000));
+};
+
 const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
   const {
     _id,
@@ -42,6 +49,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     latitude,
     longitude,
     hotelPhoneNumber,
+    reservationDate,
   } = reservation || {};
 
   const safePrice = typeof price === 'number' ? price : 0;
@@ -50,8 +58,89 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
   const toast = useToast();
   const [isMapOpen, setIsMapOpen] = useState(false);
 
+  // 예약 취소 가능 여부 확인
+  const getCancellationStatus = () => {
+    if (!reservationDate || !checkIn) {
+      console.log('Required dates missing:', { reservationDate, checkIn });
+      return {
+        canCancel: false,
+        message: '예약 정보 없음',
+        color: 'gray.500',
+        description: ''
+      };
+    }
+
+    try {
+      // 현재 한국 시간
+      const currentDate = getKoreanDate();
+      
+      // 체크인 날짜의 오후 2시
+      const checkInDate = new Date(checkIn);
+      const checkInDay2PM = new Date(checkInDate);
+      checkInDay2PM.setHours(14, 0, 0, 0);
+
+      // 예약 생성 시간
+      const reservationDateTime = (() => {
+        const date = new Date(reservationDate);
+        const utc = date.getTime();
+        return new Date(utc + (9 * 60 * 60 * 1000));
+      })();
+
+      // 현재 시간과 예약 생성 시간의 차이 (밀리초)
+      const timeSinceReservation = currentDate.getTime() - reservationDateTime.getTime();
+      const isWithin15Minutes = timeSinceReservation <= 15 * 60 * 1000;
+
+      console.log('Cancellation Check:', {
+        currentDateKST: format(currentDate, 'yyyy-MM-dd HH:mm:ss'),
+        checkInDay2PMKST: format(checkInDay2PM, 'yyyy-MM-dd HH:mm:ss'),
+        reservationDateKST: format(reservationDateTime, 'yyyy-MM-dd HH:mm:ss'),
+        timeSinceReservationMinutes: Math.floor(timeSinceReservation / (60 * 1000)),
+        isWithin15Minutes,
+        isBeforeCheckInDay2PM: currentDate < checkInDay2PM
+      });
+
+      // 체크인 당일 오후 2시 이전
+      if (currentDate < checkInDay2PM) {
+        return {
+          canCancel: true,
+          message: '취소 가능',
+          color: 'blue.500',
+          description: '체크인 당일 오후 2시 이전까지 취소 가능합니다.'
+        };
+      }
+
+      // 체크인 당일 오후 2시 이후 && 예약 15분 이내
+      if (currentDate >= checkInDay2PM && isWithin15Minutes) {
+        return {
+          canCancel: true,
+          message: '15분 이내 취소 가능',
+          color: 'orange.500',
+          description: '예약 생성 후 15분 이내 취소 가능합니다.'
+        };
+      }
+
+      // 그 외의 경우
+      return {
+        canCancel: false,
+        message: '예약이 확정되었습니다',
+        color: 'green.500',
+        description: ''
+      };
+    } catch (error) {
+      console.error('Error in getCancellationStatus:', error);
+      return {
+        canCancel: false,
+        message: '상태 확인 오류',
+        color: 'red.500',
+        description: ''
+      };
+    }
+  };
+
+  const cancellationStatus = getCancellationStatus();
+
   const handleCancelClick = () => {
-    if (!isConfirmed && onCancelReservation && _id) {
+    if (cancellationStatus.canCancel && onCancelReservation && _id) {
       onCancelReservation(_id);
     }
   };
@@ -178,6 +267,16 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
               {checkOut ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm') : 'N/A'}
             </Text>
 
+            <Text fontSize="sm" color="gray.400">예약 일시:</Text>
+            <Text fontSize="sm" color="gray.400">
+              {reservationDate ? (() => {
+                const date = new Date(reservationDate);
+                const utc = date.getTime();
+                const kstDate = new Date(utc + (9 * 60 * 60 * 1000));
+                return format(kstDate, 'yyyy-MM-dd HH:mm');
+              })() : 'N/A'}
+            </Text>
+
             <Text fontSize="sm" color="gray.600">숙박 일수:</Text>
             <Text fontSize="sm">{numDays || 1}박</Text>
 
@@ -189,23 +288,22 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
         </VStack>
         <Divider />
         <VStack align="start" spacing={2} w="100%">
-          {isConfirmed ? (
-            <Text fontSize="md" color="green.500" fontWeight="semibold" w="100%" textAlign="center">
-              예약이 확정되었습니다
+          {!cancellationStatus.canCancel ? (
+            <Text fontSize="md" color={cancellationStatus.color} fontWeight="semibold" w="100%" textAlign="center">
+              {cancellationStatus.message}
             </Text>
           ) : (
             <>
               <Text fontSize="xs" color="gray.500">
-                후불예약은 당일 14시 전까지 무료 취소 가능합니다.
+                {cancellationStatus.description}
               </Text>
               <Button
                 size="sm"
-                colorScheme="gray"
+                colorScheme={cancellationStatus.color.split('.')[0]}
                 onClick={handleCancelClick}
                 w="100%"
-                _hover={{ bg: 'gray.200', color: 'red.500' }}
               >
-                예약 취소
+                {cancellationStatus.message}
               </Button>
             </>
           )}

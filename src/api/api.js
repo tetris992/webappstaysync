@@ -436,8 +436,13 @@ export const getReservationHistory = async () => {
 // 예약 취소 API
 export const cancelReservation = async (reservationId) => {
   try {
-    const response = await api.delete(
-      `/api/customer/reservation/${reservationId}`
+    const response = await api.patch(
+      `/api/customer/reservation/${reservationId}/cancel`,
+      {
+        isCancelled: true,
+        reservationStatus: '예약취소',
+        cancelledAt: new Date().toISOString().replace('Z', '+09:00')
+      }
     );
     return response.data;
   } catch (error) {
