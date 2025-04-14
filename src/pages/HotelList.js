@@ -150,9 +150,32 @@ const HotelList = ({ loadHotelSettings }) => {
     
     // 검색어 필터링
     if (searchQuery) {
-      updatedHotels = updatedHotels.filter((hotel) =>
-        hotel.hotelName.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const searchLower = searchQuery.toLowerCase().trim();
+      console.log('[HotelList] 검색어:', searchLower);
+      
+      updatedHotels = updatedHotels.filter((hotel) => {
+        // 호텔 이름 검색
+        const hotelName = hotel.hotelName || '';
+        const nameMatch = hotelName.toLowerCase().includes(searchLower);
+        
+        // 호텔 주소 검색
+        const address = hotel.address || '';
+        const addrMatch = address.toLowerCase().includes(searchLower);
+        
+        // 주소를 부분으로 분해하여 검색
+        const addressParts = address.toLowerCase().split(/[\s,]+/);
+        const addressPartMatch = addressParts.some(part => part.includes(searchLower));
+        
+        // 디버깅을 위한 콘솔 로그
+        console.log(`[HotelList] 호텔: ${hotelName}, 주소: ${address}`);
+        console.log(`[HotelList] 이름 일치: ${nameMatch}, 주소 일치: ${addrMatch}, 주소 부분 일치: ${addressPartMatch}`);
+        console.log(`[HotelList] 주소 부분: ${addressParts.join(', ')}`);
+        
+        return nameMatch || addrMatch || addressPartMatch;
+      });
+      
+      console.log('[HotelList] 검색 결과 호텔 수:', updatedHotels.length);
+      console.log('[HotelList] 검색 결과 호텔:', updatedHotels.map(h => h.hotelName));
     }
 
     // 가격 필터링
@@ -287,7 +310,7 @@ const HotelList = ({ loadHotelSettings }) => {
                   <SearchIcon color="gray.400" />
                 </InputLeftElement>
                 <Input
-                  placeholder="호텔 이름 검색"
+                  placeholder="호텔 이름 또는 주소 검색 (예: 경남, 창원, 성산구)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   bg="white"
