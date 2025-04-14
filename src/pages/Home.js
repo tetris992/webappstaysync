@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -18,15 +18,14 @@ import {
   PopoverContent,
   PopoverArrow,
   Badge,
-  PopoverCloseButton,
 } from '@chakra-ui/react';
-import { SearchIcon, CalendarIcon, ArrowForwardIcon } from '@chakra-ui/icons';
+import { SearchIcon, CalendarIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { DateRange } from 'react-date-range';
-import { format, addMonths, isValid } from 'date-fns';
+import { format, addDays, startOfDay, addMonths, isValid } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
@@ -37,23 +36,14 @@ const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState([
     {
-      startDate: new Date(),
-      endDate: new Date(),
-      key: 'selection'
-    }
+      startDate: startOfDay(new Date()),
+      endDate: addDays(startOfDay(new Date()), 1),
+      key: 'selection',
+    },
   ]);
   const [guestCount, setGuestCount] = useState(1);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
-  useEffect(() => {
-    // 스크롤 이벤트 리스너 추가 (필요한 경우 사용)
-    const updateScrollPosition = () => {
-      // 스크롤 위치 업데이트 로직
-    };
-
-    window.addEventListener("scroll", updateScrollPosition);
-    return () => window.removeEventListener("scroll", updateScrollPosition);
-  }, []);
 
   const handleSearch = () => {
     const checkIn = dateRange[0].startDate;
@@ -97,27 +87,10 @@ const Home = () => {
         zIndex={10}
       >
         <HStack spacing={2}>
-          {dots.map((dot, index) => (
-            <Box
-              key={index}
-              w="6px"
-              h="6px"
-              bg={
-                dot.props.className.includes('slick-active')
-                  ? 'black'
-                  : 'gray.300'
-              }
-              borderRadius="full"
-              opacity={0.8}
-              boxShadow="0 0 5px rgba(0, 0, 0, 0.3)"
-              transition="background-color 0.3s ease"
-              _hover={{ opacity: 1 }}
-            />
-          ))}
+          {dots}
         </HStack>
       </Box>
     ),
-    customPaging: () => <Box w="6px" h="6px" borderRadius="full" />,
   };
 
   const recommendedHotels = [
@@ -226,283 +199,229 @@ const Home = () => {
     <Box
       minH="100vh"
       bg="gray.50"
-      position="fixed"
-      top={0}
-      left={0}
-      right={0}
-      bottom={0}
       display="flex"
       flexDirection="column"
       w="100%"
+      overflowX="hidden"
     >
       <Box
         bg="white"
         borderBottom="1px solid"
-        borderColor="gray.200"
+        borderColor="gray.100"
         width="100%"
-        py={4}
+        py={3}
+        position="sticky"
+        top={0}
+        zIndex={100}
+        boxShadow="sm"
       >
-        <Container maxW="container.sm">
-          <Flex align="center" justify="center" position="relative">
+        <Container maxW="container.lg">
+          <Flex align="center" justify="space-between" position="relative">
             <Box
-              position="relative"
               display="flex"
-              flexDirection="column"
               alignItems="center"
-              p={4}
-              borderRadius="lg"
-              border="1px solid"
-              borderColor="gray.200"
-              boxShadow="sm"
-              bg="white"
-              _before={{
-                content: '""',
-                position: 'absolute',
-                top: '-2px',
-                left: '-2px',
-                right: '-2px',
-                bottom: '-2px',
-                border: '1px solid',
-                borderColor: 'blue.200',
-                borderRadius: 'lg',
-                zIndex: -1,
-              }}
+              gap={2}
+              cursor="pointer"
+              onClick={() => navigate('/')}
+              mx="auto"
             >
-              <Text
-                fontSize={{ base: "2xl", md: "3xl", lg: "4xl" }}
-                fontWeight="bold"
-                color="blue.700"
-                letterSpacing="tight"
+              <Box
+                bg="blue.500"
+                w="36px"
+                h="36px"
+                borderRadius="lg"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                boxShadow="lg"
                 position="relative"
-                display="inline-block"
-                textAlign="center"
+                _before={{
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: "lg",
+                  background: "linear-gradient(135deg, #4299E1 0%, #3182CE 100%)",
+                  opacity: 0.8,
+                }}
               >
-                단 잠
-              </Text>
-              <Text
-                fontSize={{ base: "xs", md: "sm" }}
-                color="gray.600"
-                mt={1}
-                letterSpacing="wider"
-                fontWeight="medium"
-                textTransform="uppercase"
-                opacity={0.9}
-                textAlign="center"
+                <Text color="white" fontSize="xl" fontWeight="black" position="relative" zIndex={1}>
+                  단
+                </Text>
+              </Box>
+              <Box>
+                <Text fontSize="lg" fontWeight="bold" color="gray.800" letterSpacing="tight">
+                  단잠
+                </Text>
+                <Text fontSize="xs" color="gray.500" letterSpacing="wider" lineHeight="1">
+                  SWEET DREAMS
+                </Text>
+              </Box>
+            </Box>
+
+            <Box position="absolute" right={0} display="flex" alignItems="center" gap={4}>
+              <Popover
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                placement="bottom-end"
+                closeOnBlur={true}
               >
-                편안한 후불예약
-              </Text>
+                <PopoverTrigger>
+                  <Box
+                    as="button"
+                    onClick={() => setIsSearchOpen(!isSearchOpen)}
+                    p={2}
+                    borderRadius="full"
+                    bg="gray.50"
+                    _hover={{ bg: "gray.100" }}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <SearchIcon boxSize={5} color="gray.600" />
+                  </Box>
+                </PopoverTrigger>
+                <PopoverContent
+                  w="300px"
+                  p={4}
+                  boxShadow="xl"
+                  border="none"
+                  borderRadius="xl"
+                  bg="white"
+                >
+                  <PopoverArrow />
+                  <VStack spacing={4}>
+                    <InputGroup>
+                      <InputLeftElement pointerEvents="none">
+                        <SearchIcon color="gray.400" />
+                      </InputLeftElement>
+                      <Input
+                        placeholder="목적지 검색 (예: 부산)"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        borderRadius="full"
+                      />
+                    </InputGroup>
+
+                    <InputGroup>
+                      <InputLeftElement pointerEvents="none">
+                        <CalendarIcon color="gray.400" />
+                      </InputLeftElement>
+                      <Input
+                        placeholder="날짜 선택"
+                        value={`${format(dateRange[0].startDate, 'yyyy년 MM월 dd일')} - ${format(dateRange[0].endDate, 'yyyy년 MM월 dd일')}`}
+                        onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                        readOnly
+                        cursor="pointer"
+                        borderRadius="full"
+                      />
+                    </InputGroup>
+
+                    <Select
+                      value={guestCount}
+                      onChange={(e) => setGuestCount(Number(e.target.value))}
+                      borderRadius="full"
+                    >
+                      {[...Array(10)].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1}명
+                        </option>
+                      ))}
+                    </Select>
+
+                    <Button
+                      w="100%"
+                      colorScheme="blue"
+                      onClick={() => {
+                        handleSearch();
+                        setIsSearchOpen(false);
+                      }}
+                      borderRadius="full"
+                    >
+                      검색
+                    </Button>
+                  </VStack>
+                </PopoverContent>
+              </Popover>
+
+              {!customer && (
+                <HStack spacing={2}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    color="gray.600"
+                    onClick={() => navigate('/login')}
+                  >
+                    로그인
+                  </Button>
+                  <Button
+                    variant="solid"
+                    size="sm"
+                    colorScheme="blue"
+                    onClick={() => navigate('/signup')}
+                  >
+                    회원가입
+                  </Button>
+                </HStack>
+              )}
             </Box>
           </Flex>
         </Container>
       </Box>
 
-      <Box
-        flex={1}
-        overflowY="auto"
-        sx={{
-          '&::-webkit-scrollbar': {
-            width: '4px',
-          },
-          '&::-webkit-scrollbar-track': {
-            width: '4px',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: 'gray.300',
-            borderRadius: '24px',
-          },
-        }}
-      >
-        <Container
-          maxW={{ base: "100%", sm: "95%", md: "container.md" }}
-          py={{ base: 4, sm: 6 }}
-          px={{ base: 4, sm: 6 }}
+      {isCalendarOpen && (
+        <Box
+          position="fixed"
+          top="50%"
+          left="50%"
+          transform="translate(-50%, -50%)"
+          bg="white"
+          p={4}
+          borderRadius="xl"
+          boxShadow="xl"
+          zIndex={1000}
         >
-          <VStack
-            spacing={4}
-            align="stretch"
-            w="100%"
-            pb={{ base: "90px", md: "100px" }}
-          >
-            <VStack 
-              spacing={{ base: 3, sm: 4 }} 
-              w="100%"
-              align="center"
-            >
-              <InputGroup size={{ base: "md", md: "lg" }} w="100%">
-                <InputLeftElement pointerEvents="none" h="100%">
-                  <SearchIcon color="gray.400" />
-                </InputLeftElement>
-                <Input
-                  placeholder="목적지 검색 (예: 부산)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  borderColor="gray.200"
-                  borderRadius="full"
-                  bg="white"
-                  boxShadow="sm"
-                  _hover={{ borderColor: 'brand.500' }}
-                  _focus={{
-                    borderColor: 'brand.500',
-                    boxShadow: '0 0 0 1px rgba(49, 151, 149, 0.2)',
-                  }}
-                  fontSize={{ base: "sm", md: "md" }}
-                  h={{ base: "48px", md: "52px" }}
-                />
-              </InputGroup>
+          <Flex justify="space-between" align="center" mb={4}>
+            <Text fontWeight="bold">날짜 선택</Text>
+            <Button size="sm" onClick={() => setIsCalendarOpen(false)}>
+              닫기
+            </Button>
+          </Flex>
+          <DateRange
+            editableDateInputs={true}
+            onChange={handleDateChange}
+            moveRangeOnFirstSelection={false}
+            ranges={dateRange}
+            months={1}
+            direction="vertical"
+            locale={ko}
+            minDate={startOfDay(new Date())}
+            maxDate={addMonths(startOfDay(new Date()), 3)}
+            rangeColors={['#3182CE']}
+          />
+        </Box>
+      )}
 
-              <Popover
-                placement="bottom"
-                isOpen={isCalendarOpen}
-                onClose={() => setIsCalendarOpen(false)}
-              >
-                <PopoverTrigger>
-                  <InputGroup size={{ base: "sm", md: "md" }} w="100%">
-                    <InputLeftElement pointerEvents="none" h="100%" display="flex" alignItems="center">
-                      <CalendarIcon color="gray.400" />
-                    </InputLeftElement>
-                    <Input
-                      readOnly
-                      value={
-                        dateRange[0].startDate && dateRange[0].endDate
-                          ? `${format(dateRange[0].startDate, 'yyyy년 MM월 dd일')} ~ ${format(dateRange[0].endDate, 'yyyy년 MM월 dd일')}`
-                          : '날짜 선택'
-                      }
-                      placeholder="날짜 선택"
-                      onClick={() => setIsCalendarOpen(true)}
-                      borderColor="gray.200"
-                      borderRadius="full"
-                      bg="white"
-                      boxShadow="sm"
-                      _hover={{ borderColor: 'brand.500' }}
-                      _focus={{
-                        borderColor: 'brand.500',
-                        boxShadow: '0 0 0 1px rgba(49, 151, 149, 0.2)',
-                      }}
-                      fontSize={{ base: "sm", md: "md" }}
-                      h={{ base: "48px", md: "52px" }}
-                      pl="40px"
-                      display="flex"
-                      alignItems="center"
-                    />
-                  </InputGroup>
-                </PopoverTrigger>
-                <PopoverContent w="auto" p={4}>
-                  <PopoverArrow />
-                  <PopoverCloseButton />
-                  <Box
-                    sx={{
-                      '.rdrMonth': {
-                        width: { base: '280px', md: '320px' }
-                      },
-                      '.rdrDay': {
-                        height: { base: '40px', md: '45px' },
-                        fontSize: { base: '16px', md: '18px' }
-                      },
-                      '.rdrDayNumber': {
-                        fontSize: { base: '16px', md: '18px' },
-                        padding: { base: '8px', md: '10px' }
-                      },
-                      '.rdrWeekDay': {
-                        fontSize: { base: '14px', md: '16px' },
-                        padding: { base: '8px', md: '10px' }
-                      }
-                    }}
-                  >
-                    <DateRange
-                      onChange={handleDateChange}
-                      moveRangeOnFirstSelection={false}
-                      months={1}
-                      direction="vertical"
-                      minDate={new Date()}
-                      maxDate={addMonths(new Date(), 3)}
-                      ranges={dateRange}
-                      rangeColors={['#3182CE']}
-                      showDateDisplay={true}
-                      showSelectionPreview={true}
-                      locale={ko}
-                    />
-                  </Box>
-                </PopoverContent>
-              </Popover>
-
-              <Select
-                size={{ base: "sm", md: "md" }}
-                w="100%"
-                value={guestCount}
-                onChange={(e) => setGuestCount(Number(e.target.value))}
-                borderColor="gray.200"
-                borderRadius="full"
-                bg="white"
-                boxShadow="sm"
-                _hover={{ borderColor: 'brand.500' }}
-                _focus={{
-                  borderColor: 'brand.500',
-                  boxShadow: '0 0 0 1px rgba(49, 151, 149, 0.2)',
-                }}
-                fontSize={{ base: "sm", md: "md" }}
-                h={{ base: "40px", md: "45px" }}
-              >
-                {[...Array(10)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1}명
-                  </option>
-                ))}
-              </Select>
-
-              <Button
-                variant="solid"
-                w="100%"
-                onClick={handleSearch}
-                size={{ base: "md", md: "lg" }}
-                fontSize={{ base: "sm", md: "md" }}
-                fontWeight="700"
-                h={{ base: "48px", md: "52px" }}
-                bgGradient="linear(to-r, blue.600, teal.500)"
-                color="white"
-                borderRadius="full"
-                boxShadow="0 4px 12px rgba(49, 151, 149, 0.3)"
-                _hover={{
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 6px 16px rgba(49, 151, 149, 0.4)',
-                  bgGradient: 'linear(to-r, blue.700, teal.600)',
-                  color: 'yellow.200',
-                }}
-                _active={{ 
-                  transform: 'translateY(1px)',
-                  boxShadow: '0 2px 8px rgba(49, 151, 149, 0.3)',
-                }}
-                transition="all 0.3s ease"
-                rightIcon={<ArrowForwardIcon />}
-              >
-                숙소 예약하기
-              </Button>
-            </VStack>
-
-            <Box w="100%" mb={{ base: 3, sm: 4 }}>
+      <Box flex={1} overflowY="auto">
+        <Container maxW="container.md" py={6}>
+          <VStack spacing={6} align="stretch">
+            <Box w="100%" mb={4}>
               <Text 
                 fontSize={{ base: "md", md: "lg" }} 
                 fontWeight="bold" 
-                mb={{ base: 2, md: 3 }} 
+                mb={3}
                 color="gray.700"
-                px={1}
               >
                 추천 호텔
               </Text>
-              <Box
-                sx={{
-                  '.slick-slide': {
-                    px: { base: 1, md: 2 }
-                  },
-                  '.slick-list': {
-                    mx: { base: -1, md: -2 }
-                  }
-                }}
-              >
+              <Box>
                 <Slider {...sliderSettings}>
                   {recommendedHotels.map((hotel) => (
                     <Box
                       key={hotel.id}
-                      onClick={() => navigate(`/rooms/${hotel.id}`)}
+                      onClick={() => navigate('/hotels')}
                       position="relative"
                       cursor="pointer"
                       h={{ base: "240px", sm: "300px", md: "400px" }}
@@ -591,22 +510,11 @@ const Home = () => {
             {customer && (
               <Box
                 w="100%"
-                p={{ base: 4, sm: 5 }}
                 bg="white"
                 borderRadius="xl"
                 boxShadow="md"
-                transition="all 0.3s ease"
-                _hover={{ boxShadow: 'lg', transform: 'translateY(-2px)' }}
+                p={4}
               >
-                <Text
-                  fontSize="md"
-                  fontWeight="bold"
-                  textAlign="center"
-                  mb={2}
-                  color="gray.700"
-                >
-                  History
-                </Text>
                 <Flex justify="space-between" align="center">
                   <Box textAlign="center">
                     <Text fontSize="xs" color="gray.500">
@@ -621,7 +529,7 @@ const Home = () => {
                       포인트
                     </Text>
                     <Text fontSize="md" fontWeight="bold" color="gray.800">
-                      {(customer.points || 0).toLocaleString()}점
+                      {(customer.points || 0).toLocaleString()}P
                     </Text>
                   </Box>
                 </Flex>
@@ -776,6 +684,33 @@ const Home = () => {
                       }}
                     />
                   ))}
+
+                  {/* Event Text */}
+                  <Box
+                    position="absolute"
+                    top="50%"
+                    left="50%"
+                    transform="translate(-50%, -50%)"
+                    textAlign="center"
+                    color="white"
+                    zIndex={2}
+                  >
+                    <Text
+                      fontSize={{ base: "xl", md: "2xl" }}
+                      fontWeight="bold"
+                      mb={2}
+                      textShadow="0 2px 4px rgba(0,0,0,0.3)"
+                    >
+                      이벤트
+                    </Text>
+                    <Text
+                      fontSize={{ base: "sm", md: "md" }}
+                      opacity={0.9}
+                      textShadow="0 1px 2px rgba(0,0,0,0.3)"
+                    >
+                      클릭하여 이벤트 확인하기
+                    </Text>
+                  </Box>
                 </Box>
               </Box>
             </Box>
