@@ -33,115 +33,115 @@ import { fetchHotelList } from '../api/api';
 
 // 기본 호텔 데이터 (API 호출 실패 시 사용)
 const recommendedHotels = [
-  { 
-    id: 1, 
-    name: '부산 호텔', 
-    image: '/assets/hotel1.jpg', 
+  {
+    id: 1,
+    name: '부산 호텔',
+    image: '/assets/hotel1.jpg',
     rating: 4.5,
     description: '해운대 해변 전망 객실',
     tag: 'BEST HOT',
     color: 'blue',
-    address: '부산 해운대구 해운대해변로 264'
+    address: '부산 해운대구 해운대해변로 264',
   },
-  { 
-    id: 2, 
-    name: '서울 호텔', 
-    image: '/assets/hotel2.jpg', 
+  {
+    id: 2,
+    name: '서울 호텔',
+    image: '/assets/hotel2.jpg',
     rating: 4.8,
     description: '도심 속 프리미엄 스위트',
     tag: 'SPECIAL',
     color: 'purple',
-    address: '서울 중구 을지로 123'
+    address: '서울 중구 을지로 123',
   },
-  { 
-    id: 3, 
-    name: '제주 호텔', 
-    image: '/assets/hotel3.jpg', 
+  {
+    id: 3,
+    name: '제주 호텔',
+    image: '/assets/hotel3.jpg',
     rating: 4.2,
     description: '자연과 함께하는 리조트',
     tag: 'HOT',
     color: 'green',
-    address: '제주 서귀포시 중문관광로 72'
+    address: '제주 서귀포시 중문관광로 72',
   },
-  { 
-    id: 4, 
-    name: '대구 호텔', 
-    image: '/assets/hotel4.jpg', 
+  {
+    id: 4,
+    name: '대구 호텔',
+    image: '/assets/hotel4.jpg',
     rating: 4.6,
     description: '비즈니스 여행객 추천',
     tag: 'NEW',
     color: 'orange',
-    address: '대구 중구 국채보상로 660'
+    address: '대구 중구 국채보상로 660',
   },
-  { 
-    id: 5, 
-    name: '광주 호텔', 
-    image: '/assets/hotel5.jpg', 
+  {
+    id: 5,
+    name: '광주 호텔',
+    image: '/assets/hotel5.jpg',
     rating: 4.7,
     description: '문화 중심지 인근 호텔',
     tag: 'BEST HOT',
     color: 'blue',
-    address: '광주 서구 상무중앙로 110'
+    address: '광주 서구 상무중앙로 110',
   },
-  { 
-    id: 6, 
-    name: '인천 호텔', 
-    image: '/assets/hotel6.jpg', 
+  {
+    id: 6,
+    name: '인천 호텔',
+    image: '/assets/hotel6.jpg',
     rating: 4.9,
     description: '공항 근처 프리미엄 호텔',
     tag: 'SPECIAL',
     color: 'purple',
-    address: '인천 중구 인주대로 196'
+    address: '인천 중구 인주대로 196',
   },
-  { 
-    id: 7, 
-    name: '울산 호텔', 
-    image: '/assets/hotel7.jpg', 
+  {
+    id: 7,
+    name: '울산 호텔',
+    image: '/assets/hotel7.jpg',
     rating: 4.3,
     description: '산업단지 인근 편리한 위치',
     tag: 'HOT',
     color: 'green',
-    address: '울산 남구 삼산로 282'
+    address: '울산 남구 삼산로 282',
   },
-  { 
-    id: 8, 
-    name: '경주 호텔', 
-    image: '/assets/hotel8.jpg', 
+  {
+    id: 8,
+    name: '경주 호텔',
+    image: '/assets/hotel8.jpg',
     rating: 4.1,
     description: '역사 문화 체험 호텔',
     tag: 'NEW',
     color: 'orange',
-    address: '경주 남산순환로 1000'
+    address: '경주 남산순환로 1000',
   },
-  { 
-    id: 9, 
-    name: '춘천 호텔', 
-    image: '/assets/hotel9.jpg', 
+  {
+    id: 9,
+    name: '춘천 호텔',
+    image: '/assets/hotel9.jpg',
     rating: 4.4,
     description: '호수 전망 레이크뷰 호텔',
     tag: 'BEST HOT',
     color: 'blue',
-    address: '춘천시 호반로 123'
+    address: '춘천시 호반로 123',
   },
-  { 
-    id: 10, 
-    name: '속초 호텔', 
-    image: '/assets/hotel10.jpg', 
+  {
+    id: 10,
+    name: '속초 호텔',
+    image: '/assets/hotel10.jpg',
     rating: 4.0,
     description: '해변 산책로 인근 호텔',
     tag: 'SPECIAL',
     color: 'purple',
-    address: '속초시 해안로 345'
+    address: '속초시 해안로 345',
   },
-  { 
-    id: 11, 
-    name: '여수 호텔', 
-    image: '/assets/hotel11.jpg', 
+  {
+    id: 11,
+    name: '여수 호텔',
+    image: '/assets/hotel11.jpg',
     rating: 4.8,
     description: '해양 도시 전망 호텔',
     tag: 'HOT',
     color: 'green',
-    address: '여수시 돌산공원길 1'
+    address: '여수시 돌산공원길 1',
   },
 ];
 
@@ -170,9 +170,9 @@ const Home = () => {
         // fetchHotelList API 사용
         const hotelList = await fetchHotelList();
         console.log('서버에서 가져온 호텔 데이터:', hotelList);
-        
+
         // 호텔 데이터에 추가 정보 설정
-        const hotelsWithDetails = hotelList.map(hotel => ({
+        const hotelsWithDetails = hotelList.map((hotel) => ({
           ...hotel,
           rating: Number((Math.random() * 2 + 3).toFixed(1)), // 소수점 한 자리까지만 표시
           reviewCount: Math.floor(Math.random() * 100) + 10, // 임의의 리뷰 수
@@ -180,9 +180,9 @@ const Home = () => {
           image: '/assets/hotel1.jpg', // 기본 이미지
           tag: 'HOT', // 기본 태그
           color: 'blue', // 기본 색상
-          description: hotel.address // 설명으로 주소 사용
+          description: hotel.address, // 설명으로 주소 사용
         }));
-        
+
         setHotels(hotelsWithDetails);
       } catch (error) {
         console.error('호텔 데이터 가져오기 실패:', error);
@@ -219,37 +219,41 @@ const Home = () => {
     // 검색어를 소문자로 변환하고 공백 제거
     const searchLower = searchQuery.toLowerCase().trim();
     console.log('검색어:', searchLower);
-    
+
     // 검색 결과를 저장할 배열
     const filteredHotels = [];
-    
+
     // 실제 호텔 데이터 또는 하드코딩된 데이터 사용
     const hotelsToSearch = hotels.length > 0 ? hotels : recommendedHotels;
     console.log('검색 대상 호텔 수:', hotelsToSearch.length);
-    
+
     // 각 호텔에 대해 검색 수행
-    hotelsToSearch.forEach(hotel => {
+    hotelsToSearch.forEach((hotel) => {
       // 호텔 이름 검색 (hotelName 또는 name 속성 사용)
       const hotelName = hotel.hotelName || hotel.name || '';
       const nameMatch = hotelName.toLowerCase().includes(searchLower);
-      
+
       // 호텔 설명 검색 (description 속성이 있는 경우)
       const description = hotel.description || '';
       const descMatch = description.toLowerCase().includes(searchLower);
-      
+
       // 전체 주소 검색 (address 속성 사용)
       const address = hotel.address || '';
       const addrMatch = address.toLowerCase().includes(searchLower);
-      
+
       // 주소를 부분으로 분해하여 검색 (공백, 쉼표, 구분자로 분리)
       const addressParts = address.toLowerCase().split(/[\s,]+/);
-      const addressPartMatch = addressParts.some(part => part.includes(searchLower));
-      
+      const addressPartMatch = addressParts.some((part) =>
+        part.includes(searchLower)
+      );
+
       // 디버깅을 위한 콘솔 로그
       console.log(`호텔: ${hotelName}, 주소: ${address}`);
-      console.log(`이름 일치: ${nameMatch}, 설명 일치: ${descMatch}, 주소 일치: ${addrMatch}, 주소 부분 일치: ${addressPartMatch}`);
+      console.log(
+        `이름 일치: ${nameMatch}, 설명 일치: ${descMatch}, 주소 일치: ${addrMatch}, 주소 부분 일치: ${addressPartMatch}`
+      );
       console.log(`주소 부분: ${addressParts.join(', ')}`);
-      
+
       // 검색 결과가 있으면 배열에 추가
       if (nameMatch || descMatch || addrMatch || addressPartMatch) {
         console.log(`일치하는 호텔 추가: ${hotelName}`);
@@ -258,7 +262,10 @@ const Home = () => {
     });
 
     console.log('검색 결과 호텔 수:', filteredHotels.length);
-    console.log('검색 결과 호텔:', filteredHotels.map(h => h.hotelName || h.name));
+    console.log(
+      '검색 결과 호텔:',
+      filteredHotels.map((h) => h.hotelName || h.name)
+    );
 
     // 검색 결과가 있는 경우 해당 호텔로 이동
     if (filteredHotels.length > 0) {
@@ -268,7 +275,9 @@ const Home = () => {
           checkIn: format(checkIn, 'yyyy-MM-dd'),
           checkOut: format(checkOut, 'yyyy-MM-dd'),
           guestCount,
-          filteredHotels: filteredHotels.map(hotel => hotel.hotelId || hotel.id),
+          filteredHotels: filteredHotels.map(
+            (hotel) => hotel.hotelId || hotel.id
+          ),
         },
       });
     } else {
@@ -308,9 +317,7 @@ const Home = () => {
         justifyContent="center"
         zIndex={10}
       >
-        <HStack spacing={2}>
-          {dots}
-        </HStack>
+        <HStack spacing={2}>{dots}</HStack>
       </Box>
     ),
   };
@@ -323,7 +330,9 @@ const Home = () => {
       flexDirection="column"
       w="100%"
       overflowX="hidden"
+      position="relative"
     >
+      {/* 상단 헤더 - 고정 위치 */}
       <Box
         bg="white"
         borderBottom="1px solid"
@@ -357,31 +366,54 @@ const Home = () => {
                 position="relative"
                 _before={{
                   content: '""',
-                  position: "absolute",
+                  position: 'absolute',
                   top: 0,
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  borderRadius: "lg",
-                  background: "linear-gradient(135deg, #4299E1 0%, #3182CE 100%)",
+                  borderRadius: 'lg',
+                  background:
+                    'linear-gradient(135deg, #4299E1 0%, #3182CE 100%)',
                   opacity: 0.8,
                 }}
               >
-                <Text color="white" fontSize="xl" fontWeight="black" position="relative" zIndex={1}>
+                <Text
+                  color="white"
+                  fontSize="xl"
+                  fontWeight="black"
+                  position="relative"
+                  zIndex={1}
+                >
                   단
                 </Text>
               </Box>
               <Box>
-                <Text fontSize="lg" fontWeight="bold" color="gray.800" letterSpacing="tight">
+                <Text
+                  fontSize="lg"
+                  fontWeight="bold"
+                  color="gray.800"
+                  letterSpacing="tight"
+                >
                   단잠
                 </Text>
-                <Text fontSize="xs" color="gray.500" letterSpacing="wider" lineHeight="1">
+                <Text
+                  fontSize="xs"
+                  color="gray.500"
+                  letterSpacing="wider"
+                  lineHeight="1"
+                >
                   SWEET DREAMS
                 </Text>
               </Box>
             </Box>
 
-            <Box position="absolute" right={0} display="flex" alignItems="center" gap={4}>
+            <Box
+              position="absolute"
+              right={0}
+              display="flex"
+              alignItems="center"
+              gap={4}
+            >
               <Popover
                 isOpen={isSearchOpen}
                 onClose={() => setIsSearchOpen(false)}
@@ -395,7 +427,7 @@ const Home = () => {
                     p={2}
                     borderRadius="full"
                     bg="gray.50"
-                    _hover={{ bg: "gray.100" }}
+                    _hover={{ bg: 'gray.100' }}
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
@@ -404,7 +436,7 @@ const Home = () => {
                   </Box>
                 </PopoverTrigger>
                 <PopoverContent
-                  w={{ base: "90vw", sm: "400px", md: "500px" }}
+                  w={{ base: '90vw', sm: '400px', md: '500px' }}
                   p={4}
                   boxShadow="xl"
                   border="none"
@@ -431,7 +463,13 @@ const Home = () => {
                       </InputLeftElement>
                       <Input
                         placeholder="날짜 선택"
-                        value={`${format(dateRange[0].startDate, 'yyyy년 MM월 dd일')} - ${format(dateRange[0].endDate, 'yyyy년 MM월 dd일')}`}
+                        value={`${format(
+                          dateRange[0].startDate,
+                          'yyyy년 MM월 dd일'
+                        )} - ${format(
+                          dateRange[0].endDate,
+                          'yyyy년 MM월 dd일'
+                        )}`}
                         onClick={() => setIsCalendarOpen(!isCalendarOpen)}
                         readOnly
                         cursor="pointer"
@@ -524,7 +562,29 @@ const Home = () => {
         </Box>
       )}
 
-      <Box flex={1} overflowY="auto">
+      {/* 본문 영역 - 스크롤 가능하도록 설정 */}
+      <Box
+        flex="1"
+        maxH="calc(100vh - 60px)"
+        overflowY="auto"
+        overflowX="hidden"
+        position="relative"
+        sx={{
+          '&::-webkit-scrollbar': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            width: '6px',
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#CBD5E0',
+            borderRadius: '24px',
+          },
+          scrollBehavior: 'smooth',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
         <Container maxW="container.md" py={6}>
           <VStack spacing={6} align="stretch">
             <Box w="100%" mb={4}>
@@ -557,11 +617,11 @@ const Home = () => {
                 숙소 예약하기
               </Button>
             </Box>
-            
+
             <Box w="100%" mb={4}>
-              <Text 
-                fontSize={{ base: "md", md: "lg" }} 
-                fontWeight="bold" 
+              <Text
+                fontSize={{ base: 'md', md: 'lg' }}
+                fontWeight="bold"
                 mb={3}
                 color="gray.700"
               >
@@ -569,13 +629,18 @@ const Home = () => {
               </Text>
               <Box>
                 <Slider {...sliderSettings}>
-                  {(loading ? recommendedHotels : hotels.length > 0 ? hotels : recommendedHotels).map((hotel) => (
+                  {(loading
+                    ? recommendedHotels
+                    : hotels.length > 0
+                    ? hotels
+                    : recommendedHotels
+                  ).map((hotel) => (
                     <Box
                       key={hotel.hotelId || hotel.id}
                       onClick={() => navigate('/hotels')}
                       position="relative"
                       cursor="pointer"
-                      h={{ base: "240px", sm: "300px", md: "400px" }}
+                      h={{ base: '240px', sm: '300px', md: '400px' }}
                       borderRadius="xl"
                       overflow="hidden"
                       role="group"
@@ -597,13 +662,12 @@ const Home = () => {
                         bottom={0}
                         bgGradient="linear(to-t, blackAlpha.700, blackAlpha.300)"
                         transition="all 0.3s ease"
-                        _groupHover={{ bgGradient: 'linear(to-t, blackAlpha.800, blackAlpha.400)' }}
+                        _groupHover={{
+                          bgGradient:
+                            'linear(to-t, blackAlpha.800, blackAlpha.400)',
+                        }}
                       />
-                      <Box
-                        position="absolute"
-                        top={4}
-                        right={4}
-                      >
+                      <Box position="absolute" top={4} right={4}>
                         <Badge
                           colorScheme={hotel.color || 'blue'}
                           fontSize="xs"
@@ -626,7 +690,7 @@ const Home = () => {
                       >
                         <Text
                           color="white"
-                          fontSize={{ base: "xl", md: "2xl" }}
+                          fontSize={{ base: 'xl', md: '2xl' }}
                           fontWeight="bold"
                           letterSpacing="tight"
                           transition="all 0.3s ease"
@@ -636,7 +700,7 @@ const Home = () => {
                         </Text>
                         <Text
                           color="gray.100"
-                          fontSize={{ base: "sm", md: "md" }}
+                          fontSize={{ base: 'sm', md: 'md' }}
                           opacity={0.9}
                           transition="all 0.3s ease"
                           _groupHover={{ opacity: 1 }}
@@ -644,7 +708,11 @@ const Home = () => {
                           {hotel.description || hotel.address}
                         </Text>
                         <HStack spacing={1}>
-                          <Text color="yellow.300" fontSize="sm" fontWeight="bold">
+                          <Text
+                            color="yellow.300"
+                            fontSize="sm"
+                            fontWeight="bold"
+                          >
                             {hotel.rating || 4.5}
                           </Text>
                           <Text color="gray.200" fontSize="sm">
@@ -659,13 +727,7 @@ const Home = () => {
             </Box>
 
             {customer && (
-              <Box
-                w="100%"
-                bg="white"
-                borderRadius="xl"
-                boxShadow="md"
-                p={4}
-              >
+              <Box w="100%" bg="white" borderRadius="xl" boxShadow="md" p={4}>
                 <Flex justify="space-between" align="center">
                   <Box textAlign="center">
                     <Text fontSize="xs" color="gray.500">
@@ -691,7 +753,7 @@ const Home = () => {
               <Box
                 position="relative"
                 w="100%"
-                h={{ base: "80px", sm: "100px", md: "133px" }}
+                h={{ base: '80px', sm: '100px', md: '133px' }}
                 bg="gray.900"
                 borderRadius="xl"
                 overflow="hidden"
@@ -699,8 +761,9 @@ const Home = () => {
                 cursor="pointer"
                 onClick={() => {
                   const button = document.getElementById('animation-button');
-                  button.style.animation = 'bounceAndDisappear 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
-                  
+                  button.style.animation =
+                    'bounceAndDisappear 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
+
                   setTimeout(() => {
                     navigate('/events');
                   }, 1300);
@@ -716,12 +779,24 @@ const Home = () => {
                 sx={{
                   '@keyframes bounceAndDisappear': {
                     '0%': { transform: 'scale(1)', opacity: 1 },
-                    '20%': { transform: 'scale(1.2) translateY(-20px)', opacity: 0.9 },
-                    '40%': { transform: 'scale(0.9) translateY(10px)', opacity: 0.8 },
-                    '60%': { transform: 'scale(1.1) translateY(-10px)', opacity: 0.7 },
-                    '80%': { transform: 'scale(0.8) translateY(5px)', opacity: 0.5 },
-                    '100%': { transform: 'scale(0)', opacity: 0 }
-                  }
+                    '20%': {
+                      transform: 'scale(1.2) translateY(-20px)',
+                      opacity: 0.9,
+                    },
+                    '40%': {
+                      transform: 'scale(0.9) translateY(10px)',
+                      opacity: 0.8,
+                    },
+                    '60%': {
+                      transform: 'scale(1.1) translateY(-10px)',
+                      opacity: 0.7,
+                    },
+                    '80%': {
+                      transform: 'scale(0.8) translateY(5px)',
+                      opacity: 0.5,
+                    },
+                    '100%': { transform: 'scale(0)', opacity: 0 },
+                  },
                 }}
               >
                 {/* Dynamic Animation Area */}
@@ -746,8 +821,8 @@ const Home = () => {
                       '@keyframes gradientMove': {
                         '0%': { transform: 'scale(1.5) rotate(0deg)' },
                         '50%': { transform: 'scale(1.8) rotate(180deg)' },
-                        '100%': { transform: 'scale(1.5) rotate(360deg)' }
-                      }
+                        '100%': { transform: 'scale(1.5) rotate(360deg)' },
+                      },
                     }}
                   />
 
@@ -761,25 +836,35 @@ const Home = () => {
                       bg="rgba(255, 255, 255, 0.1)"
                       backdropFilter="blur(5px)"
                       borderRadius="lg"
-                      animation={`floatPattern${i} ${Math.random() * 10 + 15}s infinite linear`}
+                      animation={`floatPattern${i} ${
+                        Math.random() * 10 + 15
+                      }s infinite linear`}
                       sx={{
                         top: `${Math.random() * 100}%`,
                         left: `${Math.random() * 100}%`,
                         transform: `rotate(${Math.random() * 360}deg)`,
                         [`@keyframes floatPattern${i}`]: {
-                          '0%': { 
-                            transform: `translate(0, 0) rotate(${Math.random() * 360}deg)`,
-                            opacity: Math.random() * 0.5 + 0.3
+                          '0%': {
+                            transform: `translate(0, 0) rotate(${
+                              Math.random() * 360
+                            }deg)`,
+                            opacity: Math.random() * 0.5 + 0.3,
                           },
-                          '50%': { 
-                            transform: `translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px) rotate(${Math.random() * 360}deg)`,
-                            opacity: Math.random() * 0.8 + 0.2
+                          '50%': {
+                            transform: `translate(${
+                              Math.random() * 100 - 50
+                            }px, ${Math.random() * 100 - 50}px) rotate(${
+                              Math.random() * 360
+                            }deg)`,
+                            opacity: Math.random() * 0.8 + 0.2,
                           },
-                          '100%': { 
-                            transform: `translate(0, 0) rotate(${Math.random() * 360}deg)`,
-                            opacity: Math.random() * 0.5 + 0.3
-                          }
-                        }
+                          '100%': {
+                            transform: `translate(0, 0) rotate(${
+                              Math.random() * 360
+                            }deg)`,
+                            opacity: Math.random() * 0.5 + 0.3,
+                          },
+                        },
                       }}
                     />
                   ))}
@@ -793,14 +878,22 @@ const Home = () => {
                       h="100%"
                       bg="white"
                       opacity="0.3"
-                      animation={`lightBeam${i} ${Math.random() * 5 + 5}s infinite linear`}
+                      animation={`lightBeam${i} ${
+                        Math.random() * 5 + 5
+                      }s infinite linear`}
                       sx={{
                         left: `${Math.random() * 100}%`,
                         [`@keyframes lightBeam${i}`]: {
-                          '0%': { transform: 'translateY(-100%) rotate(45deg)', opacity: 0 },
+                          '0%': {
+                            transform: 'translateY(-100%) rotate(45deg)',
+                            opacity: 0,
+                          },
                           '50%': { opacity: 0.3 },
-                          '100%': { transform: 'translateY(100%) rotate(45deg)', opacity: 0 }
-                        }
+                          '100%': {
+                            transform: 'translateY(100%) rotate(45deg)',
+                            opacity: 0,
+                          },
+                        },
                       }}
                     />
                   ))}
@@ -814,24 +907,30 @@ const Home = () => {
                       h="4px"
                       bg="white"
                       borderRadius="full"
-                      animation={`particle${i} ${Math.random() * 20 + 10}s infinite linear`}
+                      animation={`particle${i} ${
+                        Math.random() * 20 + 10
+                      }s infinite linear`}
                       sx={{
                         top: `${Math.random() * 100}%`,
                         left: `${Math.random() * 100}%`,
                         [`@keyframes particle${i}`]: {
-                          '0%': { 
+                          '0%': {
                             transform: 'scale(1) translate(0, 0)',
-                            opacity: Math.random() * 0.5 + 0.3
+                            opacity: Math.random() * 0.5 + 0.3,
                           },
-                          '50%': { 
-                            transform: `scale(${Math.random() + 0.5}) translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px)`,
-                            opacity: Math.random() * 0.8 + 0.2
+                          '50%': {
+                            transform: `scale(${
+                              Math.random() + 0.5
+                            }) translate(${Math.random() * 200 - 100}px, ${
+                              Math.random() * 200 - 100
+                            }px)`,
+                            opacity: Math.random() * 0.8 + 0.2,
                           },
-                          '100%': { 
+                          '100%': {
                             transform: 'scale(1) translate(0, 0)',
-                            opacity: Math.random() * 0.5 + 0.3
-                          }
-                        }
+                            opacity: Math.random() * 0.5 + 0.3,
+                          },
+                        },
                       }}
                     />
                   ))}
@@ -847,7 +946,7 @@ const Home = () => {
                     zIndex={2}
                   >
                     <Text
-                      fontSize={{ base: "xl", md: "2xl" }}
+                      fontSize={{ base: 'xl', md: '2xl' }}
                       fontWeight="bold"
                       mb={2}
                       textShadow="0 2px 4px rgba(0,0,0,0.3)"
@@ -855,7 +954,7 @@ const Home = () => {
                       이벤트
                     </Text>
                     <Text
-                      fontSize={{ base: "sm", md: "md" }}
+                      fontSize={{ base: 'sm', md: 'md' }}
                       opacity={0.9}
                       textShadow="0 1px 2px rgba(0,0,0,0.3)"
                     >
