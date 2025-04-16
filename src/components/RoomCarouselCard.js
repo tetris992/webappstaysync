@@ -102,6 +102,7 @@ const RoomCarouselCard = ({
       bg="white"
       transition="all 0.4s ease"
       _hover={{ shadow: 'xl', transform: 'translateY(-8px)' }}
+      mb={2}
     >
       <Box position="relative" h="200px" w="100%" overflow="hidden">
         {isLoading && (

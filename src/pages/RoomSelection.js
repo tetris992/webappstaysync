@@ -529,23 +529,10 @@ const RoomSelection = () => {
 
       {/* 객실 목록 영역 - 스크롤 가능 */}
       <Box 
-        flex={1} 
-        overflowY="auto"
-        p={4}
-        minH={0}
-        css={{
-          '&::-webkit-scrollbar': {
-            width: '4px',
-          },
-          '&::-webkit-scrollbar-track': {
-            width: '6px',
-            background: 'transparent',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: '#CBD5E0',
-            borderRadius: '24px',
-          },
-        }}
+        flex="1" 
+        overflowY="auto" 
+        px={3} 
+        pb={20} /* 하단 네비게이션을 위한 여백 */
       >
         {isLoading ? (
           <VStack flex="1" justify="center" align="center" bg="white" rounded="md" shadow="sm" p={8}>
@@ -560,7 +547,11 @@ const RoomSelection = () => {
           </Box>
         ) : (
           isAvailabilityChecked && (
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <SimpleGrid 
+              columns={{ base: 1, sm: 1, md: 2, lg: 3 }} 
+              spacing={6} 
+              my={6}
+            >
               {availableRooms.map((room) => (
                 <RoomCarouselCard
                   key={room.roomInfo}

@@ -59,96 +59,109 @@ const ReservationConfirmation = () => {
   const specialRequests = location.state?.specialRequests || null;
 
   // 숙박 일수 계산
-  const numNights = stateCheckIn && stateCheckOut
-    ? (() => {
-        const checkInDate = new Date(stateCheckIn);
-        const checkOutDate = new Date(stateCheckOut);
-        let nights = differenceInCalendarDays(checkOutDate, checkInDate);
-        return nights < 1 ? 1 : nights;
-      })()
-    : 1;
+  const numNights =
+    stateCheckIn && stateCheckOut
+      ? (() => {
+          const checkInDate = new Date(stateCheckIn);
+          const checkOutDate = new Date(stateCheckOut);
+          let nights = differenceInCalendarDays(checkOutDate, checkInDate);
+          return nights < 1 ? 1 : nights;
+        })()
+      : 1;
 
   // 호텔 정보 및 사진 로드
-  const loadHotelInfoAndPhotos = useCallback(async (hotelId) => {
-    try {
-      // 호텔 목록에서 전화번호 가져오기
-      const hotelList = await fetchHotelList();
-      const hotelData = hotelList.find(hotel => hotel.hotelId === hotelId);
-      if (hotelData && hotelData.phoneNumber) {
-        setHotelPhoneNumber(hotelData.phoneNumber);
-      }
+  const loadHotelInfoAndPhotos = useCallback(
+    async (hotelId) => {
+      try {
+        // 호텔 목록에서 전화번호 가져오기
+        const hotelList = await fetchHotelList();
+        const hotelData = hotelList.find((hotel) => hotel.hotelId === hotelId);
+        if (hotelData && hotelData.phoneNumber) {
+          setHotelPhoneNumber(hotelData.phoneNumber);
+        }
 
-      const hotelSettings = await fetchCustomerHotelSettings(hotelId);
-      console.log('[ReservationConfirmation] Hotel data received:', {
-        hotelId: hotelSettings.hotelId,
-        hotelName: hotelSettings.hotelName,
-        address: hotelSettings.address,
-        latitude: hotelSettings.latitude,
-        longitude: hotelSettings.longitude,
-      });
-      setHotelInfo(hotelSettings);
-
-      // 좌표 초기화
-      if (hotelSettings.latitude && hotelSettings.longitude) {
-        setCoordinates({ lat: hotelSettings.latitude, lng: hotelSettings.longitude });
-        console.log('[ReservationConfirmation] Coordinates set:', {
-          hotelId,
+        const hotelSettings = await fetchCustomerHotelSettings(hotelId);
+        console.log('[ReservationConfirmation] Hotel data received:', {
+          hotelId: hotelSettings.hotelId,
+          hotelName: hotelSettings.hotelName,
+          address: hotelSettings.address,
           latitude: hotelSettings.latitude,
           longitude: hotelSettings.longitude,
         });
-      } else {
-        console.log('[ReservationConfirmation] No coordinates available for hotel:', {
-          hotelId,
-          address: hotelSettings.address,
-        });
+        setHotelInfo(hotelSettings);
+
+        // 좌표 초기화
+        if (hotelSettings.latitude && hotelSettings.longitude) {
+          setCoordinates({
+            lat: hotelSettings.latitude,
+            lng: hotelSettings.longitude,
+          });
+          console.log('[ReservationConfirmation] Coordinates set:', {
+            hotelId,
+            latitude: hotelSettings.latitude,
+            longitude: hotelSettings.longitude,
+          });
+        } else {
+          console.log(
+            '[ReservationConfirmation] No coordinates available for hotel:',
+            {
+              hotelId,
+              address: hotelSettings.address,
+            }
+          );
+          toast({
+            title: '좌표 정보 없음',
+            description: '호텔 위치 정보를 불러올 수 없습니다.',
+            status: 'warning',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+
+        const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
+        console.log(
+          `[ReservationConfirmation] Photos for room ${roomInfo}:`,
+          photosData
+        );
+        if (photosData?.roomPhotos && photosData.roomPhotos.length > 0) {
+          setRoomImage(photosData.roomPhotos[0].photoUrl);
+        }
+
+        const checkInTime = hotelSettings?.checkInTime || '15:00';
+        const checkOutTime = hotelSettings?.checkOutTime || '11:00';
+
+        const checkInDateTimeStr = stateCheckIn
+          ? `${stateCheckIn}T${checkInTime}:00+09:00`
+          : null;
+        const checkOutDateTimeStr = stateCheckOut
+          ? `${stateCheckOut}T${checkOutTime}:00+09:00`
+          : null;
+
+        const checkInDateTime = checkInDateTimeStr
+          ? new Date(checkInDateTimeStr)
+          : null;
+        const checkOutDateTime = checkOutDateTimeStr
+          ? new Date(checkOutDateTimeStr)
+          : null;
+
+        setCheckIn(checkInDateTime);
+        setCheckOut(checkOutDateTime);
+      } catch (error) {
+        console.error(
+          '[ReservationConfirmation] Error loading hotel info:',
+          error
+        );
         toast({
-          title: '좌표 정보 없음',
-          description: '호텔 위치 정보를 불러올 수 없습니다.',
-          status: 'warning',
+          title: '호텔 정보 로드 실패',
+          description: '호텔 정보를 불러오는 중 오류가 발생했습니다.',
+          status: 'error',
           duration: 3000,
           isClosable: true,
         });
       }
-
-      const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
-      console.log(
-        `[ReservationConfirmation] Photos for room ${roomInfo}:`,
-        photosData
-      );
-      if (photosData?.roomPhotos && photosData.roomPhotos.length > 0) {
-        setRoomImage(photosData.roomPhotos[0].photoUrl);
-      }
-
-      const checkInTime = hotelSettings?.checkInTime || '15:00';
-      const checkOutTime = hotelSettings?.checkOutTime || '11:00';
-
-      const checkInDateTimeStr = stateCheckIn
-        ? `${stateCheckIn}T${checkInTime}:00+09:00`
-        : null;
-      const checkOutDateTimeStr = stateCheckOut
-        ? `${stateCheckOut}T${checkOutTime}:00+09:00`
-        : null;
-
-      const checkInDateTime = checkInDateTimeStr
-        ? new Date(checkInDateTimeStr)
-        : null;
-      const checkOutDateTime = checkOutDateTimeStr
-        ? new Date(checkOutDateTimeStr)
-        : null;
-
-      setCheckIn(checkInDateTime);
-      setCheckOut(checkOutDateTime);
-    } catch (error) {
-      console.error('[ReservationConfirmation] Error loading hotel info:', error);
-      toast({
-        title: '호텔 정보 로드 실패',
-        description: '호텔 정보를 불러오는 중 오류가 발생했습니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  }, [stateCheckIn, stateCheckOut, roomInfo, toast]);
+    },
+    [stateCheckIn, stateCheckOut, roomInfo, toast]
+  );
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -182,9 +195,31 @@ const ReservationConfirmation = () => {
       roomInfo: roomInfo,
       originalRoomInfo: '',
       roomNumber: '',
-      checkIn: checkIn ? format(checkIn, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
-      checkOut: checkOut ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
-      reservationDate: new Date().toISOString().replace('Z', '+09:00'),
+      checkIn: checkIn
+        ? format(checkIn, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
+        : null,
+      checkOut: checkOut
+        ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
+        : null,
+      reservationDate: (() => {
+        // 한국 현지 시간(KST)으로 정확하게 변환
+        // 현재 시간에 9시간을 더해 명시적으로 KST 시간 생성
+        const now = new Date();
+
+        // 브라우저 시간대에 상관없이 명시적으로 한국 시간 계산
+        const koreaTime = new Date(now.getTime());
+
+        // 한국 시간 포맷팅
+        const year = koreaTime.getFullYear();
+        const month = String(koreaTime.getMonth() + 1).padStart(2, '0');
+        const day = String(koreaTime.getDate()).padStart(2, '0');
+        const hours = String(koreaTime.getHours()).padStart(2, '0');
+        const minutes = String(koreaTime.getMinutes()).padStart(2, '0');
+        const seconds = String(koreaTime.getSeconds()).padStart(2, '0');
+
+        // ISO 8601 형식으로 KST 타임존 정보 추가
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+09:00`;
+      })(),
       reservationStatus: '예약완료',
       price: price,
       specialRequests: specialRequests || null,
@@ -377,7 +412,7 @@ const ReservationConfirmation = () => {
               aria-label="뒤로 가기"
             />
             <Text
-              fontSize={{ base: "xl", md: "2xl" }}
+              fontSize={{ base: 'xl', md: '2xl' }}
               fontWeight="bold"
               textAlign="center"
             >
@@ -405,7 +440,7 @@ const ReservationConfirmation = () => {
         }}
       >
         <Container
-          maxW={{ base: "100%", sm: "95%", md: "container.sm" }}
+          maxW={{ base: '100%', sm: '95%', md: 'container.sm' }}
           py={{ base: 4, sm: 6 }}
           px={{ base: 4, sm: 6 }}
         >
@@ -413,7 +448,7 @@ const ReservationConfirmation = () => {
             spacing={4}
             align="stretch"
             w="100%"
-            pb={{ base: "90px", md: "100px" }}
+            pb={{ base: '90px', md: '100px' }}
           >
             {/* 객실 사진 */}
             <Box
@@ -447,18 +482,26 @@ const ReservationConfirmation = () => {
                 <Text fontSize="xl" fontWeight="bold" mb={2}>
                   {hotelInfo?.hotelName || '부산호텔'} ({hotelId})
                 </Text>
-                
+
                 {/* 주소 정보 */}
                 {hotelInfo && (
                   <Flex align="center" w="100%">
-                    <Icon as={FaMapMarkerAlt} color="teal.500" boxSize={4} mr={2} />
+                    <Icon
+                      as={FaMapMarkerAlt}
+                      color="teal.500"
+                      boxSize={4}
+                      mr={2}
+                    />
                     <Text
                       flex="1"
                       fontSize="md"
                       color="gray.700"
                       cursor="pointer"
                       onClick={handleAddressClick}
-                      _hover={{ color: 'teal.600', textDecoration: 'underline' }}
+                      _hover={{
+                        color: 'teal.600',
+                        textDecoration: 'underline',
+                      }}
                     >
                       {hotelInfo.address || '주소 정보 없음'}
                     </Text>
@@ -502,28 +545,36 @@ const ReservationConfirmation = () => {
                 <Divider />
                 <Grid templateColumns="1fr 2fr" gap={3} width="100%">
                   <Text color="gray.600">예약 번호</Text>
-                  <Text fontWeight="medium">{reservationId || '생성 중...'}</Text>
-                  
+                  <Text fontWeight="medium">
+                    {reservationId || '생성 중...'}
+                  </Text>
+
                   <Text color="gray.600">예약자</Text>
-                  <Text fontWeight="medium">{customer?.name || '예약자 정보 없음'}</Text>
-                  
+                  <Text fontWeight="medium">
+                    {customer?.name || '예약자 정보 없음'}
+                  </Text>
+
                   <Text color="gray.600">객실</Text>
                   <Text fontWeight="medium">{roomInfo}</Text>
-                  
+
                   <Text color="gray.600">체크인</Text>
-                  <Text fontWeight="medium">{checkIn ? format(checkIn, 'yyyy-MM-dd HH:mm') : 'N/A'}</Text>
-                  
+                  <Text fontWeight="medium">
+                    {checkIn ? format(checkIn, 'yyyy-MM-dd HH:mm') : 'N/A'}
+                  </Text>
+
                   <Text color="gray.600">체크아웃</Text>
-                  <Text fontWeight="medium">{checkOut ? format(checkOut, 'yyyy-MM-dd HH:mm') : 'N/A'}</Text>
-                  
+                  <Text fontWeight="medium">
+                    {checkOut ? format(checkOut, 'yyyy-MM-dd HH:mm') : 'N/A'}
+                  </Text>
+
                   <Text color="gray.600">숙박 일수</Text>
                   <Text fontWeight="medium">{numNights}박</Text>
-                  
+
                   <Text color="gray.600">예약 시간</Text>
                   <Text fontWeight="medium" color="gray.400">
                     {format(new Date(), 'yyyy-MM-dd HH:mm')} (한국 현재 시간)
                   </Text>
-                  
+
                   <Text color="gray.600">결제</Text>
                   <Text fontWeight="medium">현장결제</Text>
                 </Grid>

@@ -265,7 +265,14 @@ const HotelList = ({ loadHotelSettings }) => {
   if (!isAuthenticated || !customer) return <Navigate to="/login" replace />;
 
   return (
-    <Box minH="100vh" bg="gray.50" position="relative">
+    <Container
+      maxW="container.xl"
+      p={0}
+      minH="100vh"
+      bg="gray.50"
+      ref={mainContentRef}
+      className="page-content"
+    >
       {/* 상단 헤더 */}
       <Box
         position="fixed"
@@ -369,7 +376,6 @@ const HotelList = ({ loadHotelSettings }) => {
 
       {/* 메인 컨텐츠 */}
       <Box
-        ref={mainContentRef}
         pt={isOpen ? "200px" : "80px"}
         pb={{ base: "60px", md: "70px" }}
         minH="100vh"
@@ -427,7 +433,7 @@ const HotelList = ({ loadHotelSettings }) => {
           )}
         </Container>
       </Box>
-    </Box>
+    </Container>
   );
 };
 

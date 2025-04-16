@@ -60,8 +60,9 @@ const BottomNavigation = () => {
       borderColor={borderColor}
       px={4}
       py={2}
-      zIndex={1000}
+      zIndex={2000}
       height="60px"
+      boxShadow="0 -2px 10px rgba(0, 0, 0, 0.05)"
     >
       <Flex justify="space-around" align="center" height="100%">
         {menuItems.map((item, index) => (
