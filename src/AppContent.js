@@ -59,22 +59,22 @@ function AppContent() {
   }
 
   return (
-    <Box 
+    <Box
       minH="100vh"
       maxW="100vw"
       bg="white"
       position="relative"
       overflow="hidden"
     >
-      <Box 
+      <Box
         pb="60px"
         minH="100vh"
         maxW="100%"
         overflowY="auto"
         overflowX="hidden"
         sx={{
-          WebkitOverflowScrolling: "touch",
-          scrollBehavior: "smooth"
+          WebkitOverflowScrolling: 'touch',
+          scrollBehavior: 'smooth',
         }}
       >
         <Routes>
@@ -88,7 +88,10 @@ function AppContent() {
             path="/hotels"
             element={
               isAuthenticated && customer ? (
-                <HotelList onLogout={logout} loadHotelSettings={loadHotelSettings} />
+                <HotelList
+                  onLogout={logout}
+                  loadHotelSettings={loadHotelSettings}
+                />
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -98,7 +101,10 @@ function AppContent() {
             path="/rooms/:hotelId"
             element={
               isAuthenticated && customer ? (
-                <RoomSelection hotelSettings={hotelSettings} loadHotelSettings={loadHotelSettings} />
+                <RoomSelection
+                  hotelSettings={hotelSettings}
+                  loadHotelSettings={loadHotelSettings}
+                />
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -108,7 +114,10 @@ function AppContent() {
             path="/confirm"
             element={
               isAuthenticated && customer ? (
-                <ReservationConfirmation customer={customer} hotelSettings={hotelSettings} />
+                <ReservationConfirmation
+                  customer={customer}
+                  hotelSettings={hotelSettings}
+                />
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -127,7 +136,9 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Box>
-      {isAuthenticated && location.pathname !== '/login' && <BottomNavigation />}
+      {isAuthenticated && location.pathname !== '/login' && (
+        <BottomNavigation />
+      )}
     </Box>
   );
 }
