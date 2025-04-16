@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom'; // useParams 추가
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -13,11 +13,11 @@ import {
 } from '@chakra-ui/react';
 import { FaArrowLeft } from 'react-icons/fa';
 import { fetchCustomerHotelSettings } from '../api/api';
-import { format, addDays } from 'date-fns'; // date-fns 함수 import
+import { format, addDays } from 'date-fns';
 
-const Events = () => {
+const Events = ({ onEventsFetched }) => {
   const navigate = useNavigate();
-  const { hotelId } = useParams() || { hotelId: '740630' }; // URL 파라미터 또는 기본값
+  const { hotelId } = useParams() || { hotelId: '740630' };
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,17 +31,22 @@ const Events = () => {
           checkIn,
           checkOut,
         });
-        setEvents(settings.events || []);
+        const fetchedEvents = settings.events || [];
+        setEvents(fetchedEvents);
+        // 부모 컴포넌트로 이벤트 데이터 전달
+        if (onEventsFetched) {
+          onEventsFetched(fetchedEvents);
+        }
       } catch (error) {
         console.error('이벤트 데이터 가져오기 실패:', error);
-        setEvents([]); // 오류 시 빈 배열
+        setEvents([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchEvents();
-  }, [hotelId]);
+  }, [hotelId, onEventsFetched]);
 
   return (
     <Box bg="gray.50" minH="100vh">
@@ -67,8 +72,7 @@ const Events = () => {
         ) : events.length > 0 ? (
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
             {events.map((event, index) => {
-              // 첫 번째 적용 객실을 기반으로 예시 호텔 이미지 매핑
-              const hotelImage = `/assets/hotel${(index % 11) + 1}.jpg`; // 1~11까지 순환
+              const hotelImage = `/assets/hotel${(index % 11) + 1}.jpg`;
               return (
                 <Box
                   key={event.uuid}

@@ -33,15 +33,8 @@ const RoomCarouselCard = ({
   const discountedPrice = discount > 0 ? Math.round(originalPrice * (1 - discount / 100)) : originalPrice;
   const totalPrice = formattedNumDays > 0 ? discountedPrice * formattedNumDays : discountedPrice;
 
-  // 특가 이름과 뱃지 설정
-  const eventNames = hotelSettings?.events?.map(event => event.eventName) || [];
-  const eventName = eventNames.length > 0 ? eventNames[0] : null;
+  const eventName = hotelSettings?.eventName || null;
   const badgeLabel = discount > 0 ? 'HOT' : null;
-
-  // 디버깅 로그 추가
-  console.log('hotelSettings:', hotelSettings);
-  console.log('events:', hotelSettings?.events);
-  console.log('discount:', discount);
 
   const sliderSettings = {
     dots: true,
@@ -186,7 +179,7 @@ const RoomCarouselCard = ({
             </Text>
           </Box>
           <Text fontSize="sm" color="red.500" fontWeight="medium">
-            객실 마감 {formattedStock > 0 && `${formattedStock}개`}
+            {formattedStock > 0 ? `남은 객실 ${formattedStock}개` : '객실 마감'}
           </Text>
         </Flex>
         {numDays > 0 && (
