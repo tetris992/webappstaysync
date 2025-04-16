@@ -5,7 +5,6 @@ import {
   VStack,
   Text,
   Button,
-  SimpleGrid,
   useToast,
   Input,
   InputGroup,
@@ -42,11 +41,7 @@ import { ko } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import RoomCarouselCard from '../components/RoomCarouselCard';
-import {
-  fetchHotelAvailability,
-  fetchCustomerHotelSettings,
-  fetchHotelPhotos,
-} from '../api/api';
+import { fetchHotelAvailability, fetchCustomerHotelSettings, fetchHotelPhotos } from '../api/api';
 import Map from '../components/Map';
 
 const RoomSelection = () => {
@@ -54,7 +49,7 @@ const RoomSelection = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const location = useLocation();
-  const { checkIn, checkOut } = location.state || {};
+  const { checkIn: initialCheckIn, checkOut: initialCheckOut } = location.state || {};
 
   const today = startOfDay(new Date());
   const tomorrow = addDays(today, 1);
@@ -62,8 +57,8 @@ const RoomSelection = () => {
 
   const [dateRange, setDateRange] = useState([
     {
-      startDate: checkIn ? new Date(checkIn) : today,
-      endDate: checkOut ? new Date(checkOut) : tomorrow,
+      startDate: initialCheckIn ? new Date(initialCheckIn) : today,
+      endDate: initialCheckOut ? new Date(initialCheckOut) : tomorrow,
       key: 'selection',
     },
   ]);
@@ -72,14 +67,11 @@ const RoomSelection = () => {
   const [hotelSettings, setHotelSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [roomPhotosMap, setRoomPhotosMap] = useState({});
-  const [isOpen, setIsOpen] = useState(false); // Popover 상태 관리
-  const [shouldFetchAvailability, setShouldFetchAvailability] = useState(true); // 가용 객실 조회 트리거
-  const [isMapOpen, setIsMapOpen] = useState(false); // 지도 모달 상태
+  const [isOpen, setIsOpen] = useState(false);
+  const [shouldFetchAvailability, setShouldFetchAvailability] = useState(true);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
-  const numDays = differenceInCalendarDays(
-    dateRange[0].endDate,
-    dateRange[0].startDate
-  );
+  const numDays = differenceInCalendarDays(dateRange[0].endDate, dateRange[0].startDate);
 
   const startLabel = isValid(dateRange[0].startDate)
     ? format(dateRange[0].startDate, 'yyyy-MM-dd')
@@ -91,6 +83,32 @@ const RoomSelection = () => {
   const handleCheckAvailability = useCallback(async () => {
     const checkIn = dateRange[0].startDate;
     const checkOut = dateRange[0].endDate;
+
+    const calculateDiscount = (roomInfo, checkIn, checkOut) => {
+      if (!hotelSettings?.events || !checkIn || !checkOut) return 0;
+      const roomKey = roomInfo.toLowerCase();
+      const checkInDate = new Date(checkIn);
+      const checkOutDate = new Date(checkOut);
+      return hotelSettings.events
+        .filter(
+          (event) =>
+            event.applicableRoomTypes.includes(roomKey) &&
+            new Date(event.startDate) <= checkOutDate &&
+            new Date(event.endDate) >= checkInDate &&
+            event.isActive
+        )
+        .reduce((max, event) => {
+          if (event.discountType === 'percentage') {
+            return Math.max(max, event.discountValue);
+          } else if (event.discountType === 'fixed') {
+            const roomPrice = hotelSettings.roomTypes.find(
+              (rt) => rt.roomInfo.toLowerCase() === roomKey
+            )?.price || 0;
+            return Math.max(max, (event.discountValue / roomPrice) * 100);
+          }
+          return max;
+        }, 0);
+    };
 
     if (!checkIn || !checkOut || !isValid(checkIn) || !isValid(checkOut)) {
       toast({
@@ -153,28 +171,30 @@ const RoomSelection = () => {
         format(checkIn, 'yyyy-MM-dd'),
         format(checkOut, 'yyyy-MM-dd')
       );
-      const roomTypes = hotelSettings?.roomTypes || [];
-      const availabilityWithAmenities = (hotelData.availability || []).map(
-        (room) => {
-          const key = room.roomInfo.toLowerCase();
-          const foundType = roomTypes.find(
-            (rt) => rt.roomInfo.toLowerCase() === key
-          );
-          const activeAmenities =
-            foundType?.roomAmenities
-              ?.filter((amenity) => amenity.isActive)
-              .map((amenity) => ({
-                nameKor: amenity.nameKor,
-                nameEng: amenity.nameEng,
-                icon: amenity.icon,
-              })) || [];
-          return {
-            ...room,
-            activeAmenities,
-            photos: roomPhotosMap[key] || [],
-          };
-        }
-      );
+      if (!hotelSettings?.roomTypes) {
+        toast({
+          title: '호텔 설정 오류',
+          description: '호텔 설정이 로드되지 않았습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      const roomTypes = hotelSettings.roomTypes;
+      const availabilityWithAmenities = (hotelData.availability || []).map((room) => {
+        const key = room.roomInfo.toLowerCase();
+        const foundType = roomTypes.find((rt) => rt.roomInfo.toLowerCase() === key);
+        const activeAmenities = foundType?.roomAmenities?.filter((amenity) => amenity.isActive).map((amenity) => ({
+          nameKor: amenity.nameKor,
+          nameEng: amenity.nameEng,
+          icon: amenity.icon,
+        })) || [];
+        const discount = calculateDiscount(room.roomInfo, checkIn, checkOut);
+        const dayStayPrice = room.price;
+        const dayUsePrice = Math.round(dayStayPrice * 0.5);
+        return { ...room, activeAmenities, photos: roomPhotosMap[key] || [], discount, dayStayPrice, dayUsePrice };
+      });
 
       setAvailableRooms(availabilityWithAmenities);
       setIsAvailabilityChecked(true);
@@ -189,35 +209,22 @@ const RoomSelection = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [
-    dateRange,
-    hotelId,
-    hotelSettings,
-    roomPhotosMap,
-    toast,
-    today,
-    maxDate,
-    numDays,
-  ]);
+  }, [dateRange, hotelId, hotelSettings, roomPhotosMap, toast, today, maxDate, numDays]);
 
   useEffect(() => {
     const loadHotelSettings = async () => {
       try {
-        const settings = await fetchCustomerHotelSettings(hotelId);
+        const settings = await fetchCustomerHotelSettings(hotelId, {
+          checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
+          checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
+        });
         setHotelSettings(settings);
 
         const roomTypes = settings.roomTypes || [];
         const photosPromises = roomTypes.map(async (roomType) => {
           try {
-            const photosData = await fetchHotelPhotos(
-              hotelId,
-              'room',
-              roomType.roomInfo
-            );
-            return {
-              roomInfo: roomType.roomInfo,
-              photos: photosData.roomPhotos || [],
-            };
+            const photosData = await fetchHotelPhotos(hotelId, 'room', roomType.roomInfo);
+            return { roomInfo: roomType.roomInfo, photos: photosData.roomPhotos || [] };
           } catch (error) {
             console.error('Failed to fetch photos for room:', roomType.roomInfo);
             return { roomInfo: roomType.roomInfo, photos: [] };
@@ -241,10 +248,12 @@ const RoomSelection = () => {
           isClosable: true,
         });
         navigate('/');
+      } finally {
+        setIsLoading(false);
       }
     };
     loadHotelSettings();
-  }, [hotelId, navigate, toast]);
+  }, [hotelId, navigate, toast, dateRange]);
 
   useEffect(() => {
     if (shouldFetchAvailability && hotelSettings && roomPhotosMap) {
@@ -254,11 +263,10 @@ const RoomSelection = () => {
   }, [shouldFetchAvailability, hotelSettings, roomPhotosMap, handleCheckAvailability]);
 
   const handleSelectRoom = (roomInfo, perNightPrice) => {
-    const nights = differenceInCalendarDays(
-      dateRange[0].endDate,
-      dateRange[0].startDate
-    );
-    const totalPrice = perNightPrice * nights;
+    const nights = differenceInCalendarDays(dateRange[0].endDate, dateRange[0].startDate);
+    const room = availableRooms.find((r) => r.roomInfo.toLowerCase() === roomInfo.toLowerCase());
+    const discount = room?.discount || 0;
+    const totalPrice = perNightPrice * nights * (1 - discount / 100);
 
     navigate('/confirm', {
       state: {
@@ -268,6 +276,7 @@ const RoomSelection = () => {
         checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
         price: totalPrice,
         numNights: nights,
+        specialRequests: null,
       },
     });
   };
@@ -298,7 +307,9 @@ const RoomSelection = () => {
       return;
     }
 
-    const tmapUrl = `tmap://route?goalx=${hotelSettings.longitude}&goaly=${hotelSettings.latitude}&name=${encodeURIComponent(hotelSettings?.hotelName || '호텔')}`;
+    const tmapUrl = `tmap://route?goalx=${hotelSettings.longitude}&goaly=${
+      hotelSettings.latitude
+    }&name=${encodeURIComponent(hotelSettings?.hotelName || '호텔')}`;
     window.location.href = tmapUrl;
 
     setTimeout(() => {
@@ -322,23 +333,26 @@ const RoomSelection = () => {
 
   const handleCopyAddress = () => {
     if (hotelSettings && hotelSettings.address) {
-      navigator.clipboard.writeText(hotelSettings.address).then(() => {
-        toast({
-          title: '주소 복사 완료',
-          description: '호텔 주소가 클립보드에 복사되었습니다.',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
+      navigator.clipboard
+        .writeText(hotelSettings.address)
+        .then(() => {
+          toast({
+            title: '주소 복사 완료',
+            description: '호텔 주소가 클립보드에 복사되었습니다.',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        })
+        .catch((error) => {
+          toast({
+            title: '주소 복사 실패',
+            description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
         });
-      }).catch((error) => {
-        toast({
-          title: '주소 복사 실패',
-          description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-      });
     }
   };
 
@@ -358,11 +372,11 @@ const RoomSelection = () => {
       bottom={0}
     >
       {/* 상단 헤더 */}
-      <Box 
-        w="100%" 
+      <Box
+        w="100%"
         py={3}
-        px={4} 
-        bg="white" 
+        px={4}
+        bg="white"
         position="sticky"
         top={0}
         zIndex={2}
@@ -371,11 +385,7 @@ const RoomSelection = () => {
         boxShadow="sm"
       >
         <Flex align="center" justify="space-between">
-          <Text
-            fontSize={{ base: "xl", md: "2xl" }}
-            fontWeight="700"
-            color="gray.900"
-          >
+          <Text fontSize={{ base: 'xl', md: '2xl' }} fontWeight="700" color="gray.900">
             {hotelSettings?.hotelName || '객실 선택'}
           </Text>
           <HStack spacing={3}>
@@ -417,8 +427,8 @@ const RoomSelection = () => {
       </Box>
 
       {/* 날짜 선택 영역 */}
-      <Box 
-        w="100%" 
+      <Box
+        w="100%"
         bg="white"
         position="sticky"
         top="60px"
@@ -455,11 +465,11 @@ const RoomSelection = () => {
                 </InputGroup>
               </PopoverTrigger>
               <PopoverContent
-                width={{ base: "95vw", md: "auto" }}
+                width={{ base: '95vw', md: 'auto' }}
                 maxWidth="95vw"
                 border="none"
                 boxShadow="xl"
-                _focus={{ boxShadow: "xl" }}
+                _focus={{ boxShadow: 'xl' }}
                 bg="white"
               >
                 <PopoverArrow />
@@ -470,35 +480,39 @@ const RoomSelection = () => {
                       '.rdrCalendarWrapper': {
                         width: '100%',
                         fontSize: '14px',
-                        bg: 'white'
+                        bg: 'white',
                       },
                       '.rdrMonth': {
-                        width: '100%'
+                        width: '100%',
                       },
                       '.rdrDateDisplayWrapper': {
-                        background: 'none'
+                        background: 'none',
                       },
                       '.rdrDayToday .rdrDayNumber span:after': {
-                        background: 'blue.500'
+                        background: 'blue.500',
                       },
                       '.rdrDateRangePickerWrapper': {
-                        p: 2
+                        p: 2,
                       },
                       '@media (max-width: 480px)': {
                         '.rdrCalendarWrapper, .rdrMonth': {
-                          width: '100%'
+                          width: '100%',
                         },
                         '.rdrDateRangeWrapper': {
-                          flexDirection: 'column'
-                        }
-                      }
+                          flexDirection: 'column',
+                        },
+                      },
                     }}
                   >
                     <DateRange
                       onChange={(item) => {
                         setDateRange([item.selection]);
                         const { startDate, endDate } = item.selection;
-                        if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
+                        if (
+                          startDate &&
+                          endDate &&
+                          startDate.getTime() !== endDate.getTime()
+                        ) {
                           setIsOpen(false);
                           setShouldFetchAvailability(true);
                         }
@@ -506,7 +520,7 @@ const RoomSelection = () => {
                       moveRangeOnFirstSelection={false}
                       ranges={dateRange}
                       months={window.innerWidth > 768 ? 2 : 1}
-                      direction={window.innerWidth > 768 ? "horizontal" : "vertical"}
+                      direction={window.innerWidth > 768 ? 'horizontal' : 'vertical'}
                       minDate={today}
                       maxDate={maxDate}
                       locale={ko}
@@ -528,43 +542,64 @@ const RoomSelection = () => {
       </Box>
 
       {/* 객실 목록 영역 - 스크롤 가능 */}
-      <Box 
-        flex="1" 
-        overflowY="auto" 
-        px={3} 
-        pb={20} /* 하단 네비게이션을 위한 여백 */
+      <Box
+        flex="1"
+        overflowY="auto"
+        px={3}
+        pb={{ base: '60px', md: '70px' }}
+        maxH="calc(100vh - 200px)"
+        css={{
+          '&::-webkit-scrollbar': {
+            display: 'none',
+          },
+          '-ms-overflow-style': 'none',
+          scrollbarWidth: 'none',
+        }}
       >
         {isLoading ? (
-          <VStack flex="1" justify="center" align="center" bg="white" rounded="md" shadow="sm" p={8}>
+          <VStack
+            flex="1"
+            justify="center"
+            align="center"
+            bg="white"
+            rounded="md"
+            shadow="sm"
+            p={8}
+          >
             <Text color="gray.500">객실을 불러오는 중입니다...</Text>
           </VStack>
         ) : isAvailabilityChecked && availableRooms.length === 0 ? (
           <Box bg="white" rounded="md" shadow="sm" p={8}>
             <Text textAlign="center" color="gray.500">
               선택하신 기간({startLabel} ~ {endLabel})에 이용 가능한 객실이 없습니다.
-              <br />다른 날짜를 선택해 주세요.
+              <br />
+              다른 날짜를 선택해 주세요.
             </Text>
           </Box>
         ) : (
           isAvailabilityChecked && (
-            <SimpleGrid 
-              columns={{ base: 1, sm: 1, md: 2, lg: 3 }} 
-              spacing={6} 
-              my={6}
-            >
+            <VStack spacing={4} align="stretch" my={6} w="100%">
               {availableRooms.map((room) => (
                 <RoomCarouselCard
                   key={room.roomInfo}
                   roomInfo={room.roomInfo}
-                  price={room.price}
-                  stock={room.availableRooms}
+                  price={room.dayStayPrice}
+                  dayUsePrice={room.dayUsePrice}
+                  stock={room.availableRooms || room.stock}
                   numDays={numDays}
                   activeAmenities={room.activeAmenities}
                   photos={room.photos}
-                  onSelect={() => handleSelectRoom(room.roomInfo, room.price)}
+                  onSelect={() => handleSelectRoom(room.roomInfo, room.dayStayPrice)}
+                  hotelSettings={{
+                    discountInfo: room.discount > 0 ? `${room.discount}% 할인` : null,
+                    specialPrice: room.discount > 0 ? { originalPrice: room.dayStayPrice, discountRate: room.discount } : null,
+                    checkInTime: hotelSettings?.checkInTime || '17:00',
+                    rating: 4.7,
+                    reviewCount: 28,
+                  }}
                 />
               ))}
-            </SimpleGrid>
+            </VStack>
           )
         )}
       </Box>
@@ -587,7 +622,7 @@ const RoomSelection = () => {
                 address={hotelSettings?.address}
                 latitude={hotelSettings?.latitude}
                 longitude={hotelSettings?.longitude}
-                onCoordinatesChange={() => {}} // 좌표는 DB에서 가져오므로 콜백 불필요
+                onCoordinatesChange={() => {}}
               />
             </Box>
           </ModalBody>

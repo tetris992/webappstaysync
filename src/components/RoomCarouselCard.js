@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Image,
-  Text,
-  Button,
-  Flex,
-  HStack,
-  Spinner,
-} from '@chakra-ui/react';
+import { Box, Image, Text, Button, Flex, HStack, Spinner, Badge } from '@chakra-ui/react';
 import { FaQuestionCircle } from 'react-icons/fa';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
@@ -22,24 +14,34 @@ const RoomCarouselCard = ({
   activeAmenities,
   photos,
   onSelect,
-  // latitude, // 좌표 prop 추가 (미래 사용 대비)
-  // longitude, // 좌표 prop 추가 (미래 사용 대비)
+  hotelSettings,
 }) => {
   const defaultPhoto = '/assets/default-room1.jpg';
   const [isLoading, setIsLoading] = useState(true);
   const [isFirstImageLoaded, setIsFirstImageLoaded] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const photoUrls =
-    Array.isArray(photos) && photos.length > 0
-      ? photos
-          .map((photo) => photo?.photoUrl)
-          .filter((url) => typeof url === 'string')
-      : [defaultPhoto];
+  const photoUrls = Array.isArray(photos) && photos.length > 0
+    ? photos.map((photo) => photo?.photoUrl).filter((url) => typeof url === 'string')
+    : [defaultPhoto];
 
   const formattedPrice = typeof price === 'number' ? price : 0;
   const formattedStock = typeof stock === 'number' ? stock : 0;
   const formattedNumDays = typeof numDays === 'number' ? numDays : 0;
+  const discount = hotelSettings?.specialPrice?.discountRate || 0;
+  const originalPrice = hotelSettings?.specialPrice?.originalPrice || formattedPrice;
+  const discountedPrice = discount > 0 ? Math.round(originalPrice * (1 - discount / 100)) : originalPrice;
+  const totalPrice = formattedNumDays > 0 ? discountedPrice * formattedNumDays : discountedPrice;
+
+  // 특가 이름과 뱃지 설정
+  const eventNames = hotelSettings?.events?.map(event => event.eventName) || [];
+  const eventName = eventNames.length > 0 ? eventNames[0] : null;
+  const badgeLabel = discount > 0 ? 'HOT' : null;
+
+  // 디버깅 로그 추가
+  console.log('hotelSettings:', hotelSettings);
+  console.log('events:', hotelSettings?.events);
+  console.log('discount:', discount);
 
   const sliderSettings = {
     dots: true,
@@ -56,27 +58,13 @@ const RoomCarouselCard = ({
     touchThreshold: 10,
     dotsClass: 'slick-dots custom-dots',
     customPaging: (i) => (
-      <Box
-        w="8px"
-        h="8px"
-        bg={currentIndex === i ? 'white' : 'gray.300'}
-        borderRadius="full"
-        mx={1}
-        transition="background-color 0.3s"
-        opacity={0.8}
-      />
+      <Box w="8px" h="8px" bg={currentIndex === i ? 'white' : 'gray.300'} borderRadius="full" mx={1} transition="background-color 0.3s" opacity={0.8} />
     ),
     afterChange: (index) => setCurrentIndex(index),
   };
 
-  console.log(`[RoomCarouselCard] Photos for room ${roomInfo}:`, photos);
-  console.log(`[RoomCarouselCard] Photo URLs for room ${roomInfo}:`, photoUrls);
-
   const handleImageLoad = () => {
     if (!isFirstImageLoaded) {
-      console.log(
-        `[RoomCarouselCard] Successfully loaded first image for room ${roomInfo}`
-      );
       setIsLoading(false);
       setIsFirstImageLoaded(true);
     }
@@ -84,9 +72,6 @@ const RoomCarouselCard = ({
 
   const handleImageError = (e) => {
     e.target.src = defaultPhoto;
-    console.error(
-      `[RoomCarouselCard] Failed to load image for room ${roomInfo}: ${e.target.src}`
-    );
     if (!isFirstImageLoaded) {
       setIsLoading(false);
       setIsFirstImageLoaded(true);
@@ -95,19 +80,33 @@ const RoomCarouselCard = ({
 
   return (
     <Box
-      borderWidth="0"
-      borderRadius="xl"
-      overflow="hidden"
-      shadow="sm"
+      variant="card"
+      borderRadius="lg"
+      mb={4}
+      position="relative"
       bg="white"
-      transition="all 0.4s ease"
-      _hover={{ shadow: 'xl', transform: 'translateY(-8px)' }}
-      mb={2}
+      borderWidth="1px"
+      borderColor="gray.200"
+      shadow="sm"
+      transition="all 0.3s ease"
+      _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
+      p={4}
+      display="flex"
+      alignItems="center"
     >
-      <Box position="relative" h="200px" w="100%" overflow="hidden">
+      {/* 왼쪽 사진 */}
+      <Box
+        position="relative"
+        h="200px"
+        w="150px"
+        mr={4}
+        overflow="hidden"
+        borderRadius="lg"
+        flexShrink={0}
+      >
         {isLoading && (
-          <Flex justify="center" align="center" h="200px" w="100%">
-            <Spinner size="md" color="teal.500" />
+          <Flex justify="center" align="center" h="100%" w="100%">
+            <Spinner size="md" color="brand.500" />
           </Flex>
         )}
         <Slider {...sliderSettings}>
@@ -117,7 +116,7 @@ const RoomCarouselCard = ({
                 src={photoUrl}
                 alt={`${roomInfo} - ${idx + 1}`}
                 h="200px"
-                w="100%"
+                w="150px"
                 objectFit="cover"
                 loading="lazy"
                 onError={handleImageError}
@@ -128,47 +127,81 @@ const RoomCarouselCard = ({
             </Box>
           ))}
         </Slider>
+        {badgeLabel && (
+          <Badge
+            position="absolute"
+            top={2}
+            right={2}
+            colorScheme="red"
+            fontSize="xs"
+            px={3}
+            py={1}
+            borderRadius="full"
+            boxShadow="md"
+          >
+            {badgeLabel}
+          </Badge>
+        )}
       </Box>
-      <Box p={5}>
-        <Text fontSize="xl" fontWeight="semibold" color="gray.800" mb={3}>
-          {roomInfo}
-        </Text>
-        <Flex align="center" mb={2}>
-          <Text fontSize="sm" color="gray.700" fontWeight="medium">
-            가격:
+
+      {/* 오른쪽 내용 */}
+      <Box flex="1">
+        <Flex justify="space-between" align="center" mb={2}>
+          <Text fontSize="lg" fontWeight="bold" color="gray.800">
+            {roomInfo}
           </Text>
-          <Text fontSize="sm" color="gray.600" ml={2}>
-            {formattedPrice.toLocaleString()}원 / 박
+          {eventName && (
+            <Badge
+              border="1px solid"
+              borderColor="red.500"
+              color="red.500"
+              fontSize="sm"
+              fontWeight="medium"
+              px={3}
+              py={1}
+              borderRadius="md"
+              bg="white"
+            >
+              {eventName}
+            </Badge>
+          )}
+        </Flex>
+        <Flex justify="space-between" align="center" mb={1}>
+          <Text fontSize="sm" color="gray.700" fontWeight="medium">
+            대실 3시간
+          </Text>
+          <Text fontSize="sm" color="gray.700" fontWeight="medium">
+            숙박 {hotelSettings?.checkInTime || '17:00'} 체크인
           </Text>
         </Flex>
-        {formattedNumDays > 0 && (
-          <Flex align="center" mb={2}>
-            <Text fontSize="sm" color="gray.700" fontWeight="medium">
-              총 가격:
+        <Flex justify="space-between" align="center" mb={1}>
+          <Box>
+            {discount > 0 && (
+              <Text fontSize="xs" color="gray.600" fontWeight="normal" textDecor="line-through">
+                {originalPrice.toLocaleString()}원
+              </Text>
+            )}
+            <Text fontSize="md" color={discount > 0 ? 'red.500' : 'gray.700'} fontWeight="bold">
+              {discount > 0 ? discountedPrice.toLocaleString() : originalPrice.toLocaleString()}원
             </Text>
-            <Text fontSize="sm" color="gray.600" ml={2}>
-              {(formattedPrice * formattedNumDays).toLocaleString()}원 (
-              {formattedNumDays}박)
-            </Text>
-          </Flex>
+          </Box>
+          <Text fontSize="sm" color="red.500" fontWeight="medium">
+            객실 마감 {formattedStock > 0 && `${formattedStock}개`}
+          </Text>
+        </Flex>
+        {numDays > 0 && (
+          <Text fontSize="sm" color="gray.700" fontWeight="medium" mb={1}>
+            총액 ({numDays}박): {totalPrice.toLocaleString()}원
+          </Text>
         )}
-        {stock !== undefined && (
-          <Flex align="center" mb={3}>
-            <Text fontSize="sm" color="gray.700" fontWeight="medium">
-              잔여 객실:
-            </Text>
-            <Text
-              fontSize="sm"
-              color={formattedStock > 0 ? 'teal.500' : 'orange.500'}
-              ml={2}
-            >
-              {formattedStock}개
-            </Text>
-          </Flex>
+        {discount > 0 && (
+          <Text fontSize="xs" color="red.500" fontWeight="medium" mb={2}>
+            이 가격으로 남은 객실 {formattedStock}개
+          </Text>
         )}
         <Flex justify="space-between" align="center">
           {activeAmenities && activeAmenities.length > 0 ? (
-            <HStack spacing={3}>
+            <HStack spacing={2}>
               {activeAmenities.slice(0, 3).map((amenity, idx) => {
                 const IconComponent = iconMap[amenity.icon] || FaQuestionCircle;
                 return (
@@ -187,26 +220,14 @@ const RoomCarouselCard = ({
             <Box flex="1" />
           )}
           <Button
-            colorScheme="blue"
+            variant="solid"
             size="md"
             onClick={onSelect}
             px={5}
             py={2}
             fontSize="sm"
             fontWeight="medium"
-            borderRadius="md"
-            transition="all 0.3s ease"
             isDisabled={formattedStock === 0}
-            bg={formattedStock === 0 ? 'gray.300' : 'blue.400'}
-            _hover={
-              formattedStock === 0
-                ? { bg: 'gray.300' }
-                : { bg: 'blue.500', transform: 'scale(1.05)', boxShadow: 'md' }
-            }
-            _active={
-              formattedStock === 0 ? { bg: 'gray.300' } : { bg: 'blue.600' }
-            }
-            cursor={formattedStock === 0 ? 'not-allowed' : 'pointer'}
           >
             선택하기
           </Button>
