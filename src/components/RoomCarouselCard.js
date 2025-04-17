@@ -1,5 +1,15 @@
+// src/components/RoomCarouselCard.js (전체 코드 수정)
 import React, { useState } from 'react';
-import { Box, Image, Text, Button, Flex, HStack, Spinner, Badge } from '@chakra-ui/react';
+import {
+  Box,
+  Image,
+  Text,
+  Button,
+  Flex,
+  HStack,
+  Spinner,
+  Badge,
+} from '@chakra-ui/react';
 import { FaQuestionCircle } from 'react-icons/fa';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
@@ -21,20 +31,27 @@ const RoomCarouselCard = ({
   const [isFirstImageLoaded, setIsFirstImageLoaded] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const photoUrls = Array.isArray(photos) && photos.length > 0
-    ? photos.map((photo) => photo?.photoUrl).filter((url) => typeof url === 'string')
-    : [defaultPhoto];
+  const photoUrls =
+    Array.isArray(photos) && photos.length > 0
+      ? photos
+          .map((photo) => photo?.photoUrl)
+          .filter((url) => typeof url === 'string')
+      : [defaultPhoto];
 
   const formattedPrice = typeof price === 'number' ? price : 0;
   const formattedStock = typeof stock === 'number' ? stock : 0;
   const formattedNumDays = typeof numDays === 'number' ? numDays : 0;
   const discount = hotelSettings?.specialPrice?.discountRate || 0;
-  const originalPrice = hotelSettings?.specialPrice?.originalPrice || formattedPrice;
-  const discountedPrice = discount > 0 ? Math.round(originalPrice * (1 - discount / 100)) : originalPrice;
-  const totalPrice = formattedNumDays > 0 ? discountedPrice * formattedNumDays : discountedPrice;
+  const originalPrice = formattedPrice;
+  const discountedPrice =
+    discount > 0
+      ? Math.round(originalPrice * (1 - discount / 100))
+      : originalPrice;
+  const totalPrice =
+    formattedNumDays > 0 ? discountedPrice * formattedNumDays : discountedPrice;
 
   const eventName = hotelSettings?.eventName || null;
-  const badgeLabel = discount > 0 ? 'HOT' : null;
+  const badgeLabel = eventName ? eventName : null;
 
   const sliderSettings = {
     dots: true,
@@ -51,7 +68,15 @@ const RoomCarouselCard = ({
     touchThreshold: 10,
     dotsClass: 'slick-dots custom-dots',
     customPaging: (i) => (
-      <Box w="8px" h="8px" bg={currentIndex === i ? 'white' : 'gray.300'} borderRadius="full" mx={1} transition="background-color 0.3s" opacity={0.8} />
+      <Box
+        w="8px"
+        h="8px"
+        bg={currentIndex === i ? 'white' : 'gray.300'}
+        borderRadius="full"
+        mx={1}
+        transition="background-color 0.3s"
+        opacity={0.8}
+      />
     ),
     afterChange: (index) => setCurrentIndex(index),
   };
@@ -120,21 +145,6 @@ const RoomCarouselCard = ({
             </Box>
           ))}
         </Slider>
-        {badgeLabel && (
-          <Badge
-            position="absolute"
-            top={2}
-            right={2}
-            colorScheme="red"
-            fontSize="xs"
-            px={3}
-            py={1}
-            borderRadius="full"
-            boxShadow="md"
-          >
-            {badgeLabel}
-          </Badge>
-        )}
       </Box>
 
       {/* 오른쪽 내용 */}
@@ -143,7 +153,7 @@ const RoomCarouselCard = ({
           <Text fontSize="lg" fontWeight="bold" color="gray.800">
             {roomInfo}
           </Text>
-          {eventName && (
+          {badgeLabel && (
             <Badge
               border="1px solid"
               borderColor="red.500"
@@ -155,7 +165,7 @@ const RoomCarouselCard = ({
               borderRadius="md"
               bg="white"
             >
-              {eventName}
+              {badgeLabel}
             </Badge>
           )}
         </Flex>
@@ -170,13 +180,30 @@ const RoomCarouselCard = ({
         <Flex justify="space-between" align="center" mb={1}>
           <Box>
             {discount > 0 && (
-              <Text fontSize="xs" color="gray.600" fontWeight="normal" textDecor="line-through">
+              <Text
+                fontSize="xs"
+                color="gray.600"
+                fontWeight="normal"
+                textDecor="line-through"
+              >
                 {originalPrice.toLocaleString()}원
               </Text>
             )}
-            <Text fontSize="md" color={discount > 0 ? 'red.500' : 'gray.700'} fontWeight="bold">
-              {discount > 0 ? discountedPrice.toLocaleString() : originalPrice.toLocaleString()}원
+            <Text
+              fontSize="md"
+              color={discount > 0 ? 'red.500' : 'gray.700'}
+              fontWeight="bold"
+            >
+              {discount > 0
+                ? discountedPrice.toLocaleString()
+                : originalPrice.toLocaleString()}
+              원
             </Text>
+            {discount > 0 && (
+              <Text fontSize="xs" color="red.500" fontWeight="medium">
+                {discount}% 할인 적용
+              </Text>
+            )}
           </Box>
           <Text fontSize="sm" color="red.500" fontWeight="medium">
             {formattedStock > 0 ? `남은 객실 ${formattedStock}개` : '객실 마감'}

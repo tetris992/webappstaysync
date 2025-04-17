@@ -1,3 +1,4 @@
+// src/utils/dateUtils.js
 import { parse, isValid, format } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
 
@@ -15,6 +16,7 @@ const cleanString = (str) => {
     .replace(/미리예약/g, '')
     .trim();
 };
+
 /**
  * 날짜 문자열을 파싱하여 Date 객체로 반환
  * @param {string} dateString - 파싱할 날짜 문자열
@@ -30,10 +32,6 @@ export const parseDate = (dateString, hotelSettings = null, isCheckIn = true) =>
   }
 
   let cleanedDateString = cleanString(dateString);
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`Cleaned Date String: "${cleanedDateString}" [length: ${cleanedDateString.length}]`);
-  }
 
   const dateFormats = [
     "yyyy-MM-dd'T'HH:mm:ss.SSS",
@@ -90,9 +88,6 @@ export const parseDate = (dateString, hotelSettings = null, isCheckIn = true) =>
         }
         parsedDate = parsed;
         parsedDateCache[dateString] = parsedDate;
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Parsed Date: ${format(parsedDate, 'yyyy-MM-dd HH:mm:ss')}`);
-        }
         return parsedDate;
       }
     }
@@ -111,26 +106,26 @@ export const parseDate = (dateString, hotelSettings = null, isCheckIn = true) =>
       }
       parsedDate = directParsed;
       parsedDateCache[dateString] = parsedDate;
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`Direct Parsed Date: ${format(parsedDate, 'yyyy-MM-dd HH:mm:ss')}`);
-      }
       return parsedDate;
     }
   } catch (error) {
     console.error(`Failed to directly parse date: "${dateString}"`, error);
   }
 
-  if (process.env.NODE_ENV === 'development') {
-    console.error(`Failed to parse date: "${dateString}"`);
-  }
   parsedDateCache[dateString] = null;
   return null;
 };
 
+/**
+ * 날짜를 지정된 형식으로 포맷
+ * @param {Date|string} date - 포맷할 날짜
+ * @param {string} formatString - 포맷 문자열
+ * @returns {string} - 포맷된 날짜 문자열
+ */
 export const formatDate = (date, formatString = 'yyyy-MM-dd HH:mm:ss') => {
-  if (!date) return '정보 없음';
+  if (!date || !isValid(new Date(date))) return '정보 없음';
   try {
-    return format(date, formatString);
+    return format(new Date(date), formatString);
   } catch (error) {
     console.error(`Error formatting date: ${date}`, error);
     return '정보 없음';

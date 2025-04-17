@@ -24,6 +24,7 @@ import {
   Grid,
 } from '@chakra-ui/react';
 import { FaMapMarkerAlt, FaMapSigns, FaCopy, FaPhone } from 'react-icons/fa';
+import { ArrowBackIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import {
   createReservation,
@@ -33,145 +34,121 @@ import {
 } from '../api/api';
 import { differenceInCalendarDays, format } from 'date-fns';
 import Map from '../components/Map';
-import { ArrowBackIcon } from '@chakra-ui/icons';
 
 const ReservationConfirmation = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { customer } = useAuth();
   const toast = useToast();
+  const { customer } = useAuth();
+
   const [hotelId, setHotelId] = useState(null);
-  const [checkIn, setCheckIn] = useState(null);
-  const [checkOut, setCheckOut] = useState(null);
-  const [price, setPrice] = useState(0);
   const [hotelInfo, setHotelInfo] = useState(null);
   const [hotelPhoneNumber, setHotelPhoneNumber] = useState(null);
   const [coordinates, setCoordinates] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [reservationId, setReservationId] = useState('');
   const [roomImage, setRoomImage] = useState('/assets/default-room1.jpg');
+  const [checkIn, setCheckIn] = useState(null);
+  const [checkOut, setCheckOut] = useState(null);
+  const [price, setPrice] = useState(0);
+  const [originalPrice, setOriginalPrice] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [eventName, setEventName] = useState('');
+  const [reservationId, setReservationId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
 
-  // location.state에서 필요한 정보 추출
-  const roomInfo = location.state?.roomInfo || '';
-  const stateCheckIn = location.state?.checkIn || null;
-  const stateCheckOut = location.state?.checkOut || null;
-  const specialRequests = location.state?.specialRequests || null;
+  const {
+    roomInfo = '',
+    checkIn: stateCheckIn = null,
+    checkOut: stateCheckOut = null,
+    specialRequests = null,
+    hotelId: initHotelId,
+    price: initPrice,
+    originalPrice: initOriginal,
+    discount: initDiscount,
+    eventName: initEventName,
+  } = location.state || {};
 
-  // 숙박 일수 계산
-  const numNights =
-    stateCheckIn && stateCheckOut
-      ? (() => {
-          const checkInDate = new Date(stateCheckIn);
-          const checkOutDate = new Date(stateCheckOut);
-          let nights = differenceInCalendarDays(checkOutDate, checkInDate);
-          return nights < 1 ? 1 : nights;
-        })()
-      : 1;
+  const numNights = stateCheckIn && stateCheckOut
+    ? Math.max(differenceInCalendarDays(new Date(stateCheckOut), new Date(stateCheckIn)), 1)
+    : 1;
 
-  // 호텔 정보 및 사진 로드
-  const loadHotelInfoAndPhotos = useCallback(
-    async (hotelId) => {
-      try {
-        // 호텔 목록에서 전화번호 가져오기
-        const hotelList = await fetchHotelList();
-        const hotelData = hotelList.find((hotel) => hotel.hotelId === hotelId);
-        if (hotelData && hotelData.phoneNumber) {
-          setHotelPhoneNumber(hotelData.phoneNumber);
-        }
+  const loadHotelInfoAndPhotos = useCallback(async (hotelId) => {
+    if (!hotelId) {
+      toast({
+        title: '호텔 ID 누락',
+        description: '호텔 ID가 제공되지 않았습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
 
-        const hotelSettings = await fetchCustomerHotelSettings(hotelId);
-        console.log('[ReservationConfirmation] Hotel data received:', {
-          hotelId: hotelSettings.hotelId,
-          hotelName: hotelSettings.hotelName,
-          address: hotelSettings.address,
-          latitude: hotelSettings.latitude,
-          longitude: hotelSettings.longitude,
-        });
-        setHotelInfo(hotelSettings);
+    try {
+      const hotelList = await fetchHotelList();
+      const hotelData = hotelList.find((h) => h.hotelId === hotelId);
+      setHotelPhoneNumber(hotelData?.phoneNumber || '연락처 준비중');
 
-        // 좌표 초기화
-        if (hotelSettings.latitude && hotelSettings.longitude) {
-          setCoordinates({
-            lat: hotelSettings.latitude,
-            lng: hotelSettings.longitude,
-          });
-          console.log('[ReservationConfirmation] Coordinates set:', {
-            hotelId,
-            latitude: hotelSettings.latitude,
-            longitude: hotelSettings.longitude,
-          });
-        } else {
-          console.log(
-            '[ReservationConfirmation] No coordinates available for hotel:',
-            {
-              hotelId,
-              address: hotelSettings.address,
-            }
-          );
-          toast({
-            title: '좌표 정보 없음',
-            description: '호텔 위치 정보를 불러올 수 없습니다.',
-            status: 'warning',
-            duration: 3000,
-            isClosable: true,
-          });
-        }
+      const settings = await fetchCustomerHotelSettings(hotelId);
+      setHotelInfo(settings);
 
-        const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
-        console.log(
-          `[ReservationConfirmation] Photos for room ${roomInfo}:`,
-          photosData
-        );
-        if (photosData?.roomPhotos && photosData.roomPhotos.length > 0) {
-          setRoomImage(photosData.roomPhotos[0].photoUrl);
-        }
-
-        const checkInTime = hotelSettings?.checkInTime || '15:00';
-        const checkOutTime = hotelSettings?.checkOutTime || '11:00';
-
-        const checkInDateTimeStr = stateCheckIn
-          ? `${stateCheckIn}T${checkInTime}:00+09:00`
-          : null;
-        const checkOutDateTimeStr = stateCheckOut
-          ? `${stateCheckOut}T${checkOutTime}:00+09:00`
-          : null;
-
-        const checkInDateTime = checkInDateTimeStr
-          ? new Date(checkInDateTimeStr)
-          : null;
-        const checkOutDateTime = checkOutDateTimeStr
-          ? new Date(checkOutDateTimeStr)
-          : null;
-
-        setCheckIn(checkInDateTime);
-        setCheckOut(checkOutDateTime);
-      } catch (error) {
-        console.error(
-          '[ReservationConfirmation] Error loading hotel info:',
-          error
-        );
+      if (settings.latitude && settings.longitude) {
+        setCoordinates({ lat: settings.latitude, lng: settings.longitude });
+      } else {
         toast({
-          title: '호텔 정보 로드 실패',
-          description: '호텔 정보를 불러오는 중 오류가 발생했습니다.',
-          status: 'error',
+          title: '좌표 정보 없음',
+          description: '호텔 위치 정보를 불러올 수 없습니다.',
+          status: 'warning',
           duration: 3000,
           isClosable: true,
         });
       }
-    },
-    [stateCheckIn, stateCheckOut, roomInfo, toast]
-  );
 
-  // 초기 데이터 로드
-  useEffect(() => {
-    if (location.state) {
-      const { hotelId, price } = location.state;
-      setHotelId(hotelId);
-      setPrice(price);
-      loadHotelInfoAndPhotos(hotelId);
+      const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
+      if (photosData?.roomPhotos?.length) {
+        setRoomImage(photosData.roomPhotos[0].photoUrl);
+      }
+
+      const inTime = settings.checkInTime || '15:00';
+      const outTime = settings.checkOutTime || '11:00';
+      const inDt = stateCheckIn ? new Date(`${stateCheckIn}T${inTime}:00+09:00`) : null;
+      const outDt = stateCheckOut ? new Date(`${stateCheckOut}T${outTime}:00+09:00`) : null;
+      setCheckIn(inDt);
+      setCheckOut(outDt);
+    } catch (err) {
+      console.error('[ReservationConfirmation] load error:', err);
+      toast({
+        title: '호텔 정보 로드 실패',
+        description: '호텔 정보를 불러오는 중 오류가 발생했습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
-  }, [location.state, loadHotelInfoAndPhotos]);
+  }, [roomInfo, stateCheckIn, stateCheckOut, toast]);
+
+  useEffect(() => {
+    if (!location.state) return;
+    const requiredFields = { initHotelId, initPrice, initOriginal, initDiscount };
+    if (Object.values(requiredFields).some(field => field === undefined || field === null)) {
+      toast({
+        title: '필수 정보 누락',
+        description: '예약에 필요한 필수 정보가 누락되었습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate('/');
+      return;
+    }
+
+    setHotelId(initHotelId);
+    setPrice(initPrice);
+    setOriginalPrice(initOriginal);
+    setDiscount(initDiscount);
+    setEventName(initEventName || '');
+    loadHotelInfoAndPhotos(initHotelId);
+  }, [location.state, initHotelId, initPrice, initOriginal, initDiscount, initEventName, loadHotelInfoAndPhotos, toast, navigate]);
 
   const handleConfirm = async () => {
     if (!customer) {
@@ -182,54 +159,34 @@ const ReservationConfirmation = () => {
         duration: 3000,
         isClosable: true,
       });
-      navigate('/login');
-      return;
+      return navigate('/login');
     }
 
     const finalReservationData = {
-      hotelId: hotelId,
+      hotelId,
       siteName: '단잠',
       customerName: customer.name,
       phoneNumber: customer.phoneNumber,
-      hotelPhoneNumber: hotelPhoneNumber,
-      roomInfo: roomInfo,
-      originalRoomInfo: '',
-      roomNumber: '',
-      checkIn: checkIn
-        ? format(checkIn, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
-        : null,
-      checkOut: checkOut
-        ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
-        : null,
-      reservationDate: (() => {
-        // 한국 현지 시간(KST)으로 정확하게 변환
-        // 현재 시간에 9시간을 더해 명시적으로 KST 시간 생성
-        const now = new Date();
-
-        // 브라우저 시간대에 상관없이 명시적으로 한국 시간 계산
-        const koreaTime = new Date(now.getTime());
-
-        // 한국 시간 포맷팅
-        const year = koreaTime.getFullYear();
-        const month = String(koreaTime.getMonth() + 1).padStart(2, '0');
-        const day = String(koreaTime.getDate()).padStart(2, '0');
-        const hours = String(koreaTime.getHours()).padStart(2, '0');
-        const minutes = String(koreaTime.getMinutes()).padStart(2, '0');
-        const seconds = String(koreaTime.getSeconds()).padStart(2, '0');
-
-        // ISO 8601 형식으로 KST 타임존 정보 추가
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+09:00`;
-      })(),
+      hotelPhoneNumber,
+      roomInfo,
+      checkIn: checkIn ? format(checkIn, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
+      checkOut: checkOut ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
+      reservationDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss'+09:00'"),
       reservationStatus: '예약완료',
-      price: price,
-      specialRequests: specialRequests || null,
-      additionalFees: 0,
-      couponInfo: null,
-      paymentStatus: '미결제',
+      price,
+      specialRequests,
+      duration: numNights,
       paymentMethod: '현장결제',
+      hotelName: hotelInfo?.hotelName || '알 수 없음',
+      address: hotelInfo?.address || '주소 정보 없음',
+      couponInfo: {
+        discount: discount || 0,
+        eventName: eventName || null,
+      },
+      additionalFees: 0,
+      paymentStatus: '미결제',
       isCancelled: false,
       type: 'stay',
-      duration: numNights,
       isCheckedIn: false,
       isCheckedOut: false,
       manuallyCheckedOut: false,
@@ -238,14 +195,12 @@ const ReservationConfirmation = () => {
       notificationHistory: [],
       sentCreate: false,
       sentCancel: false,
-      hotelName: hotelInfo?.hotelName || '알 수 없음',
-      address: hotelInfo?.address || '주소 정보 없음',
     };
 
     try {
       setIsLoading(true);
-      const response = await createReservation(finalReservationData);
-      setReservationId(response.reservationId);
+      const res = await createReservation(finalReservationData);
+      setReservationId(res.reservationId);
       toast({
         title: '예약 성공',
         description: '예약이 완료되었습니다.',
@@ -253,11 +208,12 @@ const ReservationConfirmation = () => {
         duration: 3000,
         isClosable: true,
       });
-      navigate('/history');
-    } catch (error) {
+      navigate('/history', { replace: true });
+    } catch (err) {
+      console.error('[ReservationConfirmation] 예약 실패:', err);
       toast({
         title: '예약 실패',
-        description: error.message || '예약을 완료하지 못했습니다.',
+        description: err.message || '예약을 완료하지 못했습니다.',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -267,57 +223,53 @@ const ReservationConfirmation = () => {
     }
   };
 
-  const handleAddressClick = () => {
-    console.log(
-      '[ReservationConfirmation] Address clicked, checking coordinates:',
-      {
-        address: hotelInfo?.address,
-        latitude: coordinates?.lat,
-        longitude: coordinates?.lng,
-      }
-    );
-
-    if (coordinates && coordinates.lat && coordinates.lng) {
-      // 좌표가 있는 경우 T맵 자동 실행
-      handleTMapNavigation();
-    } else {
-      // 좌표가 없는 경우 주소 복사만 가능
+  const handleCopyAddress = () => {
+    if (!hotelInfo?.address) {
       toast({
-        title: '위치 정보 없음',
-        description:
-          '호텔 좌표 정보를 찾을 수 없습니다. 주소를 복사할 수 있습니다.',
+        title: '주소 정보 없음',
+        description: '복사할 주소가 없습니다.',
         status: 'warning',
-        duration: 3000,
+        duration: 2000,
         isClosable: true,
       });
+      return;
     }
+    navigator.clipboard.writeText(hotelInfo.address).then(() => {
+      toast({
+        title: '주소 복사 완료',
+        description: '주소가 클립보드에 복사되었습니다.',
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      });
+    }).catch((err) => {
+      console.error('[ReservationConfirmation] 주소 복사 실패:', err);
+      toast({
+        title: '주소 복사 실패',
+        description: '주소를 복사하는 데 실패했습니다.',
+        status: 'error',
+        duration: 2000,
+        isClosable: true,
+      });
+    });
   };
 
   const handleTMapNavigation = () => {
-    if (!coordinates || !coordinates.lat || !coordinates.lng) {
-      // 좌표가 없으면 지도 모달 표시
+    if (!coordinates?.lat || !coordinates?.lng) {
       setIsMapOpen(true);
       return;
     }
-
-    const { lat, lng } = coordinates;
-    const tmapUrl = `tmap://route?goalx=${lng}&goaly=${lat}&name=${encodeURIComponent(
-      hotelInfo?.hotelName || '호텔'
-    )}`;
-    console.log('[ReservationConfirmation] TMap URL:', tmapUrl);
-    window.location.href = tmapUrl;
-
+    const url = `tmap://route?goalx=${coordinates.lng}&goaly=${coordinates.lat}&name=${encodeURIComponent(hotelInfo?.hotelName || '호텔')}`;
+    window.location.href = url;
     setTimeout(() => {
       const isAndroid = /android/i.test(navigator.userAgent);
       const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
       if (isAndroid || isIOS) {
-        // T맵이 설치되지 않은 경우 지도 모달 표시
         setIsMapOpen(true);
       } else {
         toast({
           title: 'T맵 설치 필요',
-          description:
-            'T맵 앱이 설치되어 있지 않습니다. 기본 지도를 표시합니다.',
+          description: 'T맵 앱이 설치되어 있지 않습니다. 기본 지도를 표시합니다.',
           status: 'info',
           duration: 3000,
           isClosable: true,
@@ -327,53 +279,13 @@ const ReservationConfirmation = () => {
     }, 2000);
   };
 
-  const handleCopyAddress = () => {
-    if (hotelInfo && hotelInfo.address) {
-      navigator.clipboard
-        .writeText(hotelInfo.address)
-        .then(() => {
-          toast({
-            title: '주소 복사 완료',
-            description: '호텔 주소가 클립보드에 복사되었습니다.',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
-        })
-        .catch((error) => {
-          toast({
-            title: '주소 복사 실패',
-            description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
-            status: 'error',
-            duration: 3000,
-            isClosable: true,
-          });
-        });
-    }
-  };
-
-  const handleImageError = (e) => {
-    console.error(
-      `[ReservationConfirmation] Failed to load image for room ${roomInfo}: ${roomImage}`
-    );
-    e.target.src = '/assets/default-room1.jpg';
-  };
-
   if (!location.state) {
     return (
       <Container maxW="container.sm" py={6} minH="100vh">
         <Text textAlign="center" color="red.500">
           예약 정보를 찾을 수 없습니다.
         </Text>
-        <Button
-          variant="outline"
-          onClick={() => navigate('/')}
-          w="full"
-          mt={4}
-          size="md"
-          color="gray.700"
-          borderColor="gray.300"
-        >
+        <Button mt={4} w="full" onClick={() => navigate('/')}>
           홈으로 돌아가기
         </Button>
       </Container>
@@ -381,147 +293,72 @@ const ReservationConfirmation = () => {
   }
 
   return (
-    <Box
-      minH="100vh"
-      bg="gray.50"
-      position="fixed"
-      top={0}
-      left={0}
-      right={0}
-      bottom={0}
-      display="flex"
-      flexDirection="column"
-      w="100%"
-    >
-      {/* 헤더 */}
-      <Box
-        bg="white"
-        borderBottom="1px solid"
-        borderColor="gray.200"
-        width="100%"
-        py={4}
-      >
+    <Box bg="gray.50" minH="100vh" display="flex" flexDir="column">
+      <Box bg="white" borderBottom="1px solid" borderColor="gray.200" py={4}>
         <Container maxW="container.sm">
-          <Flex align="center" justify="center" position="relative">
+          <Flex align="center" justify="center" pos="relative">
             <IconButton
               icon={<ArrowBackIcon />}
               variant="ghost"
-              position="absolute"
+              pos="absolute"
               left={0}
               onClick={() => navigate(-1)}
               aria-label="뒤로 가기"
             />
-            <Text
-              fontSize={{ base: 'xl', md: '2xl' }}
-              fontWeight="bold"
-              textAlign="center"
-            >
+            <Text fontSize="xl" fontWeight="bold">
               예약 확인
             </Text>
           </Flex>
         </Container>
       </Box>
 
-      {/* 스크롤되는 본문 영역 */}
-      <Box
-        flex={1}
-        overflowY="auto"
-        sx={{
-          '&::-webkit-scrollbar': {
-            width: '4px',
-          },
-          '&::-webkit-scrollbar-track': {
-            width: '4px',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: 'gray.300',
-            borderRadius: '24px',
-          },
-        }}
-      >
-        <Container
-          maxW={{ base: '100%', sm: '95%', md: 'container.sm' }}
-          py={{ base: 4, sm: 6 }}
-          px={{ base: 4, sm: 6 }}
-        >
-          <VStack
-            spacing={4}
-            align="stretch"
-            w="100%"
-            pb={{ base: '90px', md: '100px' }}
-          >
-            {/* 객실 사진 */}
-            <Box
-              bg="white"
-              borderRadius="xl"
-              overflow="hidden"
-              shadow="sm"
-              borderWidth="1px"
-              borderColor="gray.200"
-            >
+      <Box flex={1} overflowY="auto">
+        <Container maxW="container.sm" py={6}>
+          <VStack spacing={6} align="stretch">
+            <Box bg="white" rounded="lg" overflow="hidden">
               <Image
                 src={roomImage}
                 alt={roomInfo}
-                h="250px"
-                w="100%"
                 objectFit="cover"
-                onError={handleImageError}
+                w="100%"
+                h="250px"
+                onError={(e) => (e.target.src = '/assets/default-room1.jpg')}
               />
             </Box>
 
-            {/* 호텔 정보 */}
-            <Box
-              bg="white"
-              borderRadius="xl"
-              p={6}
-              shadow="sm"
-              borderWidth="1px"
-              borderColor="gray.200"
-            >
-              <VStack align="stretch" spacing={3} w="100%">
-                <Text fontSize="xl" fontWeight="bold" mb={2}>
-                  {hotelInfo?.hotelName || '부산호텔'} ({hotelId})
+            <Box bg="white" p={6} rounded="lg" shadow="sm">
+              <VStack align="stretch" spacing={3}>
+                <Text fontSize="xl" fontWeight="bold">
+                  {hotelInfo?.hotelName || '호텔 정보 로드 중...'} ({hotelId})
                 </Text>
-
-                {/* 주소 정보 */}
-                {hotelInfo && (
-                  <Flex align="center" w="100%">
-                    <Icon
-                      as={FaMapMarkerAlt}
-                      color="teal.500"
-                      boxSize={4}
-                      mr={2}
-                    />
-                    <Text
-                      flex="1"
-                      fontSize="md"
-                      color="gray.700"
-                      cursor="pointer"
-                      onClick={handleAddressClick}
-                      _hover={{
-                        color: 'teal.600',
-                        textDecoration: 'underline',
-                      }}
-                    >
-                      {hotelInfo.address || '주소 정보 없음'}
-                    </Text>
-                    <IconButton
-                      icon={<FaCopy />}
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCopyAddress}
-                      aria-label="주소 복사"
-                      color="gray.500"
-                      _hover={{ color: 'teal.600' }}
-                    />
-                  </Flex>
-                )}
-
-                {/* 전화번호 정보 */}
+                <Flex align="center">
+                  <Icon as={FaMapMarkerAlt} mr={2} color="teal.500" />
+                  <Text
+                    flex={1}
+                    onClick={() => setIsMapOpen(true)}
+                    cursor="pointer"
+                    color={coordinates ? 'teal.600' : 'gray.500'}
+                    _hover={coordinates ? { color: 'teal.800', textDecoration: 'underline' } : {}}
+                  >
+                    {hotelInfo?.address || '주소 정보 없음'}
+                  </Text>
+                  <IconButton
+                    icon={<FaCopy />}
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyAddress}
+                    isDisabled={!hotelInfo?.address}
+                  />
+                </Flex>
                 {hotelPhoneNumber && (
-                  <Flex align="center" w="100%" justify="flex-end">
-                    <Icon as={FaPhone} color="teal.500" boxSize={4} mr={2} />
-                    <Text fontSize="md" color="gray.700">
+                  <Flex align="center" justify="flex-end">
+                    <Icon as={FaPhone} mr={2} color="teal.500" />
+                    <Text
+                      color="teal.600"
+                      cursor="pointer"
+                      onClick={() => window.location.href = `tel:${hotelPhoneNumber.replace(/[^0-9]/g, '')}`}
+                      _hover={{ color: 'teal.800', textDecoration: 'underline' }}
+                    >
                       {hotelPhoneNumber}
                     </Text>
                   </Flex>
@@ -529,79 +366,70 @@ const ReservationConfirmation = () => {
               </VStack>
             </Box>
 
-            {/* 예약 정보 */}
-            <Box
-              bg="white"
-              borderRadius="xl"
-              p={6}
-              shadow="sm"
-              borderWidth="1px"
-              borderColor="gray.200"
-            >
-              <VStack align="start" spacing={4} width="100%">
-                <Text fontWeight="bold" fontSize="lg" color="gray.700">
-                  예약 정보
-                </Text>
+            <Box bg="white" p={6} rounded="lg" shadow="sm">
+              <VStack align="stretch" spacing={4}>
+                <Text fontWeight="bold">예약 정보</Text>
                 <Divider />
-                <Grid templateColumns="1fr 2fr" gap={3} width="100%">
+                <Grid templateColumns="1fr 2fr" gap={3}>
                   <Text color="gray.600">예약 번호</Text>
-                  <Text fontWeight="medium">
-                    {reservationId || '생성 중...'}
-                  </Text>
-
+                  <Text>{reservationId || '생성 중...'}</Text>
                   <Text color="gray.600">예약자</Text>
-                  <Text fontWeight="medium">
-                    {customer?.name || '예약자 정보 없음'}
-                  </Text>
-
+                  <Text>{customer?.name || '정보 없음'}</Text>
                   <Text color="gray.600">객실</Text>
-                  <Text fontWeight="medium">{roomInfo}</Text>
-
+                  <Text>{roomInfo || '정보 없음'}</Text>
                   <Text color="gray.600">체크인</Text>
-                  <Text fontWeight="medium">
-                    {checkIn ? format(checkIn, 'yyyy-MM-dd HH:mm') : 'N/A'}
-                  </Text>
-
+                  <Text>{checkIn ? format(checkIn, 'yyyy-MM-dd HH:mm') : 'N/A'}</Text>
                   <Text color="gray.600">체크아웃</Text>
-                  <Text fontWeight="medium">
-                    {checkOut ? format(checkOut, 'yyyy-MM-dd HH:mm') : 'N/A'}
-                  </Text>
-
+                  <Text>{checkOut ? format(checkOut, 'yyyy-MM-dd HH:mm') : 'N/A'}</Text>
                   <Text color="gray.600">숙박 일수</Text>
-                  <Text fontWeight="medium">{numNights}박</Text>
-
-                  <Text color="gray.600">예약 시간</Text>
-                  <Text fontWeight="medium" color="gray.400">
-                    {format(new Date(), 'yyyy-MM-dd HH:mm')} (한국 현재 시간)
-                  </Text>
-
+                  <Text>{numNights}박</Text>
                   <Text color="gray.600">결제</Text>
-                  <Text fontWeight="medium">현장결제</Text>
-                </Grid>
-                <Divider />
-                <Flex justify="space-between" width="100%" align="center">
-                  <Text color="gray.600">총 결제 금액</Text>
-                  <Text fontSize="xl" fontWeight="bold" color="blue.500">
-                    {price.toLocaleString()}원
+                  <Text>현장결제</Text>
+                  <Text color="gray.600">예약 일시</Text>
+                  <Text color="gray.400">
+                    {format(new Date(), 'yyyy-MM-dd HH:mm:ss')} (현재 시간 KST)
                   </Text>
+                  {eventName && (
+                    <>
+                      <Text color="gray.600">정상된 이벤트</Text>
+                      <Text color="teal.600">{eventName}</Text>
+                    </>
+                  )}
+                </Grid>
+
+                <Divider />
+
+                <Flex justify="space-between" align="center">
+                  <Text color="gray.600">총 결제 금액</Text>
+                  <Box textAlign="right">
+                    {discount > 0 && (
+                      <Text fontSize="sm" color="gray.500" textDecoration="line-through">
+                        {originalPrice.toLocaleString()}원
+                      </Text>
+                    )}
+                    <Text fontSize="2xl" fontWeight="bold" color="blue.500">
+                      {price.toLocaleString()}원
+                    </Text>
+                    {discount > 0 && (
+                      <Text fontSize="xs" color="red.500">
+                        {discount}% 할인
+                      </Text>
+                    )}
+                  </Box>
                 </Flex>
 
-                {/* 예약하기 버튼을 카드 안으로 이동 */}
-                <Box width="100%" mt={6}>
+                <Box pt={4}>
                   {isLoading ? (
-                    <Box textAlign="center" py={2}>
-                      <Spinner size="lg" color="brand.500" />
-                    </Box>
+                    <Flex justify="center">
+                      <Spinner size="lg" color="blue.500" />
+                    </Flex>
                   ) : (
                     <Button
-                      w="100%"
-                      bg="blue.500"
-                      color="white"
+                      colorScheme="blue"
+                      w="full"
                       size="lg"
                       onClick={handleConfirm}
-                      isLoading={isLoading}
-                      _hover={{ bg: 'blue.600' }}
-                      _active={{ bg: 'blue.700' }}
+                      isDisabled={!hotelId || !price}
                     >
                       예약하기
                     </Button>
@@ -613,48 +441,36 @@ const ReservationConfirmation = () => {
         </Container>
       </Box>
 
-      {/* 지도 모달 (T맵 설치되지 않은 경우 표시) */}
       <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>호텔 위치</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Text fontSize="md" color="gray.600" mb={2}>
-              호텔 ID: {hotelId}
-            </Text>
-            <Text fontSize="md" color="gray.600" mb={4}>
-              주소: {hotelInfo?.address || '주소 정보 없음'}
-            </Text>
-            <Box h="400px" w="100%">
-              {coordinates && coordinates.lat && coordinates.lng ? (
-                <Map
-                  address={hotelInfo?.address}
-                  latitude={coordinates.lat}
-                  longitude={coordinates.lng}
-                  onCoordinatesChange={() => {}}
-                />
-              ) : (
-                <Text color="red.500">지도 데이터를 로드할 수 없습니다.</Text>
-              )}
-            </Box>
+            {coordinates?.lat && coordinates?.lng ? (
+              <Map
+                address={hotelInfo?.address}
+                latitude={coordinates.lat}
+                longitude={coordinates.lng}
+                onCoordinatesChange={() => {}}
+              />
+            ) : (
+              <Text color="red.500">지도 데이터를 불러올 수 없습니다.</Text>
+            )}
           </ModalBody>
           <ModalFooter>
-            <HStack spacing={2}>
+            <HStack>
               <Button
                 variant="outline"
-                color="teal.600"
                 leftIcon={<FaMapSigns />}
                 onClick={handleTMapNavigation}
+                isDisabled={!coordinates}
               >
-                T맵으로 길찾기
+                T맵 길찾기
               </Button>
-              <Button
-                variant="outline"
-                color="gray.600"
-                leftIcon={<FaCopy />}
-                onClick={handleCopyAddress}
-              />
+              <Button onClick={handleCopyAddress} isDisabled={!hotelInfo?.address}>
+                주소 복사
+              </Button>
               <Button colorScheme="gray" onClick={() => setIsMapOpen(false)}>
                 닫기
               </Button>

@@ -1,3 +1,4 @@
+// src/pages/RoomSelection.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -49,7 +50,7 @@ const RoomSelection = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const location = useLocation();
-  const { checkIn: initialCheckIn, checkOut: initialCheckOut } = location.state || {};
+  const { checkIn: initialCheckIn, checkOut: initialCheckOut, applicableRoomTypes } = location.state || {};
 
   const today = startOfDay(new Date());
   const tomorrow = addDays(today, 1);
@@ -80,35 +81,48 @@ const RoomSelection = () => {
     ? format(dateRange[0].endDate, 'yyyy-MM-dd')
     : '';
 
+  const calculateDiscount = useCallback((roomInfo, checkIn, checkOut) => {
+    if (!hotelSettings?.events || !checkIn || !checkOut) {
+      return { discount: 0, eventName: null, eventUuid: null };
+    }
+    const roomKey = roomInfo.toLowerCase();
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    const applicableEvents = hotelSettings.events.filter(
+      (event) =>
+        event.isActive &&
+        event.applicableRoomTypes.includes(roomKey) &&
+        new Date(event.startDate) <= checkOutDate &&
+        new Date(event.endDate) >= checkInDate
+    );
+
+    let maxDiscount = 0;
+    let selectedEventName = null;
+    let selectedEventUuid = null;
+
+    applicableEvents.forEach((event) => {
+      let discount = 0;
+      if (event.discountType === 'percentage') {
+        discount = event.discountValue;
+      } else if (event.discountType === 'fixed') {
+        const roomPrice = hotelSettings.roomTypes.find(
+          (rt) => rt.roomInfo.toLowerCase() === roomKey
+        )?.price || 0;
+        discount = roomPrice ? (event.discountValue / roomPrice) * 100 : 0;
+      }
+      if (discount > maxDiscount) {
+        maxDiscount = discount;
+        selectedEventName = event.eventName;
+        selectedEventUuid = event.uuid;
+      }
+    });
+
+    return { discount: maxDiscount, eventName: selectedEventName, eventUuid: selectedEventUuid };
+  }, [hotelSettings]);
+
   const handleCheckAvailability = useCallback(async () => {
     const checkIn = dateRange[0].startDate;
     const checkOut = dateRange[0].endDate;
-
-    const calculateDiscount = (roomInfo, checkIn, checkOut) => {
-      if (!hotelSettings?.events || !checkIn || !checkOut) return 0;
-      const roomKey = roomInfo.toLowerCase();
-      const checkInDate = new Date(checkIn);
-      const checkOutDate = new Date(checkOut);
-      return hotelSettings.events
-        .filter(
-          (event) =>
-            event.applicableRoomTypes.includes(roomKey) &&
-            new Date(event.startDate) <= checkOutDate &&
-            new Date(event.endDate) >= checkInDate &&
-            event.isActive
-        )
-        .reduce((max, event) => {
-          if (event.discountType === 'percentage') {
-            return Math.max(max, event.discountValue);
-          } else if (event.discountType === 'fixed') {
-            const roomPrice = hotelSettings.roomTypes.find(
-              (rt) => rt.roomInfo.toLowerCase() === roomKey
-            )?.price || 0;
-            return Math.max(max, (event.discountValue / roomPrice) * 100);
-          }
-          return max;
-        }, 0);
-    };
 
     if (!checkIn || !checkOut || !isValid(checkIn) || !isValid(checkOut)) {
       toast({
@@ -190,11 +204,22 @@ const RoomSelection = () => {
           nameEng: amenity.nameEng,
           icon: amenity.icon,
         })) || [];
-        const discount = calculateDiscount(room.roomInfo, checkIn, checkOut);
+        const { discount, eventName, eventUuid } = calculateDiscount(room.roomInfo, checkIn, checkOut);
         const dayStayPrice = room.price;
         const dayUsePrice = Math.round(dayStayPrice * 0.5);
-        return { ...room, activeAmenities, photos: roomPhotosMap[key] || [], discount, dayStayPrice, dayUsePrice };
-      });
+        return {
+          ...room,
+          activeAmenities,
+          photos: roomPhotosMap[key] || [],
+          discount,
+          eventName,
+          eventUuid,
+          dayStayPrice,
+          dayUsePrice,
+        };
+      }).filter((room) => 
+        !applicableRoomTypes || applicableRoomTypes.includes(room.roomInfo.toLowerCase())
+      );
 
       setAvailableRooms(availabilityWithAmenities);
       setIsAvailabilityChecked(true);
@@ -209,7 +234,7 @@ const RoomSelection = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [dateRange, hotelId, hotelSettings, roomPhotosMap, toast, today, maxDate, numDays]);
+  }, [dateRange, hotelId, hotelSettings, roomPhotosMap, toast, today, maxDate, numDays, applicableRoomTypes, calculateDiscount]);
 
   useEffect(() => {
     const loadHotelSettings = async () => {
@@ -262,11 +287,10 @@ const RoomSelection = () => {
     }
   }, [shouldFetchAvailability, hotelSettings, roomPhotosMap, handleCheckAvailability]);
 
-  const handleSelectRoom = (roomInfo, perNightPrice) => {
+  const handleSelectRoom = (roomInfo, perNightPrice, discount, eventName, eventUuid) => {
     const nights = differenceInCalendarDays(dateRange[0].endDate, dateRange[0].startDate);
-    const room = availableRooms.find((r) => r.roomInfo.toLowerCase() === roomInfo.toLowerCase());
-    const discount = room?.discount || 0;
-    const totalPrice = perNightPrice * nights * (1 - discount / 100);
+    const originalPrice = perNightPrice * nights;
+    const totalPrice = originalPrice * (1 - discount / 100);
 
     navigate('/confirm', {
       state: {
@@ -275,6 +299,10 @@ const RoomSelection = () => {
         checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
         checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
         price: totalPrice,
+        originalPrice,
+        discount,
+        eventName,
+        eventUuid,
         numNights: nights,
         specialRequests: null,
       },
@@ -408,7 +436,7 @@ const RoomSelection = () => {
               size="md"
               fontWeight="600"
               onClick={() => {
-                const sortedRooms = [...availableRooms].sort((a, b) => a.price - b.price);
+                const sortedRooms = [...availableRooms].sort((a, b) => a.dayStayPrice - b.dayStayPrice);
                 setAvailableRooms(sortedRooms);
                 toast({
                   title: '객실 정렬',
@@ -589,10 +617,21 @@ const RoomSelection = () => {
                   numDays={numDays}
                   activeAmenities={room.activeAmenities}
                   photos={room.photos}
-                  onSelect={() => handleSelectRoom(room.roomInfo, room.dayStayPrice)}
+                  onSelect={() => handleSelectRoom(
+                    room.roomInfo,
+                    room.dayStayPrice,
+                    room.discount,
+                    room.eventName,
+                    room.eventUuid
+                  )}
                   hotelSettings={{
                     discountInfo: room.discount > 0 ? `${room.discount}% 할인` : null,
-                    specialPrice: room.discount > 0 ? { originalPrice: room.dayStayPrice, discountRate: room.discount } : null,
+                    specialPrice: room.discount > 0 ? {
+                      originalPrice: room.dayStayPrice,
+                      discountRate: room.discount
+                    } : null,
+                    eventName: room.eventName,
+                    eventUuid: room.eventUuid,
                     checkInTime: hotelSettings?.checkInTime || '17:00',
                     rating: 4.7,
                     reviewCount: 28,
