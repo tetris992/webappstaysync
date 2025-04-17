@@ -226,13 +226,13 @@ const RoomCarouselCard = ({
               </Text>
             )}
           </Box>
-          <Text
+          {/* <Text
             fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
             color="red.500"
             fontWeight="medium"
           >
             {formattedStock > 0 ? `남은 객실 ${formattedStock}개` : '객실 마감'}
-          </Text>
+          </Text> */}
         </Flex>
         {numDays > 0 && (
           <Text
@@ -250,8 +250,9 @@ const RoomCarouselCard = ({
             color="red.500"
             fontWeight="medium"
             mb={1}
+            textAlign="right" 
           >
-            이 가격으로 남은 객실 {formattedStock}개
+            남은 객실 {formattedStock}개
           </Text>
         )}
         <Flex justify="space-between" align="center">
