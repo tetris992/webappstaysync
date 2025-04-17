@@ -99,7 +99,7 @@ const RoomCarouselCard = ({
     <Box
       variant="card"
       borderRadius="lg"
-      mb={2} // 마진 축소
+      mb={2}
       position="relative"
       bg="white"
       borderWidth="1px"
@@ -107,7 +107,7 @@ const RoomCarouselCard = ({
       shadow="sm"
       transition="all 0.3s ease"
       _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
-      p={2} // 패딩 축소
+      p={2}
       w="100%"
       display="flex"
       alignItems="center"
@@ -116,12 +116,12 @@ const RoomCarouselCard = ({
       <Box
         position="relative"
         h="200px"
-        w={{ base: '120px', md: '150px' }} // 스마트폰에서 사진 너비 축소
-        mr={2} // 마진 축소
+        w={{ base: '120px', md: '150px' }}
+        mr={2}
         overflow="hidden"
         borderRadius="lg"
         flexShrink={0}
-        onClick={onSelect} // 사진 클릭 시 예약확정 페이지로 이동
+        onClick={onSelect}
         cursor="pointer"
       >
         {isLoading && (
@@ -153,12 +153,13 @@ const RoomCarouselCard = ({
       <Box flex="1">
         <Flex justify="space-between" align="center" mb={1}>
           <Text
-            fontSize={{ base: 'md', md: 'lg' }} // 반응형 폰트 크기
+            fontSize={{ base: 'md', md: 'lg' }}
             fontWeight="bold"
             color="gray.800"
             whiteSpace="nowrap"
             overflow="hidden"
             textOverflow="ellipsis"
+            maxWidth="70%"
           >
             {roomInfo}
           </Text>
@@ -167,12 +168,16 @@ const RoomCarouselCard = ({
               border="1px solid"
               borderColor="red.500"
               color="red.500"
-              fontSize={{ base: 'xs', md: 'sm' }} // 크기 축소
+              fontSize={{ base: 'xs', md: 'sm' }}
               fontWeight="medium"
-              px={2} // 패딩 축소
-              py={0.5} // 패딩 축소
-              borderRadius="sm" // 더 작은 둥근 모서리
+              px={2}
+              py={0.5}
+              borderRadius="sm"
               bg="white"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              maxWidth="30%"
             >
               {badgeLabel}
             </Badge>
@@ -180,16 +185,24 @@ const RoomCarouselCard = ({
         </Flex>
         <Flex justify="space-between" align="center" mb={1}>
           <Text
-            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+            fontSize={{ base: 'xs', md: 'sm' }}
             color="gray.700"
             fontWeight="medium"
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            maxWidth="50%"
           >
             대실 3시간
           </Text>
           <Text
-            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+            fontSize={{ base: 'xs', md: 'sm' }}
             color="gray.700"
             fontWeight="medium"
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            maxWidth="50%"
           >
             숙박 {hotelSettings?.checkInTime || '17:00'} 체크인
           </Text>
@@ -198,18 +211,24 @@ const RoomCarouselCard = ({
           <Box>
             {discount > 0 && (
               <Text
-                fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+                fontSize={{ base: 'xs', md: 'sm' }}
                 color="gray.600"
                 fontWeight="normal"
                 textDecor="line-through"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
               >
                 {originalPrice.toLocaleString()}원
               </Text>
             )}
             <Text
-              fontSize={{ base: 'sm', md: 'md' }} // 반응형 폰트 크기
+              fontSize={{ base: 'sm', md: 'md' }}
               color={discount > 0 ? 'red.500' : 'gray.700'}
               fontWeight="bold"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
             >
               {discount > 0
                 ? discountedPrice.toLocaleString()
@@ -218,41 +237,40 @@ const RoomCarouselCard = ({
             </Text>
             {discount > 0 && (
               <Text
-                fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+                fontSize={{ base: 'xs', md: 'sm' }}
                 color="red.500"
                 fontWeight="medium"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
               >
                 {discount}% 할인 적용
               </Text>
             )}
           </Box>
-          {/* <Text
-            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+          <Text
+            fontSize={{ base: 'xs', md: 'sm' }}
             color="red.500"
             fontWeight="medium"
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            maxWidth="50%"
           >
             {formattedStock > 0 ? `남은 객실 ${formattedStock}개` : '객실 마감'}
-          </Text> */}
+          </Text>
         </Flex>
         {numDays > 0 && (
           <Text
-            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+            fontSize={{ base: 'xs', md: 'sm' }}
             color="gray.700"
             fontWeight="medium"
             mb={1}
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
           >
             총액 ({numDays}박): {totalPrice.toLocaleString()}원
-          </Text>
-        )}
-        {discount > 0 && (
-          <Text
-            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
-            color="red.500"
-            fontWeight="medium"
-            mb={1}
-            textAlign="right" 
-          >
-            남은 객실 {formattedStock}개
           </Text>
         )}
         <Flex justify="space-between" align="center">
@@ -281,7 +299,7 @@ const RoomCarouselCard = ({
             onClick={onSelect}
             px={4}
             py={1}
-            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+            fontSize={{ base: 'xs', md: 'sm' }}
             fontWeight="medium"
             isDisabled={formattedStock === 0}
           >
