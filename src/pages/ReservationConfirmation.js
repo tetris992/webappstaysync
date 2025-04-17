@@ -293,8 +293,30 @@ const ReservationConfirmation = () => {
   }
 
   return (
-    <Box bg="gray.50" minH="100vh" display="flex" flexDir="column">
-      <Box bg="white" borderBottom="1px solid" borderColor="gray.200" py={4}>
+    <Box
+      bg="gray.50"
+      minH="100vh"
+      display="flex"
+      flexDir="column"
+      overflow="hidden"
+      position="fixed"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+    >
+      {/* 상단바 */}
+      <Box
+        position="fixed"
+        top={0}
+        left={0}
+        right={0}
+        bg="white"
+        borderBottom="1px"
+        borderColor="gray.200"
+        py={4}
+        zIndex={1000}
+      >
         <Container maxW="container.sm">
           <Flex align="center" justify="center" pos="relative">
             <IconButton
@@ -312,21 +334,42 @@ const ReservationConfirmation = () => {
         </Container>
       </Box>
 
-      <Box flex={1} overflowY="auto">
-        <Container maxW="container.sm" py={6}>
-          <VStack spacing={6} align="stretch">
+      {/* 본문 영역 - 스크롤 가능 */}
+      <Box
+        pt="64px" // 상단바 높이 (py={4}로 인해 64px로 가정)
+        pb="104px" // 하단바(60px) + 스마트폰 하단 네비게이션 바(44px) 고려
+        flex="1"
+        maxH="calc(100vh - 124px)" // 상단바(64px) + 하단바(60px) 제외
+        overflowY="auto"
+        css={{
+          '&::-webkit-scrollbar': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            width: '6px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'gray.200',
+            borderRadius: '24px',
+          },
+          scrollBehavior: 'smooth',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        <Container maxW="container.sm" py={4}>
+          <VStack spacing={4} align="stretch">
             <Box bg="white" rounded="lg" overflow="hidden">
               <Image
                 src={roomImage}
                 alt={roomInfo}
                 objectFit="cover"
                 w="100%"
-                h="250px"
+                h={{ base: "120px", sm: "180px", md: "250px" }} // 스마트폰에서 더 작은 높이로 조정
                 onError={(e) => (e.target.src = '/assets/default-room1.jpg')}
               />
             </Box>
 
-            <Box bg="white" p={6} rounded="lg" shadow="sm">
+            <Box bg="white" p={4} rounded="lg" shadow="sm">
               <VStack align="stretch" spacing={3}>
                 <Text fontSize="xl" fontWeight="bold">
                   {hotelInfo?.hotelName || '호텔 정보 로드 중...'} ({hotelId})
@@ -366,7 +409,7 @@ const ReservationConfirmation = () => {
               </VStack>
             </Box>
 
-            <Box bg="white" p={6} rounded="lg" shadow="sm">
+            <Box bg="white" p={4} rounded="lg" shadow="sm">
               <VStack align="stretch" spacing={4}>
                 <Text fontWeight="bold">예약 정보</Text>
                 <Divider />
@@ -391,7 +434,7 @@ const ReservationConfirmation = () => {
                   </Text>
                   {eventName && (
                     <>
-                      <Text color="gray.600">정상된 이벤트</Text>
+                      <Text color="gray.600">적용된 이벤트</Text>
                       <Text color="teal.600">{eventName}</Text>
                     </>
                   )}
@@ -438,6 +481,29 @@ const ReservationConfirmation = () => {
               </VStack>
             </Box>
           </VStack>
+        </Container>
+      </Box>
+
+      {/* 하단바 */}
+      <Box
+        position="fixed"
+        bottom={0}
+        left={0}
+        right={0}
+        bg="white"
+        borderTop="1px"
+        borderColor="gray.200"
+        py={2}
+        zIndex={1000}
+        height="60px"
+      >
+        <Container maxW="container.sm">
+          <Flex justify="space-around">
+            <Text>홈</Text>
+            <Text>숙소</Text>
+            <Text>로그아웃</Text>
+            <Text>나의 내역</Text>
+          </Flex>
         </Container>
       </Box>
 

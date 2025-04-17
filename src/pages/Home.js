@@ -565,7 +565,7 @@ const Home = () => {
       {/* 본문 영역 - 스크롤 가능하도록 설정 */}
       <Box
         flex="1"
-        maxH="calc(100vh - 120px)"
+        maxH="calc(100vh - 160px)"
         overflowY="auto"
         overflowX="hidden"
         position="relative"
