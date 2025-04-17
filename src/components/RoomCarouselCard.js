@@ -168,16 +168,17 @@ const RoomCarouselCard = ({
               border="1px solid"
               borderColor="red.500"
               color="red.500"
-              fontSize={{ base: 'xs', md: 'sm' }}
+              fontSize="xs" // 크기 축소
               fontWeight="medium"
-              px={2}
+              px={1.5} // 패딩 축소
               py={0.5}
-              borderRadius="sm"
-              bg="white"
+              borderRadius="md" // 더 둥글게
+              bg="red.50" // 밝은 빨간색 배경 추가
               whiteSpace="nowrap"
               overflow="hidden"
               textOverflow="ellipsis"
               maxWidth="30%"
+              ml={1} // 룸 이름과의 간격 추가
             >
               {badgeLabel}
             </Badge>
