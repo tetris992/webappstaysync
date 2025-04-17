@@ -1,4 +1,3 @@
-// src/pages/RoomSelection.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -386,7 +385,8 @@ const RoomSelection = () => {
 
   return (
     <Container
-      maxW="container.xl"
+      maxW="100%" // 스마트폰 화면 너비에 꽉 차게
+      w="100%"
       p={0}
       h="100vh"
       display="flex"
@@ -398,12 +398,13 @@ const RoomSelection = () => {
       left={0}
       right={0}
       bottom={0}
+      overflowX="hidden" // 좌우 스크롤 방지
     >
       {/* 상단 헤더 */}
       <Box
         w="100%"
         py={3}
-        px={4}
+        px={3}
         bg="white"
         position="sticky"
         top={0}
@@ -413,19 +414,20 @@ const RoomSelection = () => {
         boxShadow="sm"
       >
         <Flex align="center" justify="space-between">
-          <Text fontSize={{ base: 'xl', md: '2xl' }} fontWeight="700" color="gray.900">
+          <Text fontSize={{ base: 'lg', md: '2xl' }} fontWeight="700" color="gray.900">
             {hotelSettings?.hotelName || '객실 선택'}
           </Text>
-          <HStack spacing={3}>
+          <HStack spacing={2}>
             {hotelSettings && (
               <Button
                 variant="ghost"
                 color="gray.700"
                 onClick={handleAddressClick}
                 _hover={{ color: 'blue.500', bg: 'blue.50' }}
-                size="md"
-                leftIcon={<FaMapMarkerAlt size={16} />}
+                size="sm"
+                leftIcon={<FaMapMarkerAlt size={14} />}
                 fontWeight="600"
+                fontSize={{ base: "sm", md: "md" }}
               >
                 위치보기
               </Button>
@@ -433,8 +435,9 @@ const RoomSelection = () => {
             <Button
               variant="solid"
               colorScheme="blue"
-              size="md"
+              size="sm"
               fontWeight="600"
+              fontSize={{ base: "sm", md: "md" }}
               onClick={() => {
                 const sortedRooms = [...availableRooms].sort((a, b) => a.dayStayPrice - b.dayStayPrice);
                 setAvailableRooms(sortedRooms);
@@ -464,9 +467,9 @@ const RoomSelection = () => {
         borderBottom="1px solid"
         borderColor="gray.200"
         boxShadow="sm"
-        p={4}
+        p={3}
       >
-        <VStack spacing={3}>
+        <VStack spacing={2}>
           <Box w="100%">
             <Popover
               isOpen={isOpen}
@@ -488,6 +491,7 @@ const RoomSelection = () => {
                     bg="white"
                     color="gray.800"
                     fontWeight="500"
+                    fontSize={{ base: "sm", md: "md" }}
                     _hover={{ borderColor: 'blue.500' }}
                   />
                 </InputGroup>
@@ -507,7 +511,7 @@ const RoomSelection = () => {
                     sx={{
                       '.rdrCalendarWrapper': {
                         width: '100%',
-                        fontSize: '14px',
+                        fontSize: { base: "12px", md: "14px" },
                         bg: 'white',
                       },
                       '.rdrMonth': {
@@ -563,7 +567,7 @@ const RoomSelection = () => {
               </PopoverContent>
             </Popover>
           </Box>
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize={{ base: "xs", md: "sm" }} color="gray.500">
             최대 3개월 이내의 날짜만 예약 가능합니다.
           </Text>
         </VStack>
@@ -573,9 +577,10 @@ const RoomSelection = () => {
       <Box
         flex="1"
         overflowY="auto"
-        px={3}
-        pb={{ base: '60px', md: '70px' }}
-        maxH="calc(100vh - 200px)"
+        px={2}
+        pb={{ base: '104px', md: '70px' }} // 하단바(60px) + 스마트폰 하단 네비게이션 바(44px)
+        maxH="calc(100vh - 200px)" // 상단바(60px) + 날짜 선택 영역(약 140px) 제외
+        overflowX="hidden" // 좌우 스크롤 방지
         css={{
           '&::-webkit-scrollbar': {
             display: 'none',
@@ -592,13 +597,15 @@ const RoomSelection = () => {
             bg="white"
             rounded="md"
             shadow="sm"
-            p={8}
+            p={6}
           >
-            <Text color="gray.500">객실을 불러오는 중입니다...</Text>
+            <Text color="gray.500" fontSize={{ base: "sm", md: "md" }}>
+              객실을 불러오는 중입니다...
+            </Text>
           </VStack>
         ) : isAvailabilityChecked && availableRooms.length === 0 ? (
-          <Box bg="white" rounded="md" shadow="sm" p={8}>
-            <Text textAlign="center" color="gray.500">
+          <Box bg="white" rounded="md" shadow="sm" p={6}>
+            <Text textAlign="center" color="gray.500" fontSize={{ base: "sm", md: "md" }}>
               선택하신 기간({startLabel} ~ {endLabel})에 이용 가능한 객실이 없습니다.
               <br />
               다른 날짜를 선택해 주세요.
@@ -606,7 +613,7 @@ const RoomSelection = () => {
           </Box>
         ) : (
           isAvailabilityChecked && (
-            <VStack spacing={4} align="stretch" my={6} w="100%">
+            <VStack spacing={3} align="stretch" my={4} w="100%">
               {availableRooms.map((room) => (
                 <RoomCarouselCard
                   key={room.roomInfo}
@@ -643,6 +650,29 @@ const RoomSelection = () => {
         )}
       </Box>
 
+      {/* 하단바 */}
+      <Box
+        position="fixed"
+        bottom={0}
+        left={0}
+        right={0}
+        bg="white"
+        borderTop="1px"
+        borderColor="gray.200"
+        py={2}
+        zIndex={1000}
+        height="60px"
+      >
+        <Container maxW="container.sm">
+          <Flex justify="space-around">
+            <Text>홈</Text>
+            <Text>숙소</Text>
+            <Text>로그아웃</Text>
+            <Text>나의 내역</Text>
+          </Flex>
+        </Container>
+      </Box>
+
       {/* 지도 모달 */}
       <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">
         <ModalOverlay />
@@ -650,10 +680,10 @@ const RoomSelection = () => {
           <ModalHeader>호텔 위치</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Text fontSize="md" color="gray.600" mb={2}>
+            <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={2}>
               호텔 ID: {hotelId}
             </Text>
-            <Text fontSize="md" color="gray.600" mb={4}>
+            <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={4}>
               주소: {hotelSettings?.address || '주소 정보 없음'}
             </Text>
             <Box h="400px" w="100%">
@@ -672,6 +702,7 @@ const RoomSelection = () => {
                 color="teal.600"
                 leftIcon={<FaMapSigns />}
                 onClick={handleTMapNavigation}
+                fontSize={{ base: "sm", md: "md" }}
               >
                 T맵으로 길찾기
               </Button>
@@ -680,10 +711,15 @@ const RoomSelection = () => {
                 color="gray.600"
                 leftIcon={<FaCopy />}
                 onClick={handleCopyAddress}
+                fontSize={{ base: "sm", md: "md" }}
               >
                 주소 복사
               </Button>
-              <Button colorScheme="gray" onClick={() => setIsMapOpen(false)}>
+              <Button
+                colorScheme="gray"
+                onClick={() => setIsMapOpen(false)}
+                fontSize={{ base: "sm", md: "md" }}
+              >
                 닫기
               </Button>
             </HStack>

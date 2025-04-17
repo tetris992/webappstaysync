@@ -1,4 +1,3 @@
-// src/components/RoomCarouselCard.js (전체 코드 수정)
 import React, { useState } from 'react';
 import {
   Box,
@@ -100,7 +99,7 @@ const RoomCarouselCard = ({
     <Box
       variant="card"
       borderRadius="lg"
-      mb={4}
+      mb={2} // 마진 축소
       position="relative"
       bg="white"
       borderWidth="1px"
@@ -108,7 +107,8 @@ const RoomCarouselCard = ({
       shadow="sm"
       transition="all 0.3s ease"
       _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
-      p={4}
+      p={2} // 패딩 축소
+      w="100%"
       display="flex"
       alignItems="center"
     >
@@ -116,11 +116,13 @@ const RoomCarouselCard = ({
       <Box
         position="relative"
         h="200px"
-        w="150px"
-        mr={4}
+        w={{ base: '120px', md: '150px' }} // 스마트폰에서 사진 너비 축소
+        mr={2} // 마진 축소
         overflow="hidden"
         borderRadius="lg"
         flexShrink={0}
+        onClick={onSelect} // 사진 클릭 시 예약확정 페이지로 이동
+        cursor="pointer"
       >
         {isLoading && (
           <Flex justify="center" align="center" h="100%" w="100%">
@@ -134,7 +136,7 @@ const RoomCarouselCard = ({
                 src={photoUrl}
                 alt={`${roomInfo} - ${idx + 1}`}
                 h="200px"
-                w="150px"
+                w="100%"
                 objectFit="cover"
                 loading="lazy"
                 onError={handleImageError}
@@ -149,8 +151,15 @@ const RoomCarouselCard = ({
 
       {/* 오른쪽 내용 */}
       <Box flex="1">
-        <Flex justify="space-between" align="center" mb={2}>
-          <Text fontSize="lg" fontWeight="bold" color="gray.800">
+        <Flex justify="space-between" align="center" mb={1}>
+          <Text
+            fontSize={{ base: 'md', md: 'lg' }} // 반응형 폰트 크기
+            fontWeight="bold"
+            color="gray.800"
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+          >
             {roomInfo}
           </Text>
           {badgeLabel && (
@@ -158,11 +167,11 @@ const RoomCarouselCard = ({
               border="1px solid"
               borderColor="red.500"
               color="red.500"
-              fontSize="sm"
+              fontSize={{ base: 'xs', md: 'sm' }} // 크기 축소
               fontWeight="medium"
-              px={3}
-              py={1}
-              borderRadius="md"
+              px={2} // 패딩 축소
+              py={0.5} // 패딩 축소
+              borderRadius="sm" // 더 작은 둥근 모서리
               bg="white"
             >
               {badgeLabel}
@@ -170,10 +179,18 @@ const RoomCarouselCard = ({
           )}
         </Flex>
         <Flex justify="space-between" align="center" mb={1}>
-          <Text fontSize="sm" color="gray.700" fontWeight="medium">
+          <Text
+            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+            color="gray.700"
+            fontWeight="medium"
+          >
             대실 3시간
           </Text>
-          <Text fontSize="sm" color="gray.700" fontWeight="medium">
+          <Text
+            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+            color="gray.700"
+            fontWeight="medium"
+          >
             숙박 {hotelSettings?.checkInTime || '17:00'} 체크인
           </Text>
         </Flex>
@@ -181,7 +198,7 @@ const RoomCarouselCard = ({
           <Box>
             {discount > 0 && (
               <Text
-                fontSize="xs"
+                fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
                 color="gray.600"
                 fontWeight="normal"
                 textDecor="line-through"
@@ -190,7 +207,7 @@ const RoomCarouselCard = ({
               </Text>
             )}
             <Text
-              fontSize="md"
+              fontSize={{ base: 'sm', md: 'md' }} // 반응형 폰트 크기
               color={discount > 0 ? 'red.500' : 'gray.700'}
               fontWeight="bold"
             >
@@ -200,38 +217,56 @@ const RoomCarouselCard = ({
               원
             </Text>
             {discount > 0 && (
-              <Text fontSize="xs" color="red.500" fontWeight="medium">
+              <Text
+                fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+                color="red.500"
+                fontWeight="medium"
+              >
                 {discount}% 할인 적용
               </Text>
             )}
           </Box>
-          <Text fontSize="sm" color="red.500" fontWeight="medium">
+          <Text
+            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+            color="red.500"
+            fontWeight="medium"
+          >
             {formattedStock > 0 ? `남은 객실 ${formattedStock}개` : '객실 마감'}
           </Text>
         </Flex>
         {numDays > 0 && (
-          <Text fontSize="sm" color="gray.700" fontWeight="medium" mb={1}>
+          <Text
+            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+            color="gray.700"
+            fontWeight="medium"
+            mb={1}
+          >
             총액 ({numDays}박): {totalPrice.toLocaleString()}원
           </Text>
         )}
         {discount > 0 && (
-          <Text fontSize="xs" color="red.500" fontWeight="medium" mb={2}>
+          <Text
+            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
+            color="red.500"
+            fontWeight="medium"
+            mb={1}
+          >
             이 가격으로 남은 객실 {formattedStock}개
           </Text>
         )}
         <Flex justify="space-between" align="center">
           {activeAmenities && activeAmenities.length > 0 ? (
-            <HStack spacing={2}>
+            <HStack spacing={1}>
               {activeAmenities.slice(0, 3).map((amenity, idx) => {
                 const IconComponent = iconMap[amenity.icon] || FaQuestionCircle;
                 return (
                   <Box key={idx} title={amenity.nameKor}>
-                    <IconComponent color="teal.500" boxSize={4} />
+                    <IconComponent color="teal.500" boxSize={3} />
                   </Box>
                 );
               })}
               {activeAmenities.length > 3 && (
-                <Text fontSize="sm" color="gray.500">
+                <Text fontSize={{ base: 'xs', md: 'sm' }} color="gray.500">
                   +{activeAmenities.length - 3}
                 </Text>
               )}
@@ -241,11 +276,11 @@ const RoomCarouselCard = ({
           )}
           <Button
             variant="solid"
-            size="md"
+            size="sm"
             onClick={onSelect}
-            px={5}
-            py={2}
-            fontSize="sm"
+            px={4}
+            py={1}
+            fontSize={{ base: 'xs', md: 'sm' }} // 반응형 폰트 크기
             fontWeight="medium"
             isDisabled={formattedStock === 0}
           >
