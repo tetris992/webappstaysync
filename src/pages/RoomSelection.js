@@ -504,7 +504,7 @@ const RoomSelection = () => {
                 fontWeight="600"
                 fontSize={{ base: 'sm', md: 'md' }}
               >
-                위치보기
+                
               </Button>
             )}
             <Button

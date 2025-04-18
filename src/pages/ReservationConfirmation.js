@@ -68,69 +68,92 @@ const ReservationConfirmation = () => {
     eventName: initEventName,
   } = location.state || {};
 
-  const numNights = stateCheckIn && stateCheckOut
-    ? Math.max(differenceInCalendarDays(new Date(stateCheckOut), new Date(stateCheckIn)), 1)
-    : 1;
+  const numNights =
+    stateCheckIn && stateCheckOut
+      ? Math.max(
+          differenceInCalendarDays(
+            new Date(stateCheckOut),
+            new Date(stateCheckIn)
+          ),
+          1
+        )
+      : 1;
 
-  const loadHotelInfoAndPhotos = useCallback(async (hotelId) => {
-    if (!hotelId) {
-      toast({
-        title: '호텔 ID 누락',
-        description: '호텔 ID가 제공되지 않았습니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    try {
-      const hotelList = await fetchHotelList();
-      const hotelData = hotelList.find((h) => h.hotelId === hotelId);
-      setHotelPhoneNumber(hotelData?.phoneNumber || '연락처 준비중');
-
-      const settings = await fetchCustomerHotelSettings(hotelId);
-      setHotelInfo(settings);
-
-      if (settings.latitude && settings.longitude) {
-        setCoordinates({ lat: settings.latitude, lng: settings.longitude });
-      } else {
+  const loadHotelInfoAndPhotos = useCallback(
+    async (hotelId) => {
+      if (!hotelId) {
         toast({
-          title: '좌표 정보 없음',
-          description: '호텔 위치 정보를 불러올 수 없습니다.',
-          status: 'warning',
+          title: '호텔 ID 누락',
+          description: '호텔 ID가 제공되지 않았습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      try {
+        const hotelList = await fetchHotelList();
+        const hotelData = hotelList.find((h) => h.hotelId === hotelId);
+        setHotelPhoneNumber(hotelData?.phoneNumber || '연락처 준비중');
+
+        const settings = await fetchCustomerHotelSettings(hotelId);
+        setHotelInfo(settings);
+
+        if (settings.latitude && settings.longitude) {
+          setCoordinates({ lat: settings.latitude, lng: settings.longitude });
+        } else {
+          toast({
+            title: '좌표 정보 없음',
+            description: '호텔 위치 정보를 불러올 수 없습니다.',
+            status: 'warning',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+
+        const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
+        if (photosData?.roomPhotos?.length) {
+          setRoomImage(photosData.roomPhotos[0].photoUrl);
+        }
+
+        const inTime = settings.checkInTime || '15:00';
+        const outTime = settings.checkOutTime || '11:00';
+        const inDt = stateCheckIn
+          ? new Date(`${stateCheckIn}T${inTime}:00+09:00`)
+          : null;
+        const outDt = stateCheckOut
+          ? new Date(`${stateCheckOut}T${outTime}:00+09:00`)
+          : null;
+        setCheckIn(inDt);
+        setCheckOut(outDt);
+      } catch (err) {
+        console.error('[ReservationConfirmation] load error:', err);
+        toast({
+          title: '호텔 정보 로드 실패',
+          description: '호텔 정보를 불러오는 중 오류가 발생했습니다.',
+          status: 'error',
           duration: 3000,
           isClosable: true,
         });
       }
-
-      const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
-      if (photosData?.roomPhotos?.length) {
-        setRoomImage(photosData.roomPhotos[0].photoUrl);
-      }
-
-      const inTime = settings.checkInTime || '15:00';
-      const outTime = settings.checkOutTime || '11:00';
-      const inDt = stateCheckIn ? new Date(`${stateCheckIn}T${inTime}:00+09:00`) : null;
-      const outDt = stateCheckOut ? new Date(`${stateCheckOut}T${outTime}:00+09:00`) : null;
-      setCheckIn(inDt);
-      setCheckOut(outDt);
-    } catch (err) {
-      console.error('[ReservationConfirmation] load error:', err);
-      toast({
-        title: '호텔 정보 로드 실패',
-        description: '호텔 정보를 불러오는 중 오류가 발생했습니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  }, [roomInfo, stateCheckIn, stateCheckOut, toast]);
+    },
+    [roomInfo, stateCheckIn, stateCheckOut, toast]
+  );
 
   useEffect(() => {
     if (!location.state) return;
-    const requiredFields = { initHotelId, initPrice, initOriginal, initDiscount };
-    if (Object.values(requiredFields).some(field => field === undefined || field === null)) {
+    const requiredFields = {
+      initHotelId,
+      initPrice,
+      initOriginal,
+      initDiscount,
+    };
+    if (
+      Object.values(requiredFields).some(
+        (field) => field === undefined || field === null
+      )
+    ) {
       toast({
         title: '필수 정보 누락',
         description: '예약에 필요한 필수 정보가 누락되었습니다.',
@@ -148,7 +171,17 @@ const ReservationConfirmation = () => {
     setDiscount(initDiscount);
     setEventName(initEventName || '');
     loadHotelInfoAndPhotos(initHotelId);
-  }, [location.state, initHotelId, initPrice, initOriginal, initDiscount, initEventName, loadHotelInfoAndPhotos, toast, navigate]);
+  }, [
+    location.state,
+    initHotelId,
+    initPrice,
+    initOriginal,
+    initDiscount,
+    initEventName,
+    loadHotelInfoAndPhotos,
+    toast,
+    navigate,
+  ]);
 
   const handleConfirm = async () => {
     if (!customer) {
@@ -169,8 +202,12 @@ const ReservationConfirmation = () => {
       phoneNumber: customer.phoneNumber,
       hotelPhoneNumber,
       roomInfo,
-      checkIn: checkIn ? format(checkIn, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
-      checkOut: checkOut ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'") : null,
+      checkIn: checkIn
+        ? format(checkIn, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
+        : null,
+      checkOut: checkOut
+        ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
+        : null,
       reservationDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss'+09:00'"),
       reservationStatus: '예약완료',
       price,
@@ -234,24 +271,27 @@ const ReservationConfirmation = () => {
       });
       return;
     }
-    navigator.clipboard.writeText(hotelInfo.address).then(() => {
-      toast({
-        title: '주소 복사 완료',
-        description: '주소가 클립보드에 복사되었습니다.',
-        status: 'success',
-        duration: 2000,
-        isClosable: true,
+    navigator.clipboard
+      .writeText(hotelInfo.address)
+      .then(() => {
+        toast({
+          title: '주소 복사 완료',
+          description: '주소가 클립보드에 복사되었습니다.',
+          status: 'success',
+          duration: 2000,
+          isClosable: true,
+        });
+      })
+      .catch((err) => {
+        console.error('[ReservationConfirmation] 주소 복사 실패:', err);
+        toast({
+          title: '주소 복사 실패',
+          description: '주소를 복사하는 데 실패했습니다.',
+          status: 'error',
+          duration: 2000,
+          isClosable: true,
+        });
       });
-    }).catch((err) => {
-      console.error('[ReservationConfirmation] 주소 복사 실패:', err);
-      toast({
-        title: '주소 복사 실패',
-        description: '주소를 복사하는 데 실패했습니다.',
-        status: 'error',
-        duration: 2000,
-        isClosable: true,
-      });
-    });
   };
 
   const handleTMapNavigation = () => {
@@ -259,7 +299,9 @@ const ReservationConfirmation = () => {
       setIsMapOpen(true);
       return;
     }
-    const url = `tmap://route?goalx=${coordinates.lng}&goaly=${coordinates.lat}&name=${encodeURIComponent(hotelInfo?.hotelName || '호텔')}`;
+    const url = `tmap://route?goalx=${coordinates.lng}&goaly=${
+      coordinates.lat
+    }&name=${encodeURIComponent(hotelInfo?.hotelName || '호텔')}`;
     window.location.href = url;
     setTimeout(() => {
       const isAndroid = /android/i.test(navigator.userAgent);
@@ -269,7 +311,8 @@ const ReservationConfirmation = () => {
       } else {
         toast({
           title: 'T맵 설치 필요',
-          description: 'T맵 앱이 설치되어 있지 않습니다. 기본 지도를 표시합니다.',
+          description:
+            'T맵 앱이 설치되어 있지 않습니다. 기본 지도를 표시합니다.',
           status: 'info',
           duration: 3000,
           isClosable: true,
@@ -337,9 +380,9 @@ const ReservationConfirmation = () => {
       {/* 본문 영역 - 스크롤 가능 */}
       <Box
         pt="64px" // 상단바 높이 (py={4}로 인해 64px로 가정)
-        pb="104px" // 하단바(60px) + 스마트폰 하단 네비게이션 바(44px) 고려
+        pb="34px"
         flex="1"
-        maxH="calc(100vh - 124px)" // 상단바(64px) + 하단바(60px) 제외
+        maxH="calc(100vh - 34px)" // 상단바(64px) + 하단바(60px) 제외
         overflowY="auto"
         css={{
           '&::-webkit-scrollbar': {
@@ -364,7 +407,7 @@ const ReservationConfirmation = () => {
                 alt={roomInfo}
                 objectFit="cover"
                 w="100%"
-                h={{ base: "120px", sm: "180px", md: "250px" }} // 스마트폰에서 더 작은 높이로 조정
+                h={{ base: '120px', sm: '180px', md: '250px' }} // 스마트폰에서 더 작은 높이로 조정
                 onError={(e) => (e.target.src = '/assets/default-room1.jpg')}
               />
             </Box>
@@ -381,7 +424,14 @@ const ReservationConfirmation = () => {
                     onClick={() => setIsMapOpen(true)}
                     cursor="pointer"
                     color={coordinates ? 'teal.600' : 'gray.500'}
-                    _hover={coordinates ? { color: 'teal.800', textDecoration: 'underline' } : {}}
+                    _hover={
+                      coordinates
+                        ? { color: 'teal.800', textDecoration: 'underline' }
+                        : {}
+                    }
+                    whiteSpace="nowrap" // 한 줄로 유지
+                    overflow="hidden" // 넘치는 텍스트 숨김
+                    textOverflow="ellipsis" // 말줄임표 추가
                   >
                     {hotelInfo?.address || '주소 정보 없음'}
                   </Text>
@@ -399,8 +449,16 @@ const ReservationConfirmation = () => {
                     <Text
                       color="teal.600"
                       cursor="pointer"
-                      onClick={() => window.location.href = `tel:${hotelPhoneNumber.replace(/[^0-9]/g, '')}`}
-                      _hover={{ color: 'teal.800', textDecoration: 'underline' }}
+                      onClick={() =>
+                        (window.location.href = `tel:${hotelPhoneNumber.replace(
+                          /[^0-9]/g,
+                          ''
+                        )}`)
+                      }
+                      _hover={{
+                        color: 'teal.800',
+                        textDecoration: 'underline',
+                      }}
                     >
                       {hotelPhoneNumber}
                     </Text>
@@ -421,9 +479,13 @@ const ReservationConfirmation = () => {
                   <Text color="gray.600">객실</Text>
                   <Text>{roomInfo || '정보 없음'}</Text>
                   <Text color="gray.600">체크인</Text>
-                  <Text>{checkIn ? format(checkIn, 'yyyy-MM-dd HH:mm') : 'N/A'}</Text>
+                  <Text>
+                    {checkIn ? format(checkIn, 'yyyy-MM-dd HH:mm') : 'N/A'}
+                  </Text>
                   <Text color="gray.600">체크아웃</Text>
-                  <Text>{checkOut ? format(checkOut, 'yyyy-MM-dd HH:mm') : 'N/A'}</Text>
+                  <Text>
+                    {checkOut ? format(checkOut, 'yyyy-MM-dd HH:mm') : 'N/A'}
+                  </Text>
                   <Text color="gray.600">숙박 일수</Text>
                   <Text>{numNights}박</Text>
                   <Text color="gray.600">결제</Text>
@@ -446,7 +508,11 @@ const ReservationConfirmation = () => {
                   <Text color="gray.600">총 결제 금액</Text>
                   <Box textAlign="right">
                     {discount > 0 && (
-                      <Text fontSize="sm" color="gray.500" textDecoration="line-through">
+                      <Text
+                        fontSize="sm"
+                        color="gray.500"
+                        textDecoration="line-through"
+                      >
                         {originalPrice.toLocaleString()}원
                       </Text>
                     )}
@@ -534,7 +600,10 @@ const ReservationConfirmation = () => {
               >
                 T맵 길찾기
               </Button>
-              <Button onClick={handleCopyAddress} isDisabled={!hotelInfo?.address}>
+              <Button
+                onClick={handleCopyAddress}
+                isDisabled={!hotelInfo?.address}
+              >
                 주소 복사
               </Button>
               <Button colorScheme="gray" onClick={() => setIsMapOpen(false)}>

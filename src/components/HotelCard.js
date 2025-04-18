@@ -223,7 +223,7 @@ const HotelCard = ({ hotel, isFavorite, toggleFavorite, onSelect }) => {
           <Box mb={3}>
             <Flex align="center" mb={2}>
               <Icon as={FaMapMarkerAlt} color="teal.500" mr={2} />
-              <Text fontSize="sm" color="gray.600" flex="1" noOfLines={2}>
+              <Text fontSize={{ base: 'xs', md: 'sm' }} color="gray.600" flex="1" noOfLines={2}>
                 {hotel.address || '주소 정보 없음'}
               </Text>
               <IconButton
