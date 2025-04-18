@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import KakaoCallback from './components/KakaoCallback';
 import PrivacyConsentPage from './pages/PrivacyConsentModal';
+import PhoneVerification from './pages/PhoneVerification'; // 추가
 import BottomNavigation from './components/BottomNavigation';
 import { useAuth } from './contexts/AuthContext';
 import { fetchCustomerHotelSettings } from './api/api';
@@ -84,6 +85,10 @@ function AppContent() {
           <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
           <Route path="/consent" element={<PrivacyConsentPage />} />
           <Route path="/events" element={<Events />} />
+          <Route
+            path="/verify-phone/:customerId"
+            element={<PhoneVerification />}
+          />
           <Route
             path="/hotels"
             element={

@@ -9,14 +9,6 @@ const BASE_URL =
     ? 'https://staysync.org'
     : 'http://localhost:3004');
 
-// //수정 코드 TEST1 (개발 - 배포)
-// const BASE_URL = 'https://staysync.org';
-// console.log('[api.js] BASE_URL:', BASE_URL);
-
-//수정 코드 TEST2 (배포 - 개발)
-// const BASE_URL = 'http://localhost:3004';
-// console.log('[api.js] BASE_URL:', BASE_URL);
-
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
@@ -56,6 +48,8 @@ api.interceptors.request.use(
         '/api/customer/activate-account',
         '/api/customer/send-otp',
         '/api/customer/verify-otp',
+        '/api/customer/send-phone-otp', // 추가
+        '/api/customer/verify-phone-otp', // 추가
       ];
       if (!noRedirectRoutes.includes(config.url)) {
         throw new ApiError(401, 'No customer token available');
@@ -63,7 +57,7 @@ api.interceptors.request.use(
     }
 
     const isGetRequest = config.method === 'get';
-    const isCsrfTokenRequest = config.url === 'api/csrf-token';
+    const isCsrfTokenRequest = config.url === '/api/csrf-token';
     const skipCsrfRoutes = [
       '/api/customer/register',
       '/api/customer/login',
@@ -71,7 +65,9 @@ api.interceptors.request.use(
       '/api/customer/check-duplicate',
       '/api/customer/activate-account',
       '/api/hotel-settings/photos',
-      '/api/customer/logout'
+      '/api/customer/logout',
+      '/api/customer/send-phone-otp', // 추가
+      '/api/customer/verify-phone-otp', // 추가
     ];
     const skipCsrf =
       config.skipCsrf || skipCsrfRoutes.includes(config.url) || isGetRequest;
@@ -207,50 +203,52 @@ export const customerLogin = async (data) => {
 export const customerLoginSocial = async (provider, data) => {
   try {
     const endpoint = `/api/customer/login/social/${provider}`;
-    
+
     console.log(`[디버깅] 소셜 로그인 시작 - 공급자: ${provider}`);
     console.log(`[디버깅] 현재 환경: ${process.env.NODE_ENV}`);
     console.log(`[디버깅] API 기본 URL: ${process.env.REACT_APP_API_BASE_URL}`);
-    
+
     // 데이터 유효성 검사
     if (!data || !data.code) {
       console.error('[api.js] Invalid data for social login:', data);
       throw new Error(`${provider} 인증 코드가 없습니다.`);
     }
-    
+
     // 인증 코드를 명시적으로 문자열로 변환
     const codeString = String(data.code);
-    
+
     console.log(`[api.js] Making social login request to: ${endpoint}`);
     console.log(`[api.js] Code length: ${codeString.length}`);
     console.log(`[api.js] Code preview: ${codeString.substring(0, 10)}...`);
-    
+
     // API 요청 데이터 형식: JSON
-    const requestData = { 
+    const requestData = {
       code: codeString,
-      provider 
+      provider,
     };
-    
+
     // 요청 헤더 설정
     const headers = {
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      Accept: 'application/json',
     };
-    
-    console.log(`[디버깅] 전체 요청 URL: ${process.env.REACT_APP_API_BASE_URL}${endpoint}`);
+
+    console.log(
+      `[디버깅] 전체 요청 URL: ${process.env.REACT_APP_API_BASE_URL}${endpoint}`
+    );
     console.log(`[디버깅] 요청 데이터:`, requestData);
     console.log(`[디버깅] 요청 헤더:`, headers);
-    
-    // API 요청 전송 - 에러 캐치를 위해 try/catch 추가
+
+    // API 요청 전송
     try {
       const response = await api.post(endpoint, requestData, { headers });
-      
+
       // 응답 데이터 로깅 및 반환
       console.log('[api.js] Social login successful response:', {
         status: response.status,
-        data: response.data
+        data: response.data,
       });
-      
+
       return response.data;
     } catch (requestError) {
       console.error('[디버깅] 요청 실패 상세:', {
@@ -259,7 +257,7 @@ export const customerLoginSocial = async (provider, data) => {
         statusText: requestError.response?.statusText,
         data: requestError.response?.data,
         url: requestError.config?.url,
-        method: requestError.config?.method
+        method: requestError.config?.method,
       });
       throw requestError;
     }
@@ -272,17 +270,17 @@ export const customerLoginSocial = async (provider, data) => {
         url: error.config?.url,
         method: error.config?.method,
         headers: error.config?.headers,
-        data: error.config?.data
-      }
+        data: error.config?.data,
+      },
     });
-    
+
     // 서버에서 반환한 오류 메시지가 있으면 사용
-    const errorMessage = 
-      error.response?.data?.message || 
-      error.response?.data?.error || 
-      error.message || 
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
       '소셜 로그인 처리 중 오류가 발생했습니다.';
-    
+
     throw new Error(errorMessage);
   }
 };
@@ -436,10 +434,15 @@ export const getReservationHistory = async () => {
 // 예약 취소 API
 export const cancelReservation = async (reservationId) => {
   try {
-    const response = await api.delete(`/api/customer/reservation/${reservationId}`);
+    const response = await api.delete(
+      `/api/customer/reservation/${reservationId}`
+    );
     return response.data;
   } catch (error) {
-    console.error('Error cancelling reservation:', error.response ? error.response.data : error.message);
+    console.error(
+      'Error cancelling reservation:',
+      error.response ? error.response.data : error.message
+    );
     throw error;
   }
 };
@@ -469,6 +472,36 @@ export const logoutCustomer = async () => {
       'Logout completed, refreshToken retained:',
       localStorage.getItem('refreshToken')
     );
+  }
+};
+
+// 전화번호 인증 OTP 발송 API
+export const sendPhoneOTP = async (phoneNumber) => {
+  try {
+    const response = await api.post('/api/customer/send-phone-otp', {
+      phoneNumber,
+    });
+    return response;
+  } catch (error) {
+    handleApiError(error, 'OTP 발송 실패');
+  }
+};
+
+// 전화번호 인증 OTP 검증 API
+export const verifyPhoneOTP = async (phoneNumber, otp) => {
+  try {
+    const response = await api.post('/api/customer/verify-phone-otp', {
+      phoneNumber,
+      otp,
+    });
+    console.log(
+      '[api.js] verifyPhoneOTP raw response:',
+      JSON.stringify(response.data, null, 2)
+    );
+    return response.data;
+  } catch (error) {
+    console.error('[api.js] verifyPhoneOTP error:', error);
+    handleApiError(error, 'OTP 인증 실패');
   }
 };
 
