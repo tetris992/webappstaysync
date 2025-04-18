@@ -56,7 +56,7 @@ const Login = () => {
 
       window.Kakao.Auth.authorize({
         redirectUri,
-        scope: 'account_email'
+        scope: 'openid,account_email,phone_number', // OpenID Connect 및 전화번호 요청
       });
     } catch (error) {
       toast({
@@ -73,18 +73,17 @@ const Login = () => {
   if (customer) return null;
 
   return (
-    <Box 
-      minH="100vh" 
-      w="100%" 
-      bg="gray.50" 
-      display="flex" 
-      alignItems="center" 
+    <Box
+      minH="100vh"
+      w="100%"
+      bg="gray.50"
+      display="flex"
+      alignItems="center"
       justifyContent="center"
       p={4}
       position="relative"
       overflow="hidden"
     >
-      {/* 배경 장식 요소 */}
       <Box
         position="absolute"
         top="-100px"
@@ -107,26 +106,26 @@ const Login = () => {
         opacity="0.5"
         zIndex="0"
       />
-      
-      <Container 
-        maxW={{ base: "100%", sm: "400px" }} 
+
+      <Container
+        maxW={{ base: '100%', sm: '400px' }}
         w="100%"
         position="relative"
         zIndex="1"
       >
         <VStack spacing={8} align="stretch">
           <VStack spacing={2}>
-            <Heading 
-              size="xl" 
-              bgGradient="linear(to-r, blue.600, teal.500)" 
+            <Heading
+              size="xl"
+              bgGradient="linear(to-r, blue.600, teal.500)"
               bgClip="text"
               fontWeight="extrabold"
             >
               단잠
             </Heading>
-            <Text 
-              fontSize="lg" 
-              color="gray.700" 
+            <Text
+              fontSize="lg"
+              color="gray.700"
               fontWeight="medium"
               letterSpacing="tight"
             >
@@ -141,8 +140,12 @@ const Login = () => {
               h="56px"
               bg="#FEE500"
               color="rgba(0,0,0,0.85)"
-              _hover={{ bg: "#FDD800", transform: "translateY(-2px)", boxShadow: "md" }}
-              _active={{ transform: "translateY(0)" }}
+              _hover={{
+                bg: '#FDD800',
+                transform: 'translateY(-2px)',
+                boxShadow: 'md',
+              }}
+              _active={{ transform: 'translateY(0)' }}
               onClick={handleKakaoLogin}
               isLoading={isKakaoLoading}
               isDisabled={!isKakaoEnabled || isKakaoLoading}
@@ -154,10 +157,10 @@ const Login = () => {
             >
               카카오로 시작하기
             </Button>
-            
-            <Text 
-              fontSize="xs" 
-              color="gray.400" 
+
+            <Text
+              fontSize="xs"
+              color="gray.400"
               textAlign="center"
               letterSpacing="tight"
             >
@@ -166,19 +169,19 @@ const Login = () => {
           </VStack>
 
           <HStack justify="center" spacing={4} fontSize="sm" color="gray.500">
-            <Text 
-              as="a" 
-              href="/consent" 
-              _hover={{ color: "blue.600", textDecoration: "underline" }}
+            <Text
+              as="a"
+              href="/consent"
+              _hover={{ color: 'blue.600', textDecoration: 'underline' }}
               transition="color 0.2s"
             >
               이용약관
             </Text>
             <Text>|</Text>
-            <Text 
-              as="a" 
-              href="/consent" 
-              _hover={{ color: "blue.600", textDecoration: "underline" }}
+            <Text
+              as="a"
+              href="/consent"
+              _hover={{ color: 'blue.600', textDecoration: 'underline' }}
               transition="color 0.2s"
             >
               개인정보처리방침
