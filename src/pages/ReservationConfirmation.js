@@ -36,6 +36,7 @@ import { differenceInCalendarDays, format } from 'date-fns';
 import Map from '../components/Map';
 
 const ReservationConfirmation = () => {
+  // 기존 상태 및 훅 유지
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
@@ -79,6 +80,7 @@ const ReservationConfirmation = () => {
         )
       : 1;
 
+  // loadHotelInfoAndPhotos 및 useEffect 등 기존 로직 유지
   const loadHotelInfoAndPhotos = useCallback(
     async (hotelId) => {
       if (!hotelId) {
@@ -183,6 +185,7 @@ const ReservationConfirmation = () => {
     navigate,
   ]);
 
+  // handleConfirm, handleCopyAddress, handleTMapNavigation 등 기존 함수 유지
   const handleConfirm = async () => {
     if (!customer) {
       toast({
@@ -225,7 +228,7 @@ const ReservationConfirmation = () => {
       isCancelled: false,
       type: 'stay',
       isCheckedIn: false,
-      isCheckedOut: false,
+      isChecked吕布: false,
       manuallyCheckedOut: false,
       paymentHistory: [],
       remainingBalance: price,
@@ -379,10 +382,10 @@ const ReservationConfirmation = () => {
 
       {/* 본문 영역 - 스크롤 가능 */}
       <Box
-        pt="64px" // 상단바 높이 (py={4}로 인해 64px로 가정)
-        pb="34px"
+        pt="64px"
+        pb="64px"
         flex="1"
-        maxH="calc(100vh - 34px)" // 상단바(64px) + 하단바(60px) 제외
+        maxH="calc(100vh - 128px)"
         overflowY="auto"
         css={{
           '&::-webkit-scrollbar': {
@@ -407,16 +410,26 @@ const ReservationConfirmation = () => {
                 alt={roomInfo}
                 objectFit="cover"
                 w="100%"
-                h={{ base: '120px', sm: '180px', md: '250px' }} // 스마트폰에서 더 작은 높이로 조정
+                h={{ base: '120px', sm: '180px', md: '250px' }}
                 onError={(e) => (e.target.src = '/assets/default-room1.jpg')}
               />
             </Box>
 
             <Box bg="white" p={4} rounded="lg" shadow="sm">
               <VStack align="stretch" spacing={3}>
-                <Text fontSize="xl" fontWeight="bold">
-                  {hotelInfo?.hotelName || '호텔 정보 로드 중...'} ({hotelId})
-                </Text>
+                <Flex align="center" justify="space-between">
+                  <Text fontSize="xl" fontWeight="bold">
+                    {hotelInfo?.hotelName || '호텔 정보 로드 중...'}
+                  </Text>
+                  <IconButton
+                    icon={<FaCopy />}
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyAddress}
+                    isDisabled={!hotelInfo?.address}
+                    aria-label="주소 복사"
+                  />
+                </Flex>
                 <Flex align="center">
                   <Icon as={FaMapMarkerAlt} mr={2} color="teal.500" />
                   <Text
@@ -429,19 +442,12 @@ const ReservationConfirmation = () => {
                         ? { color: 'teal.800', textDecoration: 'underline' }
                         : {}
                     }
-                    whiteSpace="nowrap" // 한 줄로 유지
-                    overflow="hidden" // 넘치는 텍스트 숨김
-                    textOverflow="ellipsis" // 말줄임표 추가
+                    whiteSpace="nowrap"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
                   >
                     {hotelInfo?.address || '주소 정보 없음'}
                   </Text>
-                  <IconButton
-                    icon={<FaCopy />}
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopyAddress}
-                    isDisabled={!hotelInfo?.address}
-                  />
                 </Flex>
                 {hotelPhoneNumber && (
                   <Flex align="center" justify="flex-end">
@@ -492,7 +498,7 @@ const ReservationConfirmation = () => {
                   <Text>현장결제</Text>
                   <Text color="gray.600">예약 일시</Text>
                   <Text color="gray.400">
-                    {format(new Date(), 'yyyy-MM-dd HH:mm:ss')} (현재 시간 KST)
+                    {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
                   </Text>
                   {eventName && (
                     <>
