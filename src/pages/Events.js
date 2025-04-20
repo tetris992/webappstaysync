@@ -194,11 +194,13 @@ const Events = () => {
         });
 
         const allEvents = (await Promise.all(eventPromises)).flat();
-        console.log('[Events] All events:', allEvents.map(e => ({
+        console.log('[Events] All events:', allEvents.map((e) => ({
           uuid: e.uuid,
           startDate: e.startDate,
           endDate: e.endDate,
-          eventName: e.eventName
+          eventName: e.eventName,
+          discountType: e.discountType,
+          discountValue: e.discountValue,
         })));
 
         // 이벤트가 없으면 사용자에게 알림
@@ -235,6 +237,8 @@ const Events = () => {
       event,
       startDate: event.startDate,
       endDate: event.endDate,
+      discountType: event.discountType,
+      discountValue: event.discountValue,
     });
 
     navigate(`/rooms/${event.hotelId}`, {
@@ -242,6 +246,8 @@ const Events = () => {
         checkIn: formatKSTDate(event.startDate),
         checkOut: formatKSTDate(event.endDate),
         applicableRoomTypes: event.applicableRoomTypes || [],
+        discountType: event.discountType,
+        discountValue: event.discountValue,
       },
     });
   };
@@ -357,7 +363,9 @@ const Events = () => {
                         bg="rgba(255,255,255,0.9)"
                         boxShadow="md"
                       >
-                        {event.discountValue || 0}% 할인
+                        {event.discountType === 'fixed'
+                          ? `${(event.discountValue || 0).toLocaleString()}원 할인`
+                          : `${event.discountValue || 0}% 할인`}
                       </Badge>
                     </Box>
                     <Box

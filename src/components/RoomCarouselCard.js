@@ -8,6 +8,7 @@ import {
   HStack,
   Spinner,
   Badge,
+  Icon,
 } from '@chakra-ui/react';
 import { FaQuestionCircle } from 'react-icons/fa';
 import Slider from 'react-slick';
@@ -41,9 +42,13 @@ const RoomCarouselCard = ({
   const formattedStock = typeof stock === 'number' ? stock : 0;
   const formattedNumDays = typeof numDays === 'number' ? numDays : 0;
   const discount = hotelSettings?.specialPrice?.discountRate || 0;
+  const fixedDiscount = hotelSettings?.specialPrice?.fixedDiscount || 0;
+  const discountType = hotelSettings?.specialPrice?.discountType || null;
   const originalPrice = formattedPrice;
   const discountedPrice =
-    discount > 0
+    discountType === 'fixed'
+      ? originalPrice - fixedDiscount
+      : discount > 0
       ? Math.round(originalPrice * (1 - discount / 100))
       : originalPrice;
   const totalPrice =
@@ -112,7 +117,6 @@ const RoomCarouselCard = ({
       display="flex"
       alignItems="center"
     >
-      {/* 왼쪽 사진 */}
       <Box
         position="relative"
         h="200px"
@@ -149,7 +153,6 @@ const RoomCarouselCard = ({
         </Slider>
       </Box>
 
-      {/* 오른쪽 내용 */}
       <Box flex="1">
         <Flex justify="space-between" align="center" mb={1}>
           <Text
@@ -170,15 +173,15 @@ const RoomCarouselCard = ({
               color="green.500"
               fontSize={{ base: '10px', md: 'xs' }}
               fontWeight="medium"
-              px={1.5} // 패딩 축소
+              px={1.5}
               py={0.5}
-              borderRadius="md" // 더 둥글게
-              bg="white.50" // 밝은 빨간색 배경 추가
+              borderRadius="md"
+              bg="white.50"
               whiteSpace="nowrap"
               overflow="hidden"
               textOverflow="ellipsis"
               maxWidth="50%"
-              ml={1} // 룸 이름과의 간격 추가
+              ml={1}
             >
               {badgeLabel}
             </Badge>
@@ -210,7 +213,7 @@ const RoomCarouselCard = ({
         </Flex>
         <Flex justify="space-between" align="center" mb={1}>
           <Box>
-            {discount > 0 && (
+            {(discount > 0 || fixedDiscount > 0) && (
               <Text
                 fontSize={{ base: 'xs', md: 'sm' }}
                 color="gray.600"
@@ -225,18 +228,26 @@ const RoomCarouselCard = ({
             )}
             <Text
               fontSize={{ base: 'sm', md: 'md' }}
-              color={discount > 0 ? 'red.500' : 'gray.700'}
+              color={discount > 0 || fixedDiscount > 0 ? 'red.500' : 'gray.700'}
               fontWeight="bold"
               whiteSpace="nowrap"
               overflow="hidden"
               textOverflow="ellipsis"
             >
-              {discount > 0
-                ? discountedPrice.toLocaleString()
-                : originalPrice.toLocaleString()}
-              원
+              {discountedPrice.toLocaleString()}원
             </Text>
-            {discount > 0 && (
+            {discountType === 'fixed' && fixedDiscount > 0 ? (
+              <Text
+                fontSize={{ base: 'xs', md: 'sm' }}
+                color="red.500"
+                fontWeight="medium"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
+              >
+                {fixedDiscount.toLocaleString()}원 할인 적용
+              </Text>
+            ) : discount > 0 ? (
               <Text
                 fontSize={{ base: 'xs', md: 'sm' }}
                 color="red.500"
@@ -247,7 +258,7 @@ const RoomCarouselCard = ({
               >
                 {discount}% 할인 적용
               </Text>
-            )}
+            ) : null}
           </Box>
           <Text
             fontSize={{ base: 'xs', md: 'sm' }}
@@ -261,7 +272,7 @@ const RoomCarouselCard = ({
             {formattedStock > 0 ? `남은 객실 ${formattedStock}개` : '객실 마감'}
           </Text>
         </Flex>
-        {numDays > 0 && (
+        {formattedNumDays > 0 && (
           <Text
             fontSize={{ base: 'xs', md: 'sm' }}
             color="gray.700"
@@ -271,7 +282,7 @@ const RoomCarouselCard = ({
             overflow="hidden"
             textOverflow="ellipsis"
           >
-            총액 ({numDays}박): {totalPrice.toLocaleString()}원
+            총액 ({formattedNumDays}박): {totalPrice.toLocaleString()}원
           </Text>
         )}
         <Flex justify="space-between" align="center">
@@ -281,7 +292,7 @@ const RoomCarouselCard = ({
                 const IconComponent = iconMap[amenity.icon] || FaQuestionCircle;
                 return (
                   <Box key={idx} title={amenity.nameKor}>
-                    <IconComponent color="teal.500" boxSize={3} />
+                    <Icon as={IconComponent} color="teal.500" boxSize={3} />
                   </Box>
                 );
               })}

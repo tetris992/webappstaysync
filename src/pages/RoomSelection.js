@@ -54,8 +54,8 @@ const RoomSelection = () => {
   const toast = useToast();
   const location = useLocation();
   const {
-    checkIn: initialCheckIn,
-    checkOut: initialCheckOut,
+    checkIn: initialCheckIn = format(new Date(), 'yyyy-MM-dd'),
+    checkOut: initialCheckOut = format(addDays(new Date(), 1), 'yyyy-MM-dd'),
     applicableRoomTypes,
   } = location.state || {};
 
@@ -65,8 +65,12 @@ const RoomSelection = () => {
 
   const [dateRange, setDateRange] = useState([
     {
-      startDate: initialCheckIn ? new Date(initialCheckIn) : today,
-      endDate: initialCheckOut ? new Date(initialCheckOut) : tomorrow,
+      startDate: isValid(new Date(initialCheckIn))
+        ? new Date(initialCheckIn)
+        : today,
+      endDate: isValid(new Date(initialCheckOut))
+        ? new Date(initialCheckOut)
+        : tomorrow,
       key: 'selection',
     },
   ]);
@@ -76,9 +80,9 @@ const RoomSelection = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [roomPhotosMap, setRoomPhotosMap] = useState({});
   const [isOpen, setIsOpen] = useState(false);
-  const [shouldFetchAvailability, setShouldFetchAvailability] = useState(true);
+  const [shouldFetchAvailability, setShouldFetchAvailability] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [sortMode, setSortMode] = useState('event'); // 3단계 토글 상태: event, asc, desc
+  const [sortMode, setSortMode] = useState('event');
 
   const numDays = differenceInCalendarDays(
     dateRange[0].endDate,
@@ -95,7 +99,13 @@ const RoomSelection = () => {
   const calculateDiscount = useCallback(
     (roomInfo, checkIn, checkOut) => {
       if (!hotelSettings?.events || !checkIn || !checkOut) {
-        return { discount: 0, eventName: null, eventUuid: null };
+        return {
+          discount: 0,
+          fixedDiscount: 0,
+          discountType: null,
+          eventName: null,
+          eventUuid: null,
+        };
       }
       const roomKey = roomInfo.toLowerCase();
       const checkInDate = new Date(checkIn);
@@ -110,29 +120,46 @@ const RoomSelection = () => {
       );
 
       let maxDiscount = 0;
+      let maxFixedDiscount = 0;
+      let selectedDiscountType = null;
       let selectedEventName = null;
       let selectedEventUuid = null;
 
       applicableEvents.forEach((event) => {
-        let discount = 0;
-        if (event.discountType === 'percentage') {
-          discount = event.discountValue;
-        } else if (event.discountType === 'fixed') {
-          const roomPrice =
-            hotelSettings.roomTypes.find(
-              (rt) => rt.roomInfo.toLowerCase() === roomKey
-            )?.price || 0;
-          discount = roomPrice ? (event.discountValue / roomPrice) * 100 : 0;
-        }
-        if (discount > maxDiscount) {
-          maxDiscount = discount;
+        if (
+          event.discountType === 'percentage' &&
+          event.discountValue > maxDiscount
+        ) {
+          maxDiscount = event.discountValue;
+          maxFixedDiscount = 0;
+          selectedDiscountType = 'percentage';
+          selectedEventName = event.eventName;
+          selectedEventUuid = event.uuid;
+        } else if (
+          event.discountType === 'fixed' &&
+          event.discountValue > maxFixedDiscount
+        ) {
+          maxFixedDiscount = event.discountValue;
+          maxDiscount = 0;
+          selectedDiscountType = 'fixed';
           selectedEventName = event.eventName;
           selectedEventUuid = event.uuid;
         }
       });
 
+      console.log('[RoomSelection] Calculated discount:', {
+        roomInfo,
+        discount: maxDiscount,
+        fixedDiscount: maxFixedDiscount,
+        discountType: selectedDiscountType,
+        eventName: selectedEventName,
+        eventUuid: selectedEventUuid,
+      });
+
       return {
         discount: maxDiscount,
+        fixedDiscount: maxFixedDiscount,
+        discountType: selectedDiscountType,
         eventName: selectedEventName,
         eventUuid: selectedEventUuid,
       };
@@ -230,11 +257,13 @@ const RoomSelection = () => {
                 nameEng: amenity.nameEng,
                 icon: amenity.icon,
               })) || [];
-          const { discount, eventName, eventUuid } = calculateDiscount(
-            room.roomInfo,
-            checkIn,
-            checkOut
-          );
+          const {
+            discount,
+            fixedDiscount,
+            discountType,
+            eventName,
+            eventUuid,
+          } = calculateDiscount(room.roomInfo, checkIn, checkOut);
           const dayStayPrice = room.price;
           const dayUsePrice = Math.round(dayStayPrice * 0.5);
           return {
@@ -242,6 +271,8 @@ const RoomSelection = () => {
             activeAmenities,
             photos: roomPhotosMap[key] || [],
             discount,
+            fixedDiscount,
+            discountType,
             eventName,
             eventUuid,
             dayStayPrice,
@@ -257,6 +288,7 @@ const RoomSelection = () => {
       setAvailableRooms(availabilityWithAmenities);
       setIsAvailabilityChecked(true);
     } catch (error) {
+      console.error('[RoomSelection] Failed to check availability:', error);
       toast({
         title: '가용 객실 조회 실패',
         description: error.message || '가용 객실을 확인하지 못했습니다.',
@@ -283,9 +315,22 @@ const RoomSelection = () => {
   useEffect(() => {
     const loadHotelSettings = async () => {
       try {
+        const checkInDate = isValid(dateRange[0].startDate)
+          ? format(dateRange[0].startDate, 'yyyy-MM-dd')
+          : format(today, 'yyyy-MM-dd');
+        const checkOutDate = isValid(dateRange[0].endDate)
+          ? format(dateRange[0].endDate, 'yyyy-MM-dd')
+          : format(tomorrow, 'yyyy-MM-dd');
+
+        console.log('[RoomSelection] Loading hotel settings:', {
+          hotelId,
+          checkIn: checkInDate,
+          checkOut: checkOutDate,
+        });
+
         const settings = await fetchCustomerHotelSettings(hotelId, {
-          checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
-          checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
+          checkIn: checkInDate,
+          checkOut: checkOutDate,
         });
         setHotelSettings(settings);
 
@@ -304,7 +349,8 @@ const RoomSelection = () => {
           } catch (error) {
             console.error(
               'Failed to fetch photos for room:',
-              roomType.roomInfo
+              roomType.roomInfo,
+              error
             );
             return { roomInfo: roomType.roomInfo, photos: [] };
           }
@@ -319,6 +365,7 @@ const RoomSelection = () => {
 
         setShouldFetchAvailability(true);
       } catch (error) {
+        console.error('[RoomSelection] Failed to load hotel settings:', error);
         toast({
           title: '호텔 설정 로딩 실패',
           description: error.message || '호텔 설정을 불러오지 못했습니다.',
@@ -332,10 +379,15 @@ const RoomSelection = () => {
       }
     };
     loadHotelSettings();
-  }, [hotelId, navigate, toast, dateRange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotelId, navigate, toast]);
 
   useEffect(() => {
-    if (shouldFetchAvailability && hotelSettings && roomPhotosMap) {
+    if (
+      shouldFetchAvailability &&
+      hotelSettings &&
+      Object.keys(roomPhotosMap).length > 0
+    ) {
       handleCheckAvailability();
       setShouldFetchAvailability(false);
     }
@@ -350,6 +402,8 @@ const RoomSelection = () => {
     roomInfo,
     perNightPrice,
     discount,
+    fixedDiscount,
+    discountType,
     eventName,
     eventUuid
   ) => {
@@ -358,7 +412,26 @@ const RoomSelection = () => {
       dateRange[0].startDate
     );
     const originalPrice = perNightPrice * nights;
-    const totalPrice = originalPrice * (1 - discount / 100);
+    let totalPrice;
+
+    if (discountType === 'fixed' && fixedDiscount > 0) {
+      totalPrice = Math.max(0, originalPrice - fixedDiscount);
+    } else if (discountType === 'percentage' && discount > 0) {
+      totalPrice = Math.round(originalPrice * (1 - discount / 100));
+    } else {
+      totalPrice = originalPrice;
+    }
+
+    console.log('[RoomSelection] Selecting room:', {
+      roomInfo,
+      originalPrice,
+      totalPrice,
+      discount,
+      fixedDiscount,
+      discountType,
+      eventName,
+      eventUuid,
+    });
 
     navigate('/confirm', {
       state: {
@@ -369,6 +442,8 @@ const RoomSelection = () => {
         price: totalPrice,
         originalPrice,
         discount,
+        fixedDiscount,
+        discountType,
         eventName,
         eventUuid,
         numNights: nights,
@@ -454,9 +529,14 @@ const RoomSelection = () => {
     }
   };
 
+  const handleDateSelectionDone = () => {
+    setIsOpen(false);
+    setShouldFetchAvailability(true);
+  };
+
   return (
     <Container
-      maxW="100%" // 스마트폰 화면 너비에 꽉 차게
+      maxW="100%"
       w="100%"
       p={0}
       h="100vh"
@@ -469,7 +549,7 @@ const RoomSelection = () => {
       left={0}
       right={0}
       bottom={0}
-      overflowX="hidden" // 좌우 스크롤 방지
+      overflowX="hidden"
     >
       {/* 상단 헤더 */}
       <Box
@@ -484,15 +564,18 @@ const RoomSelection = () => {
         borderColor="gray.200"
         boxShadow="sm"
       >
-        <Flex align="center" justify="space-between">
-          <Text
-            fontSize={{ base: 'lg', md: '2xl' }}
-            fontWeight="700"
-            color="gray.900"
-          >
-            {hotelSettings?.hotelName || '객실 선택'}
-          </Text>
-          <HStack spacing={2}>
+        <Flex align="center" justify="space-between" flexWrap="nowrap">
+          <Flex align="center" maxWidth={{ base: '60%', md: '70%' }}>
+            <Text
+              fontSize={{ base: 'lg', md: '2xl' }}
+              fontWeight="700"
+              color="gray.900"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
+            >
+              {hotelSettings?.hotelName || '객실 선택'}
+            </Text>
             {hotelSettings && (
               <Button
                 variant="ghost"
@@ -500,13 +583,14 @@ const RoomSelection = () => {
                 onClick={handleAddressClick}
                 _hover={{ color: 'blue.500', bg: 'blue.50' }}
                 size="sm"
-                leftIcon={<FaMapMarkerAlt size={14} />}
-                fontWeight="600"
-                fontSize={{ base: 'sm', md: 'md' }}
+                ml={2}
+                p={0}
               >
-                
+                <FaMapMarkerAlt size={14} />
               </Button>
             )}
+          </Flex>
+          <HStack spacing={2}>
             <Button
               variant="solid"
               colorScheme="blue"
@@ -514,34 +598,33 @@ const RoomSelection = () => {
               fontWeight="600"
               fontSize={{ base: 'sm', md: 'md' }}
               onClick={() => {
-                // compute next sort mode
-                const next = sortMode === 'event'
-                  ? 'asc'
-                  : sortMode === 'asc'
+                const next =
+                  sortMode === 'event'
+                    ? 'asc'
+                    : sortMode === 'asc'
                     ? 'desc'
                     : 'event';
-
-                // perform the sort
                 let sorted;
                 if (next === 'event') {
-                  // 이벤트: rooms with an event first (by discount desc), then others
                   sorted = [...availableRooms].sort((a, b) => {
                     const ea = a.eventName ? 1 : 0;
                     const eb = b.eventName ? 1 : 0;
                     if (ea !== eb) return eb - ea;
-                    // if both have events, sort by discount descending
-                    return (b.discount || 0) - (a.discount || 0);
+                    const aDiscount = a.fixedDiscount || a.discount || 0;
+                    const bDiscount = b.fixedDiscount || b.discount || 0;
+                    return bDiscount - aDiscount;
                   });
                 } else if (next === 'asc') {
-                  sorted = [...availableRooms].sort((a, b) => a.dayStayPrice - b.dayStayPrice);
+                  sorted = [...availableRooms].sort(
+                    (a, b) => a.dayStayPrice - b.dayStayPrice
+                  );
                 } else {
-                  sorted = [...availableRooms].sort((a, b) => b.dayStayPrice - a.dayStayPrice);
+                  sorted = [...availableRooms].sort(
+                    (a, b) => b.dayStayPrice - a.dayStayPrice
+                  );
                 }
-
                 setAvailableRooms(sorted);
                 setSortMode(next);
-
-                // toast message
                 const labels = {
                   event: '이벤트 우선 정렬',
                   asc: '가격 낮은순 정렬',
@@ -555,12 +638,13 @@ const RoomSelection = () => {
                 });
               }}
               _hover={{ bg: 'blue.600' }}
+              whiteSpace="nowrap"
             >
-              {{
-                event: '이벤트',
-                asc: '가격 낮은순',
-                desc: '가격 높은순',
-              }[sortMode]}
+              {sortMode === 'event'
+                ? '이벤트'
+                : sortMode === 'asc'
+                ? '가격 낮은순'
+                : '가격 높은순'}
             </Button>
           </HStack>
         </Flex>
@@ -650,15 +734,7 @@ const RoomSelection = () => {
                     <DateRange
                       onChange={(item) => {
                         setDateRange([item.selection]);
-                        const { startDate, endDate } = item.selection;
-                        if (
-                          startDate &&
-                          endDate &&
-                          startDate.getTime() !== endDate.getTime()
-                        ) {
-                          setIsOpen(false);
-                          setShouldFetchAvailability(true);
-                        }
+                        // 날짜 선택 후 자동으로 닫히는 로직 제거
                       }}
                       moveRangeOnFirstSelection={false}
                       ranges={dateRange}
@@ -675,6 +751,15 @@ const RoomSelection = () => {
                       editableDateInputs={true}
                       retainEndDateOnFirstSelection={true}
                     />
+                    <Flex justify="flex-end" p={2}>
+                      <Button
+                        colorScheme="blue"
+                        size="sm"
+                        onClick={handleDateSelectionDone}
+                      >
+                        닫기
+                      </Button>
+                    </Flex>
                   </Box>
                 </PopoverBody>
               </PopoverContent>
@@ -686,14 +771,14 @@ const RoomSelection = () => {
         </VStack>
       </Box>
 
-      {/* 객실 목록 영역 - 스크롤 가능 */}
+      {/* 객실 목록 영역 */}
       <Box
         flex="1"
         overflowY="auto"
         px={2}
-        pb={{ base: '104px', md: '70px' }} // 하단바(60px) + 스마트폰 하단 네비게이션 바(44px)
-        maxH="calc(100vh - 200px)" // 상단바(60px) + 날짜 선택 영역(약 140px) 제외
-        overflowX="hidden" // 좌우 스크롤 방지
+        pb={{ base: '104px', md: '70px' }}
+        maxH="calc(100vh - 200px)"
+        overflowX="hidden"
         css={{
           '&::-webkit-scrollbar': {
             display: 'none',
@@ -747,18 +832,26 @@ const RoomSelection = () => {
                       room.roomInfo,
                       room.dayStayPrice,
                       room.discount,
+                      room.fixedDiscount,
+                      room.discountType,
                       room.eventName,
                       room.eventUuid
                     )
                   }
                   hotelSettings={{
                     discountInfo:
-                      room.discount > 0 ? `${room.discount}% 할인` : null,
+                      room.discountType === 'fixed' && room.fixedDiscount > 0
+                        ? `${room.fixedDiscount.toLocaleString()}원 할인`
+                        : room.discount > 0
+                        ? `${room.discount}% 할인`
+                        : null,
                     specialPrice:
-                      room.discount > 0
+                      room.discount > 0 || room.fixedDiscount > 0
                         ? {
                             originalPrice: room.dayStayPrice,
                             discountRate: room.discount,
+                            fixedDiscount: room.fixedDiscount,
+                            discountType: room.discountType,
                           }
                         : null,
                     eventName: room.eventName,
@@ -797,7 +890,6 @@ const RoomSelection = () => {
         </Container>
       </Box>
 
-      {/* 지도 모달 */}
       <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">
         <ModalOverlay />
         <ModalContent>

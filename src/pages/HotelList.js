@@ -23,6 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchHotelList, fetchHotelPhotos } from '../api/api';
 import HotelCard from '../components/HotelCard';
 import pLimit from 'p-limit';
+import { format, addDays } from 'date-fns';
 
 const MotionBox = motion(Box);
 
@@ -52,7 +53,12 @@ const HotelList = ({ loadHotelSettings }) => {
   const navigate = useNavigate();
   const toast = useToast();
   const location = useLocation();
-  const { searchQuery: initialSearchQuery, checkIn, checkOut, guestCount } = location.state || {};
+  const {
+    searchQuery: initialSearchQuery = '',
+    checkIn = format(new Date(), 'yyyy-MM-dd'), // 기본값: 오늘
+    checkOut = format(addDays(new Date(), 1), 'yyyy-MM-dd'), // 기본값: 내일
+    guestCount = 1, // 기본값: 1명
+  } = location.state || {};
   const { isOpen, onToggle, onClose } = useDisclosure();
   const [hotels, setHotels] = useState([]);
   const [filteredHotels, setFilteredHotels] = useState([]);
@@ -62,7 +68,7 @@ const HotelList = ({ loadHotelSettings }) => {
   const [sortOption, setSortOption] = useState('name');
   const [priceFilter, setPriceFilter] = useState('all');
   const [ratingFilter, setRatingFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
 
   // 스크롤 이벤트를 처리할 ref 생성
   const mainContentRef = React.useRef(null);
@@ -96,8 +102,8 @@ const HotelList = ({ loadHotelSettings }) => {
           reviewCount: Math.floor(Math.random() * 100) + 10,
           price: Math.floor(Math.random() * 100000) + 50000,
           address: normalizeAddress(hotel.address) || '주소 정보 없음',
-          latitude: hotel.latitude || null, // 좌표 보장
-          longitude: hotel.longitude || null, // 좌표 보장
+          latitude: hotel.latitude || null,
+          longitude: hotel.longitude || null,
         }));
         setHotels(hotelsWithRatings);
         setFilteredHotels(hotelsWithRatings);
@@ -154,19 +160,13 @@ const HotelList = ({ loadHotelSettings }) => {
       console.log('[HotelList] 검색어:', searchLower);
       
       updatedHotels = updatedHotels.filter((hotel) => {
-        // 호텔 이름 검색
         const hotelName = hotel.hotelName || '';
         const nameMatch = hotelName.toLowerCase().includes(searchLower);
-        
-        // 호텔 주소 검색
         const address = hotel.address || '';
         const addrMatch = address.toLowerCase().includes(searchLower);
-        
-        // 주소를 부분으로 분해하여 검색
         const addressParts = address.toLowerCase().split(/[\s,]+/);
         const addressPartMatch = addressParts.some(part => part.includes(searchLower));
         
-        // 디버깅을 위한 콘솔 로그
         console.log(`[HotelList] 호텔: ${hotelName}, 주소: ${address}`);
         console.log(`[HotelList] 이름 일치: ${nameMatch}, 주소 일치: ${addrMatch}, 주소 부분 일치: ${addressPartMatch}`);
         console.log(`[HotelList] 주소 부분: ${addressParts.join(', ')}`);
@@ -195,7 +195,6 @@ const HotelList = ({ loadHotelSettings }) => {
 
     // 즐겨찾기 및 정렬 순서 적용
     updatedHotels.sort((a, b) => {
-      // 즐겨찾기 상태 비교 (즐겨찾기된 항목이 먼저 오도록)
       const aFavorite = favorites[a.hotelId] || false;
       const bFavorite = favorites[b.hotelId] || false;
       
@@ -203,7 +202,6 @@ const HotelList = ({ loadHotelSettings }) => {
         return bFavorite ? 1 : -1;
       }
 
-      // 즐겨찾기 상태가 같은 경우 선택된 정렬 옵션에 따라 정렬
       switch (sortOption) {
         case 'name':
           return a.hotelName.localeCompare(b.hotelName);
@@ -229,12 +227,29 @@ const HotelList = ({ loadHotelSettings }) => {
     });
   };
 
-  const handleNavigate = (hotelId) => {
-    loadHotelSettings(hotelId);
-    navigate(`/rooms/${hotelId}`, { state: { checkIn, checkOut, guestCount } });
+  const handleNavigate = async (hotelId) => {
+    try {
+      console.log('[HotelList] Navigating to:', hotelId, { checkIn, checkOut, guestCount });
+      await loadHotelSettings(hotelId);
+      navigate(`/rooms/${hotelId}`, {
+        state: {
+          checkIn: checkIn || format(new Date(), 'yyyy-MM-dd'),
+          checkOut: checkOut || format(addDays(new Date(), 1), 'yyyy-MM-dd'),
+          guestCount: guestCount || 1,
+        },
+      });
+    } catch (error) {
+      console.error('[HotelList] Navigation error:', error);
+      toast({
+        title: '호텔 설정 로드 실패',
+        description: '호텔 설정을 불러오지 못했습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
-  // 본문 영역 스크롤 및 상호작용 핸들러
   const handleMainContentInteraction = useCallback(() => {
     if (isOpen) {
       onClose();
@@ -273,7 +288,6 @@ const HotelList = ({ loadHotelSettings }) => {
       ref={mainContentRef}
       className="page-content"
     >
-      {/* 상단 헤더 */}
       <Box
         position="fixed"
         top={0}
@@ -374,7 +388,6 @@ const HotelList = ({ loadHotelSettings }) => {
         </Container>
       </Box>
 
-      {/* 메인 컨텐츠 */}
       <Box
         pt={isOpen ? "200px" : "80px"}
         pb={{ base: "60px", md: "70px" }}

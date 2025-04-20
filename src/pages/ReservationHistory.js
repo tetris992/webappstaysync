@@ -247,9 +247,10 @@ const ReservationHistory = () => {
 
       {/* 본문 영역 */}
       <Box
-        pt="64px"
-        pb="60px"
+        pt="64px" // 상단바 높이
+        pb="80px" // 하단바 높이 + 추가 패딩
         flex="1"
+        maxH="calc(100vh - 124px)" // 전체 높이에서 상단바(64px)와 하단바(60px)를 뺀 값
         overflowY="auto"
         css={{
           '&::-webkit-scrollbar': { width: '4px' },
@@ -300,14 +301,18 @@ const ReservationHistory = () => {
 
               {/* 과거 예약 보기 버튼 */}
               {pastReservations.length > 0 && (
-                <Button
-                  colorScheme="gray"
-                  variant="outline"
-                  onClick={() => setShowPastReservations((prev) => !prev)}
-                  mb={4}
-                >
-                  {showPastReservations ? '과거 예약 숨기기' : '과거 예약 보기'}
-                </Button>
+                <Box mb={4}>
+                  <Button
+                    colorScheme="gray"
+                    variant="outline"
+                    onClick={() => setShowPastReservations((prev) => !prev)}
+                    w="full"
+                  >
+                    {showPastReservations
+                      ? '과거 예약 숨기기'
+                      : '과거 예약 보기'}
+                  </Button>
+                </Box>
               )}
 
               {/* 과거 예약 */}

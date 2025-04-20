@@ -51,7 +51,9 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     hotelPhoneNumber,
     reservationDate,
     originalPrice,
-    discount,
+    discount = 0,
+    fixedDiscount = 0,
+    discountType = null,
     eventName,
     eventUuid,
   } = reservation || {};
@@ -65,6 +67,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
   const safeOriginalPrice =
     typeof originalPrice === 'number' ? originalPrice : safePrice;
   const safeDiscount = typeof discount === 'number' ? discount : 0;
+  const safeFixedDiscount = typeof fixedDiscount === 'number' ? fixedDiscount : 0;
   const thumbnail = photoUrl || '../assets/default-room1.jpg';
   const cardBg = useColorModeValue('white', 'gray.700');
   const toast = useToast();
@@ -318,7 +321,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
             )}
 
             {/* 할인 정보 표시 */}
-            {safeDiscount > 0 && (
+            {(safeDiscount > 0 || safeFixedDiscount > 0) && (
               <>
                 <Text fontSize="sm" color="gray.600">
                   할인 전 금액:
@@ -334,7 +337,11 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                   할인:
                 </Text>
                 <Text fontSize="sm" fontWeight="medium" color="red.500">
-                  {safeDiscount}% 할인 적용
+                  {discountType === 'fixed' && safeFixedDiscount > 0
+                    ? `${safeFixedDiscount.toLocaleString()}원 할인 적용`
+                    : safeDiscount > 0
+                    ? `${safeDiscount}% 할인 적용`
+                    : '할인 없음'}
                 </Text>
               </>
             )}

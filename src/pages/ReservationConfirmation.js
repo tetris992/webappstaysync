@@ -36,7 +36,6 @@ import { differenceInCalendarDays, format } from 'date-fns';
 import Map from '../components/Map';
 
 const ReservationConfirmation = () => {
-  // 기존 상태 및 훅 유지
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
@@ -52,7 +51,10 @@ const ReservationConfirmation = () => {
   const [price, setPrice] = useState(0);
   const [originalPrice, setOriginalPrice] = useState(0);
   const [discount, setDiscount] = useState(0);
+  const [fixedDiscount, setFixedDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState(null);
   const [eventName, setEventName] = useState('');
+  const [eventUuid, setEventUuid] = useState('');
   const [reservationId, setReservationId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -65,8 +67,11 @@ const ReservationConfirmation = () => {
     hotelId: initHotelId,
     price: initPrice,
     originalPrice: initOriginal,
-    discount: initDiscount,
-    eventName: initEventName,
+    discount: initDiscount = 0,
+    fixedDiscount: initFixedDiscount = 0,
+    discountType: initDiscountType = null,
+    eventName: initEventName = '',
+    eventUuid: initEventUuid = '',
   } = location.state || {};
 
   const numNights =
@@ -80,7 +85,6 @@ const ReservationConfirmation = () => {
         )
       : 1;
 
-  // loadHotelInfoAndPhotos 및 useEffect 등 기존 로직 유지
   const loadHotelInfoAndPhotos = useCallback(
     async (hotelId) => {
       if (!hotelId) {
@@ -99,7 +103,11 @@ const ReservationConfirmation = () => {
         const hotelData = hotelList.find((h) => h.hotelId === hotelId);
         setHotelPhoneNumber(hotelData?.phoneNumber || '연락처 준비중');
 
-        const settings = await fetchCustomerHotelSettings(hotelId);
+        // checkIn과 checkOut을 전달하여 fetchCustomerHotelSettings 호출
+        const settings = await fetchCustomerHotelSettings(hotelId, {
+          checkIn: stateCheckIn,
+          checkOut: stateCheckOut,
+        });
         setHotelInfo(settings);
 
         if (settings.latitude && settings.longitude) {
@@ -149,7 +157,6 @@ const ReservationConfirmation = () => {
       initHotelId,
       initPrice,
       initOriginal,
-      initDiscount,
     };
     if (
       Object.values(requiredFields).some(
@@ -171,7 +178,10 @@ const ReservationConfirmation = () => {
     setPrice(initPrice);
     setOriginalPrice(initOriginal);
     setDiscount(initDiscount);
-    setEventName(initEventName || '');
+    setFixedDiscount(initFixedDiscount);
+    setDiscountType(initDiscountType);
+    setEventName(initEventName);
+    setEventUuid(initEventUuid);
     loadHotelInfoAndPhotos(initHotelId);
   }, [
     location.state,
@@ -179,13 +189,15 @@ const ReservationConfirmation = () => {
     initPrice,
     initOriginal,
     initDiscount,
+    initFixedDiscount,
+    initDiscountType,
     initEventName,
+    initEventUuid,
     loadHotelInfoAndPhotos,
     toast,
     navigate,
   ]);
 
-  // handleConfirm, handleCopyAddress, handleTMapNavigation 등 기존 함수 유지
   const handleConfirm = async () => {
     if (!customer) {
       toast({
@@ -214,21 +226,23 @@ const ReservationConfirmation = () => {
       reservationDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss'+09:00'"),
       reservationStatus: '예약완료',
       price,
+      originalPrice,
+      discount,
+      fixedDiscount,
+      discountType,
+      eventName: eventName || null,
+      eventUuid: eventUuid || null,
       specialRequests,
       duration: numNights,
       paymentMethod: '현장결제',
       hotelName: hotelInfo?.hotelName || '알 수 없음',
       address: hotelInfo?.address || '주소 정보 없음',
-      couponInfo: {
-        discount: discount || 0,
-        eventName: eventName || null,
-      },
       additionalFees: 0,
       paymentStatus: '미결제',
       isCancelled: false,
       type: 'stay',
       isCheckedIn: false,
-      isChecked吕布: false,
+      isCheckedOut: false,
       manuallyCheckedOut: false,
       paymentHistory: [],
       remainingBalance: price,
@@ -351,7 +365,6 @@ const ReservationConfirmation = () => {
       right={0}
       bottom={0}
     >
-      {/* 상단바 */}
       <Box
         position="fixed"
         top={0}
@@ -380,7 +393,6 @@ const ReservationConfirmation = () => {
         </Container>
       </Box>
 
-      {/* 본문 영역 - 스크롤 가능 */}
       <Box
         pt="64px"
         pb="64px"
@@ -513,7 +525,7 @@ const ReservationConfirmation = () => {
                 <Flex justify="space-between" align="center">
                   <Text color="gray.600">총 결제 금액</Text>
                   <Box textAlign="right">
-                    {discount > 0 && (
+                    {(discount > 0 || fixedDiscount > 0) && (
                       <Text
                         fontSize="sm"
                         color="gray.500"
@@ -525,11 +537,15 @@ const ReservationConfirmation = () => {
                     <Text fontSize="2xl" fontWeight="bold" color="blue.500">
                       {price.toLocaleString()}원
                     </Text>
-                    {discount > 0 && (
+                    {discountType === 'fixed' && fixedDiscount > 0 ? (
+                      <Text fontSize="xs" color="red.500">
+                        {fixedDiscount.toLocaleString()}원 할인
+                      </Text>
+                    ) : discount > 0 ? (
                       <Text fontSize="xs" color="red.500">
                         {discount}% 할인
                       </Text>
-                    )}
+                    ) : null}
                   </Box>
                 </Flex>
 
@@ -556,7 +572,6 @@ const ReservationConfirmation = () => {
         </Container>
       </Box>
 
-      {/* 하단바 */}
       <Box
         position="fixed"
         bottom={0}
