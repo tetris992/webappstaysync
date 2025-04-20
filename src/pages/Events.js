@@ -131,7 +131,9 @@ const Events = () => {
                 ...event,
                 uuid:
                   event.uuid ||
-                  `event-${hotel.hotelId}-${Math.random().toString(36).slice(2)}`,
+                  `event-${hotel.hotelId}-${Math.random()
+                    .toString(36)
+                    .slice(2)}`,
                 hotelId: hotel.hotelId,
                 hotelName:
                   settings.hotelName || hotel.hotelName || '알 수 없는 호텔',
@@ -213,10 +215,10 @@ const Events = () => {
 
     navigate(`/rooms/${event.hotelId}`, {
       state: {
-        checkIn:
-          parsedStartDate && formatDate(parsedStartDate, 'yyyy-MM-dd'),
-        checkOut:
-          parsedEndDate && formatDate(parsedEndDate, 'yyyy-MM-dd'),
+        checkIn: parsedStartDate
+          ? formatDate(parsedStartDate, 'yyyy-MM-dd')
+          : '',
+        checkOut: parsedEndDate ? formatDate(parsedEndDate, 'yyyy-MM-dd') : '',
         applicableRoomTypes: event.applicableRoomTypes || [],
         discountType: event.discountType,
         discountValue: event.discountValue,
@@ -340,7 +342,9 @@ const Events = () => {
                           boxShadow="md"
                         >
                           {event.discountType === 'fixed'
-                            ? `${(event.discountValue || 0).toLocaleString()}원 할인`
+                            ? `${(
+                                event.discountValue || 0
+                              ).toLocaleString()}원 할인`
                             : `${event.discountValue || 0}% 할인`}
                         </Badge>
                       </Box>

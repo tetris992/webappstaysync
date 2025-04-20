@@ -50,6 +50,10 @@ const ReservationHistory = () => {
     setDeletedReservationIds(ids);
   };
 
+  const saveActiveReservationsToCache = (reservations) => {
+    localStorage.setItem('activeReservations', JSON.stringify(reservations));
+  };
+
   const isReservationConfirmed = useCallback((res) => {
     const chkIn = new Date(res.checkIn);
     chkIn.setHours(14, 0, 0, 0);
@@ -87,18 +91,14 @@ const ReservationHistory = () => {
 
       // 2) hotel settings 한 번씩만 패치
       await Promise.all(
-        hotelIds.map(
-          (hid) =>
-            settingsCache.current[hid] ||
-            (settingsCache.current[hid] = fetchCustomerHotelSettings(hid).catch(
-              (err) => {
-                console.error(
-                  `Failed to fetch settings for hotel ${hid}:`,
-                  err
-                );
-                return {};
-              }
-            ))
+        hotelIds.map((hid) =>
+          settingsCache.current[hid] ||
+          (settingsCache.current[hid] = fetchCustomerHotelSettings(hid).catch(
+            (err) => {
+              console.error(`Failed to fetch settings for hotel ${hid}:`, err);
+              return {};
+            }
+          ))
         )
       );
 
@@ -161,6 +161,7 @@ const ReservationHistory = () => {
       setActiveReservations(
         active.sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn))
       );
+      saveActiveReservationsToCache(active); // 캐시에 저장
 
       // 과거 예약은 이미 로드된 경우에만 업데이트
       if (pastLoaded) {
@@ -212,13 +213,7 @@ const ReservationHistory = () => {
     } finally {
       setIsLoadingPast(false);
     }
-  }, [
-    deletedReservationIds,
-    isPastReservation,
-    enrichReservations,
-    toast,
-    fetchRawHistory,
-  ]);
+  }, [deletedReservationIds, isPastReservation, enrichReservations, toast, fetchRawHistory]);
 
   const handleCancel = useCallback(
     async (id) => {
@@ -231,6 +226,10 @@ const ReservationHistory = () => {
           duration: 3000,
           isClosable: true,
         });
+        // 캐시 및 상태 업데이트
+        const updated = activeReservations.filter((r) => r.reservationId !== id);
+        setActiveReservations(updated);
+        saveActiveReservationsToCache(updated);
         rawHistoryRef.current = null; // 캐시 무효화
         await loadHistory();
       } catch (err) {
@@ -245,7 +244,7 @@ const ReservationHistory = () => {
         setIsLoadingActive(false);
       }
     },
-    [loadHistory, toast]
+    [loadHistory, toast, activeReservations]
   );
 
   const handleDeleteReservation = (id) => {
@@ -258,6 +257,10 @@ const ReservationHistory = () => {
       duration: 3000,
       isClosable: true,
     });
+    // 활성화된 예약에서도 제거 (과거 예약이 활성화된 예약일 수도 있으므로)
+    const updatedActive = activeReservations.filter((r) => r.reservationId !== id);
+    setActiveReservations(updatedActive);
+    saveActiveReservationsToCache(updatedActive);
     rawHistoryRef.current = null; // 캐시 무효화
     loadHistory();
   };
@@ -272,14 +275,29 @@ const ReservationHistory = () => {
       duration: 3000,
       isClosable: true,
     });
+    // 활성화된 예약에서도 과거 예약 ID 제거
+    const updatedActive = activeReservations.filter(
+      (r) => !pastIds.includes(r.reservationId)
+    );
+    setActiveReservations(updatedActive);
+    saveActiveReservationsToCache(updatedActive);
     setShowPastReservations(false);
     setPastLoaded(false);
     rawHistoryRef.current = null; // 캐시 무효화
     loadHistory();
   };
 
-  // 초기 로드: activeReservations만 로드
+  // 초기 로드: 캐시에서 활성화된 예약 불러오기
   useEffect(() => {
+    const cached = localStorage.getItem('activeReservations');
+    if (cached) {
+      try {
+        setActiveReservations(JSON.parse(cached));
+      } catch (err) {
+        console.error('Failed to parse cached active reservations:', err);
+      }
+    }
+    // 백그라운드에서 최신 데이터 로드
     loadHistory();
   }, [loadHistory]);
 
@@ -372,7 +390,7 @@ const ReservationHistory = () => {
         }}
       >
         <Container maxW="container.sm" py={4}>
-          {isLoadingActive ? (
+          {isLoadingActive && activeReservations.length === 0 ? (
             <Flex
               justify="center"
               align="center"
@@ -418,9 +436,7 @@ const ReservationHistory = () => {
                     isLoading={isLoadingPast}
                     spinnerPlacement="end"
                   >
-                    {showPastReservations
-                      ? '과거 예약 숨기기'
-                      : '과거 예약 보기'}
+                    {showPastReservations ? '과거 예약 숨기기' : '과거 예약 보기'}
                   </Button>
                 </Box>
               ) : null}
