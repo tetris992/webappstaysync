@@ -58,6 +58,10 @@ const Events = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 상단바 높이 상수
+  const HEADER_HEIGHT = '64px'; // 상단바 높이 (필요 시 조정 가능)
+  const BOTTOM_NAV_HEIGHT = '64px';
+
   // KST 날짜 파싱 및 포맷팅 유틸리티 함수
   const formatKSTDate = (dateStr, pattern = 'yyyy-MM-dd') => {
     if (!dateStr || typeof dateStr !== 'string') {
@@ -65,16 +69,13 @@ const Events = () => {
       return null;
     }
 
-    // 지원 가능한 날짜 형식 목록
     const dateFormats = ['yyyy-MM-dd', 'yyyy/MM/dd', 'yyyy.MM.dd'];
     let parsedDate = null;
 
-    // 각 형식으로 파싱 시도
     for (const fmt of dateFormats) {
       try {
         parsedDate = parse(dateStr, fmt, new Date(), { locale: ko });
         if (isValid(parsedDate)) {
-          // KST 타임존 적용
           const kstDate = new Date(
             parsedDate.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })
           );
@@ -90,7 +91,6 @@ const Events = () => {
       }
     }
 
-    // ISO 8601 형식 시도
     const kstDate = new Date(`${dateStr}T00:00:00+09:00`);
     if (isValid(kstDate)) {
       console.log('[formatKSTDate] Parsed ISO KST date:', { dateStr, kstDate });
@@ -108,7 +108,6 @@ const Events = () => {
         const hotels = await fetchHotelList();
         console.log('[Events] Fetched hotels:', hotels);
 
-        // 호텔 목록 유효성 검사
         if (!hotels || !Array.isArray(hotels) || hotels.length === 0) {
           console.warn('[Events] No hotels found or invalid response');
           toast({
@@ -122,7 +121,6 @@ const Events = () => {
           return;
         }
 
-        // 유효한 hotelId만 필터링
         const validHotels = hotels.filter(
           (hotel) =>
             hotel.hotelId &&
@@ -144,7 +142,6 @@ const Events = () => {
           return;
         }
 
-        // KST 기준 오늘 날짜 계산
         const todayKST = startOfDay(
           new Date(
             new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' })
@@ -152,7 +149,6 @@ const Events = () => {
         );
         console.log('[Events] KST Today:', todayKST);
 
-        // 각 호텔의 이벤트 조회
         const eventPromises = validHotels.map(async (hotel) => {
           try {
             console.log(
@@ -203,7 +199,6 @@ const Events = () => {
           discountValue: e.discountValue,
         })));
 
-        // 이벤트가 없으면 사용자에게 알림
         if (allEvents.length === 0) {
           toast({
             title: '이벤트 없음',
@@ -255,26 +250,26 @@ const Events = () => {
   return (
     <ErrorBoundary>
       <Box
-        bg="gray.50"
-        minH="100vh"
         display="flex"
         flexDir="column"
+        h="100vh" // 전체 화면 높이 고정
         overflow="hidden"
       >
         {/* 상단 헤더 - 고정 위치 */}
         <Box
-          position="sticky"
+          position="fixed"
           top={0}
           left={0}
           right={0}
+          h={HEADER_HEIGHT} // 명시적 높이 설정
           bg="white"
           borderBottom="1px"
           borderColor="gray.200"
           zIndex={1000}
           boxShadow="sm"
         >
-          <Container maxW="container.lg" py={{ base: 3, md: 4 }}>
-            <Flex position="relative" align="center" justify="center">
+          <Container maxW="container.lg" h="full" py={{ base: 3, md: 4 }}>
+            <Flex position="relative" align="center" justify="center" h="full">
               <IconButton
                 icon={<FaArrowLeft />}
                 variant="ghost"
@@ -292,8 +287,10 @@ const Events = () => {
 
         {/* 본문 영역 - 스크롤 가능 */}
         <Box
-          flex="1"
-          overflowY="auto"
+          mt={HEADER_HEIGHT} // 상단바 높이만큼 여백 추가
+          h={`calc(100vh - ${HEADER_HEIGHT} - ${BOTTOM_NAV_HEIGHT})`} // 상단바와 하단바 높이를 제
+          overflowY="auto" // 세로 스크롤 활성화
+          bg="gray.50"
           css={{
             '&::-webkit-scrollbar': {
               width: '4px',
@@ -312,8 +309,7 @@ const Events = () => {
           <Container
             maxW="container.lg"
             py={{ base: 4, md: 6 }}
-            pb={{ base: 8, md: 12 }}
-            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 32px)' }}
+            pb="calc(32px + env(safe-area-inset-bottom))" // 하단 안전 영역 고려
           >
             {loading ? (
               <Flex justify="center" py={8}>
