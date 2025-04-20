@@ -103,7 +103,6 @@ const ReservationConfirmation = () => {
         const hotelData = hotelList.find((h) => h.hotelId === hotelId);
         setHotelPhoneNumber(hotelData?.phoneNumber || '연락처 준비중');
 
-        // checkIn과 checkOut을 전달하여 fetchCustomerHotelSettings 호출
         const settings = await fetchCustomerHotelSettings(hotelId, {
           checkIn: stateCheckIn,
           checkOut: stateCheckOut,
@@ -249,6 +248,7 @@ const ReservationConfirmation = () => {
       notificationHistory: [],
       sentCreate: false,
       sentCancel: false,
+      photoUrl: roomImage,
     };
 
     try {
@@ -262,7 +262,14 @@ const ReservationConfirmation = () => {
         duration: 3000,
         isClosable: true,
       });
-      navigate('/history', { replace: true });
+      // 예약이 성공하면 방금 선택한 이미지 URL과 새로 발급된 ID를 같이 보냅니다.
+      navigate('/history', {
+        replace: true,
+        state: {
+          newReservationId: res.reservationId,
+          newPhotoUrl: roomImage,
+        },
+      });
     } catch (err) {
       console.error('[ReservationConfirmation] 예약 실패:', err);
       toast({

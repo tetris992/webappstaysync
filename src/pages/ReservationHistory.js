@@ -11,6 +11,7 @@ import {
   Button,
   Collapse,
   VStack,
+  Select,
 } from '@chakra-ui/react';
 import { ArrowBackIcon, DeleteIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,8 +40,8 @@ const ReservationHistory = () => {
     const stored = localStorage.getItem('deletedReservations');
     return stored ? JSON.parse(stored) : [];
   });
+  const [sortOption, setSortOption] = useState('latest');
 
-  // 캐시 저장을 위한 useRef
   const settingsCache = useRef({});
   const photosCache = useRef({});
   const rawHistoryRef = useRef(null);
@@ -72,24 +73,40 @@ const ReservationHistory = () => {
     return new Date() > checkOutDate;
   }, []);
 
-  // 히스토리 데이터 가져오기 (캐싱)
-  const fetchRawHistory = useCallback(async () => {
-    if (!rawHistoryRef.current) {
-      const resp = await getReservationHistory();
-      rawHistoryRef.current = (resp.history || []).sort(
-        (a, b) => new Date(b.reservationDate) - new Date(a.reservationDate)
-      );
+  const sortReservations = (reservations, sortOption) => {
+    switch (sortOption) {
+      case 'latest':
+        return [...reservations].sort(
+          (a, b) => new Date(b.reservationDate) - new Date(a.reservationDate)
+        );
+      case 'checkIn':
+        return [...reservations].sort(
+          (a, b) => new Date(a.checkIn) - new Date(b.checkIn)
+        );
+      case 'checkOut':
+        return [...reservations].sort(
+          (a, b) => new Date(a.checkOut) - new Date(b.checkOut)
+        );
+      default:
+        return reservations;
     }
+  };
+
+  const fetchRawHistory = useCallback(async () => {
+    // 캐시 무효화
+    rawHistoryRef.current = null;
+    const resp = await getReservationHistory();
+    console.log('[ReservationHistory] Fetched raw history:', resp.history);
+    rawHistoryRef.current = (resp.history || []).sort(
+      (a, b) => new Date(b.reservationDate) - new Date(a.reservationDate)
+    );
     return rawHistoryRef.current;
   }, []);
 
-  // 데이터 로드 및 캐싱 처리
   const enrichReservations = useCallback(
     async (reservations) => {
-      // 1) 고유 hotelId 리스트
       const hotelIds = [...new Set(reservations.map((r) => r.hotelId))];
 
-      // 2) hotel settings 한 번씩만 패치
       await Promise.all(
         hotelIds.map((hid) =>
           settingsCache.current[hid] ||
@@ -102,12 +119,10 @@ const ReservationHistory = () => {
         )
       );
 
-      // 3) 고유 photoKey 리스트 (hotelId + roomInfo)
       const photoKeys = [
         ...new Set(reservations.map((r) => `${r.hotelId}::${r.roomInfo}`)),
       ];
 
-      // 4) 사진도 한 번씩만 패치
       await Promise.all(
         photoKeys.map((key) => {
           if (photosCache.current[key]) return photosCache.current[key];
@@ -126,21 +141,36 @@ const ReservationHistory = () => {
         })
       );
 
-      // 5) enrichment: 예약 데이터에 추가 정보 병합
-      const enriched = reservations.map((r) => {
-        const settings = settingsCache.current[r.hotelId] || {};
-        const photos = photosCache.current[`${r.hotelId}::${r.roomInfo}`] || {};
-        return {
-          ...r,
-          photoUrl:
-            photos.roomPhotos?.[0]?.photoUrl || '/assets/default-room1.jpg',
-          hotelPhoneNumber:
-            settings.phoneNumber || r.hotelPhoneNumber || '연락처 준비중',
-          isConfirmed: isReservationConfirmed(r),
-          discount: r.couponInfo?.discount || 0,
-          eventName: r.couponInfo?.eventName || null,
-        };
-      });
+      const enriched = await Promise.all(
+        reservations.map(async (r) => {
+          const settings = settingsCache.current[r.hotelId] || {};
+          let photoUrl = r.photoUrl;
+
+          // photoUrl이 없거나 유효하지 않은 경우 fetchHotelPhotos로 사진 로드
+          if (!photoUrl || photoUrl === '/assets/default-room1.jpg') {
+            const photos = photosCache.current[`${r.hotelId}::${r.roomInfo}`] || {};
+            photoUrl = photos.roomPhotos?.[0]?.photoUrl || '/assets/default-room1.jpg';
+
+            console.log(`[ReservationHistory] Processing reservation ID ${r.reservationId}:`, {
+              photoUrlFromServer: r.photoUrl,
+              photoUrlFromAPI: photos.roomPhotos?.[0]?.photoUrl,
+              finalPhotoUrl: photoUrl,
+            });
+          } else {
+            console.log(`[ReservationHistory] Using server-provided photoUrl for reservation ID ${r.reservationId}:`, photoUrl);
+          }
+
+          return {
+            ...r,
+            photoUrl,
+            hotelPhoneNumber:
+              settings.phoneNumber || r.hotelPhoneNumber || '연락처 준비중',
+            isConfirmed: isReservationConfirmed(r),
+            discount: r.couponInfo?.discount || 0,
+            eventName: r.couponInfo?.eventName || null,
+          };
+        })
+      );
 
       return enriched;
     },
@@ -153,17 +183,14 @@ const ReservationHistory = () => {
       const sorted = await fetchRawHistory();
       const enriched = await enrichReservations(sorted);
 
-      // 필터링 및 상태 업데이트
       const filtered = enriched.filter(
         (r) => !deletedReservationIds.includes(r.reservationId)
       );
       const active = filtered.filter(isActiveReservation);
-      setActiveReservations(
-        active.sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn))
-      );
-      saveActiveReservationsToCache(active); // 캐시에 저장
+      const sortedActive = sortReservations(active, sortOption);
+      setActiveReservations(sortedActive);
+      saveActiveReservationsToCache(sortedActive);
 
-      // 과거 예약은 이미 로드된 경우에만 업데이트
       if (pastLoaded) {
         const past = filtered.filter(isPastReservation);
         setPastReservations(past);
@@ -187,9 +214,9 @@ const ReservationHistory = () => {
     pastLoaded,
     toast,
     fetchRawHistory,
+    sortOption,
   ]);
 
-  // 과거 예약 로드
   const loadPastReservations = useCallback(async () => {
     setIsLoadingPast(true);
     try {
@@ -226,11 +253,10 @@ const ReservationHistory = () => {
           duration: 3000,
           isClosable: true,
         });
-        // 캐시 및 상태 업데이트
         const updated = activeReservations.filter((r) => r.reservationId !== id);
         setActiveReservations(updated);
         saveActiveReservationsToCache(updated);
-        rawHistoryRef.current = null; // 캐시 무효화
+        rawHistoryRef.current = null;
         await loadHistory();
       } catch (err) {
         toast({
@@ -257,11 +283,10 @@ const ReservationHistory = () => {
       duration: 3000,
       isClosable: true,
     });
-    // 활성화된 예약에서도 제거 (과거 예약이 활성화된 예약일 수도 있으므로)
     const updatedActive = activeReservations.filter((r) => r.reservationId !== id);
     setActiveReservations(updatedActive);
     saveActiveReservationsToCache(updatedActive);
-    rawHistoryRef.current = null; // 캐시 무효화
+    rawHistoryRef.current = null;
     loadHistory();
   };
 
@@ -275,7 +300,6 @@ const ReservationHistory = () => {
       duration: 3000,
       isClosable: true,
     });
-    // 활성화된 예약에서도 과거 예약 ID 제거
     const updatedActive = activeReservations.filter(
       (r) => !pastIds.includes(r.reservationId)
     );
@@ -283,32 +307,51 @@ const ReservationHistory = () => {
     saveActiveReservationsToCache(updatedActive);
     setShowPastReservations(false);
     setPastLoaded(false);
-    rawHistoryRef.current = null; // 캐시 무효화
+    rawHistoryRef.current = null;
     loadHistory();
   };
 
-  // 초기 로드: 캐시에서 활성화된 예약 불러오기
+  const handleSortChange = (e) => {
+    const newSortOption = e.target.value;
+    setSortOption(newSortOption);
+    const sortedActive = sortReservations(activeReservations, newSortOption);
+    setActiveReservations(sortedActive);
+    saveActiveReservationsToCache(sortedActive);
+  };
+
   useEffect(() => {
+    // 캐싱된 데이터 사용 시 photoUrl 유효성 확인
     const cached = localStorage.getItem('activeReservations');
     if (cached) {
       try {
-        setActiveReservations(JSON.parse(cached));
+        const parsed = JSON.parse(cached);
+        const sorted = sortReservations(parsed, sortOption);
+        // 캐싱된 데이터에서 photoUrl이 유효하지 않은 경우 새로 로드
+        const hasInvalidPhotos = sorted.some(
+          (r) => !r.photoUrl || r.photoUrl === '/assets/default-room1.jpg'
+        );
+        if (hasInvalidPhotos) {
+          console.log('[ReservationHistory] Invalid photos in cache, refreshing data');
+          loadHistory();
+        } else {
+          setActiveReservations(sorted);
+          console.log('[ReservationHistory] Loaded from cache:', sorted);
+        }
       } catch (err) {
         console.error('Failed to parse cached active reservations:', err);
+        loadHistory();
       }
+    } else {
+      loadHistory();
     }
-    // 백그라운드에서 최신 데이터 로드
-    loadHistory();
-  }, [loadHistory]);
+  }, [loadHistory, sortOption]);
 
-  // "과거 예약 보기" 버튼 클릭 시 과거 예약 로드
   useEffect(() => {
     if (showPastReservations && !pastLoaded) {
       loadPastReservations();
     }
   }, [showPastReservations, pastLoaded, loadPastReservations]);
 
-  // WebSocket 이벤트 처리
   useEffect(() => {
     if (!socket?.emit || !customer?._id) return;
     socket.emit('subscribeToReservationUpdates', customer._id);
@@ -320,13 +363,12 @@ const ReservationHistory = () => {
         duration: 3000,
         isClosable: true,
       });
-      rawHistoryRef.current = null; // 캐시 무효화
+      rawHistoryRef.current = null;
       loadHistory();
     });
     return () => socket.off?.('reservationUpdated');
   }, [customer, loadHistory, socket, toast]);
 
-  // 현재 페이지가 히스토리 페이지인지 확인
   const isOnHistoryPage = location.pathname === '/history';
 
   return (
@@ -342,7 +384,6 @@ const ReservationHistory = () => {
       bottom={0}
       overflow="hidden"
     >
-      {/* 상단바 */}
       <Box
         position="fixed"
         top={0}
@@ -371,12 +412,11 @@ const ReservationHistory = () => {
         </Container>
       </Box>
 
-      {/* 본문 영역 */}
       <Box
-        pt="64px" // 상단바 높이
-        pb="80px" // 하단바 높이 + 추가 패딩
+        pt="64px"
+        pb="80px"
         flex="1"
-        maxH="calc(100vh - 124px)" // 전체 높이에서 상단바(64px)와 하단바(60px)를 뺀 값
+        maxH="calc(100vh - 124px)"
         overflowY="auto"
         css={{
           '&::-webkit-scrollbar': { width: '4px' },
@@ -404,10 +444,21 @@ const ReservationHistory = () => {
             </Flex>
           ) : (
             <>
-              {/* 활성화된 예약 */}
-              <Text fontSize="lg" fontWeight="bold" mb={4} color="teal.600">
-                활성화된 예약
-              </Text>
+              <Flex justify="space-between" align="center" mb={4}>
+                <Text fontSize="lg" fontWeight="bold" color="teal.600">
+                  활성화된 예약
+                </Text>
+                <Select
+                  width="150px"
+                  size="sm"
+                  value={sortOption}
+                  onChange={handleSortChange}
+                >
+                  <option value="latest">최신 예약순</option>
+                  <option value="checkIn">체크인 날짜순</option>
+                  <option value="checkOut">체크아웃 날짜순</option>
+                </Select>
+              </Flex>
               {activeReservations.length > 0 ? (
                 <VStack spacing={6} mb={4}>
                   {activeReservations.map((r) => (
@@ -425,7 +476,6 @@ const ReservationHistory = () => {
                 </Text>
               )}
 
-              {/* 과거 예약 보기 버튼 */}
               {activeReservations.length > 0 || pastReservations.length > 0 ? (
                 <Box mb={4}>
                   <Button
@@ -441,7 +491,6 @@ const ReservationHistory = () => {
                 </Box>
               ) : null}
 
-              {/* 과거 예약 */}
               <Collapse in={showPastReservations} animateOpacity>
                 <Flex justify="space-between" align="center" mb={4}>
                   <Text fontSize="lg" fontWeight="bold" color="gray.600">
@@ -495,7 +544,6 @@ const ReservationHistory = () => {
         </Container>
       </Box>
 
-      {/* 하단바 */}
       <Box
         position="fixed"
         bottom={0}

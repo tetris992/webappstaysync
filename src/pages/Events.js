@@ -16,7 +16,13 @@ import {
 } from '@chakra-ui/react';
 import { FaArrowLeft } from 'react-icons/fa';
 import { fetchHotelList, fetchCustomerHotelSettings } from '../api/api';
-import { format, startOfDay } from 'date-fns';
+import {
+  format,
+  startOfDay,
+  addDays,
+  isBefore,
+  differenceInCalendarDays,
+} from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { parseDate, formatDate } from '../utils/dateUtils';
 
@@ -210,15 +216,46 @@ const Events = () => {
       discountValue: event.discountValue,
     });
 
+    const todayKST = startOfDay(
+      new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+    );
     const parsedStartDate = parseDate(event.startDate);
     const parsedEndDate = parseDate(event.endDate);
 
+    // startDate와 endDate 간의 일수 차이 계산
+    const eventDuration =
+      parsedStartDate && parsedEndDate
+        ? differenceInCalendarDays(parsedEndDate, parsedStartDate)
+        : 1;
+
+    // startDate가 오늘보다 이전이면 오늘로 조정
+    const adjustedCheckIn =
+      parsedStartDate && isBefore(parsedStartDate, todayKST)
+        ? todayKST
+        : parsedStartDate;
+
+    // endDate도 startDate 조정에 맞춰 업데이트
+    const adjustedCheckOut = adjustedCheckIn
+      ? addDays(adjustedCheckIn, Math.max(eventDuration, 1))
+      : parsedEndDate;
+
+    console.log('[Events] Adjusted dates:', {
+      adjustedCheckIn: adjustedCheckIn
+        ? format(adjustedCheckIn, 'yyyy-MM-dd')
+        : 'N/A',
+      adjustedCheckOut: adjustedCheckOut
+        ? format(adjustedCheckOut, 'yyyy-MM-dd')
+        : 'N/A',
+    });
+
     navigate(`/rooms/${event.hotelId}`, {
       state: {
-        checkIn: parsedStartDate
-          ? formatDate(parsedStartDate, 'yyyy-MM-dd')
+        checkIn: adjustedCheckIn
+          ? formatDate(adjustedCheckIn, 'yyyy-MM-dd')
           : '',
-        checkOut: parsedEndDate ? formatDate(parsedEndDate, 'yyyy-MM-dd') : '',
+        checkOut: adjustedCheckOut
+          ? formatDate(adjustedCheckOut, 'yyyy-MM-dd')
+          : '',
         applicableRoomTypes: event.applicableRoomTypes || [],
         discountType: event.discountType,
         discountValue: event.discountValue,
@@ -228,19 +265,13 @@ const Events = () => {
 
   return (
     <ErrorBoundary>
-      <Box
-        display="flex"
-        flexDir="column"
-        h="100vh" // 전체 화면 높이 고정
-        overflow="hidden"
-      >
-        {/* 상단 헤더 - 고정 위치 */}
+      <Box display="flex" flexDir="column" h="100vh" overflow="hidden">
         <Box
           position="fixed"
           top={0}
           left={0}
           right={0}
-          h={HEADER_HEIGHT} // 명시적 높이 설정
+          h={HEADER_HEIGHT}
           bg="white"
           borderBottom="1px"
           borderColor="gray.200"
@@ -264,11 +295,10 @@ const Events = () => {
           </Container>
         </Box>
 
-        {/* 본문 영역 - 스크롤 가능 */}
         <Box
-          mt={HEADER_HEIGHT} // 상단바 높이만큼 여백 추가
-          h={`calc(100vh - ${HEADER_HEIGHT} - ${BOTTOM_NAV_HEIGHT})`} // 상단바와 하단바 높이를 제외
-          overflowY="auto" // 세로 스크롤 활성화
+          mt={HEADER_HEIGHT}
+          h={`calc(100vh - ${HEADER_HEIGHT} - ${BOTTOM_NAV_HEIGHT})`}
+          overflowY="auto"
           bg="gray.50"
           css={{
             '&::-webkit-scrollbar': {
@@ -288,7 +318,7 @@ const Events = () => {
           <Container
             maxW="container.lg"
             py={{ base: 4, md: 6 }}
-            pb="calc(32px + env(safe-area-inset-bottom))" // 하단 안전 영역 고려
+            pb="calc(32px + env(safe-area-inset-bottom))"
           >
             {loading ? (
               <Flex justify="center" py={8}>
