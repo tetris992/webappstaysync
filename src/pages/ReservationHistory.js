@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Text,
@@ -25,17 +25,25 @@ import {
 
 const ReservationHistory = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const { customer } = useAuth();
   const socket = useSocket();
   const [activeReservations, setActiveReservations] = useState([]);
   const [pastReservations, setPastReservations] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingActive, setIsLoadingActive] = useState(false);
+  const [isLoadingPast, setIsLoadingPast] = useState(false);
   const [showPastReservations, setShowPastReservations] = useState(false);
+  const [pastLoaded, setPastLoaded] = useState(false);
   const [deletedReservationIds, setDeletedReservationIds] = useState(() => {
     const stored = localStorage.getItem('deletedReservations');
     return stored ? JSON.parse(stored) : [];
   });
+
+  // 캐시 저장을 위한 useRef
+  const settingsCache = useRef({});
+  const photosCache = useRef({});
+  const rawHistoryRef = useRef(null);
 
   const saveDeletedReservations = (ids) => {
     localStorage.setItem('deletedReservations', JSON.stringify(ids));
@@ -60,56 +68,105 @@ const ReservationHistory = () => {
     return new Date() > checkOutDate;
   }, []);
 
-  const loadHistory = useCallback(async () => {
-    setIsLoading(true);
-    try {
+  // 히스토리 데이터 가져오기 (캐싱)
+  const fetchRawHistory = useCallback(async () => {
+    if (!rawHistoryRef.current) {
       const resp = await getReservationHistory();
-      const sorted = (resp.history || []).sort(
+      rawHistoryRef.current = (resp.history || []).sort(
         (a, b) => new Date(b.reservationDate) - new Date(a.reservationDate)
       );
+    }
+    return rawHistoryRef.current;
+  }, []);
 
-      const enriched = await Promise.all(
-        sorted.map(async (r) => {
-          try {
-            const [photosData, settings] = await Promise.all([
-              fetchHotelPhotos(r.hotelId, 'room', r.roomInfo),
-              fetchCustomerHotelSettings(r.hotelId),
-            ]);
+  // 데이터 로드 및 캐싱 처리
+  const enrichReservations = useCallback(
+    async (reservations) => {
+      // 1) 고유 hotelId 리스트
+      const hotelIds = [...new Set(reservations.map((r) => r.hotelId))];
 
-            return {
-              ...r,
-              photoUrl:
-                photosData?.roomPhotos?.[0]?.photoUrl ||
-                '/assets/default-room1.jpg',
-              hotelPhoneNumber:
-                settings?.phoneNumber || r.hotelPhoneNumber || '연락처 준비중',
-              isConfirmed: isReservationConfirmed(r),
-              discount: r.couponInfo?.discount || 0,
-              eventName: r.couponInfo?.eventName || null,
-            };
-          } catch {
-            return {
-              ...r,
-              photoUrl: '/assets/default-room1.jpg',
-              hotelPhoneNumber: r.hotelPhoneNumber || '연락처 준비중',
-              isConfirmed: isReservationConfirmed(r),
-              discount: r.couponInfo?.discount || 0,
-              eventName: r.couponInfo?.eventName || null,
-            };
-          }
+      // 2) hotel settings 한 번씩만 패치
+      await Promise.all(
+        hotelIds.map(
+          (hid) =>
+            settingsCache.current[hid] ||
+            (settingsCache.current[hid] = fetchCustomerHotelSettings(hid).catch(
+              (err) => {
+                console.error(
+                  `Failed to fetch settings for hotel ${hid}:`,
+                  err
+                );
+                return {};
+              }
+            ))
+        )
+      );
+
+      // 3) 고유 photoKey 리스트 (hotelId + roomInfo)
+      const photoKeys = [
+        ...new Set(reservations.map((r) => `${r.hotelId}::${r.roomInfo}`)),
+      ];
+
+      // 4) 사진도 한 번씩만 패치
+      await Promise.all(
+        photoKeys.map((key) => {
+          if (photosCache.current[key]) return photosCache.current[key];
+          const [hid, roomInfo] = key.split('::');
+          return (photosCache.current[key] = fetchHotelPhotos(
+            hid,
+            'room',
+            roomInfo
+          ).catch((err) => {
+            console.error(
+              `Failed to fetch photos for hotel ${hid}, room ${roomInfo}:`,
+              err
+            );
+            return { roomPhotos: [] };
+          }));
         })
       );
 
+      // 5) enrichment: 예약 데이터에 추가 정보 병합
+      const enriched = reservations.map((r) => {
+        const settings = settingsCache.current[r.hotelId] || {};
+        const photos = photosCache.current[`${r.hotelId}::${r.roomInfo}`] || {};
+        return {
+          ...r,
+          photoUrl:
+            photos.roomPhotos?.[0]?.photoUrl || '/assets/default-room1.jpg',
+          hotelPhoneNumber:
+            settings.phoneNumber || r.hotelPhoneNumber || '연락처 준비중',
+          isConfirmed: isReservationConfirmed(r),
+          discount: r.couponInfo?.discount || 0,
+          eventName: r.couponInfo?.eventName || null,
+        };
+      });
+
+      return enriched;
+    },
+    [isReservationConfirmed]
+  );
+
+  const loadHistory = useCallback(async () => {
+    setIsLoadingActive(true);
+    try {
+      const sorted = await fetchRawHistory();
+      const enriched = await enrichReservations(sorted);
+
+      // 필터링 및 상태 업데이트
       const filtered = enriched.filter(
         (r) => !deletedReservationIds.includes(r.reservationId)
       );
       const active = filtered.filter(isActiveReservation);
-      const past = filtered.filter(isPastReservation);
-
       setActiveReservations(
         active.sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn))
       );
-      setPastReservations(past);
+
+      // 과거 예약은 이미 로드된 경우에만 업데이트
+      if (pastLoaded) {
+        const past = filtered.filter(isPastReservation);
+        setPastReservations(past);
+      }
     } catch (err) {
       toast({
         title: '예약 내역 로드 실패',
@@ -119,19 +176,53 @@ const ReservationHistory = () => {
         isClosable: true,
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingActive(false);
     }
   }, [
     deletedReservationIds,
     isActiveReservation,
     isPastReservation,
-    isReservationConfirmed,
+    enrichReservations,
+    pastLoaded,
     toast,
+    fetchRawHistory,
+  ]);
+
+  // 과거 예약 로드
+  const loadPastReservations = useCallback(async () => {
+    setIsLoadingPast(true);
+    try {
+      const sorted = await fetchRawHistory();
+      const enriched = await enrichReservations(sorted);
+
+      const filtered = enriched.filter(
+        (r) => !deletedReservationIds.includes(r.reservationId)
+      );
+      const past = filtered.filter(isPastReservation);
+      setPastReservations(past);
+      setPastLoaded(true);
+    } catch (err) {
+      toast({
+        title: '과거 예약 로드 실패',
+        description: err.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoadingPast(false);
+    }
+  }, [
+    deletedReservationIds,
+    isPastReservation,
+    enrichReservations,
+    toast,
+    fetchRawHistory,
   ]);
 
   const handleCancel = useCallback(
     async (id) => {
-      setIsLoading(true);
+      setIsLoadingActive(true);
       try {
         await cancelReservation(id);
         toast({
@@ -140,6 +231,7 @@ const ReservationHistory = () => {
           duration: 3000,
           isClosable: true,
         });
+        rawHistoryRef.current = null; // 캐시 무효화
         await loadHistory();
       } catch (err) {
         toast({
@@ -150,7 +242,7 @@ const ReservationHistory = () => {
           isClosable: true,
         });
       } finally {
-        setIsLoading(false);
+        setIsLoadingActive(false);
       }
     },
     [loadHistory, toast]
@@ -166,6 +258,7 @@ const ReservationHistory = () => {
       duration: 3000,
       isClosable: true,
     });
+    rawHistoryRef.current = null; // 캐시 무효화
     loadHistory();
   };
 
@@ -180,13 +273,24 @@ const ReservationHistory = () => {
       isClosable: true,
     });
     setShowPastReservations(false);
+    setPastLoaded(false);
+    rawHistoryRef.current = null; // 캐시 무효화
     loadHistory();
   };
 
+  // 초기 로드: activeReservations만 로드
   useEffect(() => {
     loadHistory();
   }, [loadHistory]);
 
+  // "과거 예약 보기" 버튼 클릭 시 과거 예약 로드
+  useEffect(() => {
+    if (showPastReservations && !pastLoaded) {
+      loadPastReservations();
+    }
+  }, [showPastReservations, pastLoaded, loadPastReservations]);
+
+  // WebSocket 이벤트 처리
   useEffect(() => {
     if (!socket?.emit || !customer?._id) return;
     socket.emit('subscribeToReservationUpdates', customer._id);
@@ -198,10 +302,14 @@ const ReservationHistory = () => {
         duration: 3000,
         isClosable: true,
       });
+      rawHistoryRef.current = null; // 캐시 무효화
       loadHistory();
     });
     return () => socket.off?.('reservationUpdated');
   }, [customer, loadHistory, socket, toast]);
+
+  // 현재 페이지가 히스토리 페이지인지 확인
+  const isOnHistoryPage = location.pathname === '/history';
 
   return (
     <Box
@@ -264,7 +372,7 @@ const ReservationHistory = () => {
         }}
       >
         <Container maxW="container.sm" py={4}>
-          {isLoading ? (
+          {isLoadingActive ? (
             <Flex
               justify="center"
               align="center"
@@ -300,20 +408,22 @@ const ReservationHistory = () => {
               )}
 
               {/* 과거 예약 보기 버튼 */}
-              {pastReservations.length > 0 && (
+              {activeReservations.length > 0 || pastReservations.length > 0 ? (
                 <Box mb={4}>
                   <Button
                     colorScheme="gray"
                     variant="outline"
                     onClick={() => setShowPastReservations((prev) => !prev)}
                     w="full"
+                    isLoading={isLoadingPast}
+                    spinnerPlacement="end"
                   >
                     {showPastReservations
                       ? '과거 예약 숨기기'
                       : '과거 예약 보기'}
                   </Button>
                 </Box>
-              )}
+              ) : null}
 
               {/* 과거 예약 */}
               <Collapse in={showPastReservations} animateOpacity>
@@ -384,10 +494,23 @@ const ReservationHistory = () => {
       >
         <Container maxW="container.sm">
           <Flex justify="space-around">
-            <Text>홈</Text>
-            <Text>숙소</Text>
-            <Text>로그아웃</Text>
-            <Text>나의 내역</Text>
+            <Button variant="ghost" onClick={() => navigate('/')}>
+              홈
+            </Button>
+            <Button variant="ghost" onClick={() => navigate('/rooms')}>
+              숙소
+            </Button>
+            <Button variant="ghost" onClick={() => navigate('/logout')}>
+              로그아웃
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => !isOnHistoryPage && loadHistory()}
+              isDisabled={isOnHistoryPage}
+              isLoading={isLoadingActive && isOnHistoryPage}
+            >
+              나의 내역
+            </Button>
           </Flex>
         </Container>
       </Box>

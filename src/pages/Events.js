@@ -16,8 +16,9 @@ import {
 } from '@chakra-ui/react';
 import { FaArrowLeft } from 'react-icons/fa';
 import { fetchHotelList, fetchCustomerHotelSettings } from '../api/api';
-import { format, startOfDay, isValid, parse } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { parseDate, formatDate } from '../utils/dateUtils';
 
 // 에러 바운더리 컴포넌트
 class ErrorBoundary extends React.Component {
@@ -58,48 +59,9 @@ const Events = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 상단바 높이 상수
-  const HEADER_HEIGHT = '64px'; // 상단바 높이 (필요 시 조정 가능)
+  // 상단바와 하단바 높이 상수
+  const HEADER_HEIGHT = '64px';
   const BOTTOM_NAV_HEIGHT = '64px';
-
-  // KST 날짜 파싱 및 포맷팅 유틸리티 함수
-  const formatKSTDate = (dateStr, pattern = 'yyyy-MM-dd') => {
-    if (!dateStr || typeof dateStr !== 'string') {
-      console.warn('[formatKSTDate] Invalid date string:', dateStr);
-      return null;
-    }
-
-    const dateFormats = ['yyyy-MM-dd', 'yyyy/MM/dd', 'yyyy.MM.dd'];
-    let parsedDate = null;
-
-    for (const fmt of dateFormats) {
-      try {
-        parsedDate = parse(dateStr, fmt, new Date(), { locale: ko });
-        if (isValid(parsedDate)) {
-          const kstDate = new Date(
-            parsedDate.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })
-          );
-          console.log('[formatKSTDate] Parsed KST date:', {
-            dateStr,
-            fmt,
-            kstDate,
-          });
-          return format(kstDate, pattern, { locale: ko });
-        }
-      } catch (e) {
-        console.warn('[formatKSTDate] Failed to parse with format:', fmt, e);
-      }
-    }
-
-    const kstDate = new Date(`${dateStr}T00:00:00+09:00`);
-    if (isValid(kstDate)) {
-      console.log('[formatKSTDate] Parsed ISO KST date:', { dateStr, kstDate });
-      return format(kstDate, pattern, { locale: ko });
-    }
-
-    console.warn('[formatKSTDate] All parsing attempts failed:', dateStr);
-    return null;
-  };
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -159,16 +121,23 @@ const Events = () => {
               checkOut: format(todayKST, 'yyyy-MM-dd', { locale: ko }),
             });
             console.log(`[Events] Settings for ${hotel.hotelId}:`, settings);
-            const hotelEvents = (settings.events || []).map((event) => ({
-              ...event,
-              uuid:
-                event.uuid ||
-                `event-${hotel.hotelId}-${Math.random().toString(36).slice(2)}`,
-              hotelId: hotel.hotelId,
-              hotelName:
-                settings.hotelName || hotel.hotelName || '알 수 없는 호텔',
-              address: settings.address || hotel.address || null,
-            }));
+            const hotelEvents = (settings.events || []).map((event) => {
+              console.log(
+                `[Events] Raw event dates for ${hotel.hotelId}:`,
+                event.startDate,
+                event.endDate
+              );
+              return {
+                ...event,
+                uuid:
+                  event.uuid ||
+                  `event-${hotel.hotelId}-${Math.random().toString(36).slice(2)}`,
+                hotelId: hotel.hotelId,
+                hotelName:
+                  settings.hotelName || hotel.hotelName || '알 수 없는 호텔',
+                address: settings.address || hotel.address || null,
+              };
+            });
             console.log(`[Events] Events for ${hotel.hotelId}:`, hotelEvents);
             return hotelEvents;
           } catch (error) {
@@ -190,14 +159,17 @@ const Events = () => {
         });
 
         const allEvents = (await Promise.all(eventPromises)).flat();
-        console.log('[Events] All events:', allEvents.map((e) => ({
-          uuid: e.uuid,
-          startDate: e.startDate,
-          endDate: e.endDate,
-          eventName: e.eventName,
-          discountType: e.discountType,
-          discountValue: e.discountValue,
-        })));
+        console.log(
+          '[Events] All events:',
+          allEvents.map((e) => ({
+            uuid: e.uuid,
+            startDate: e.startDate,
+            endDate: e.endDate,
+            eventName: e.eventName,
+            discountType: e.discountType,
+            discountValue: e.discountValue,
+          }))
+        );
 
         if (allEvents.length === 0) {
           toast({
@@ -236,10 +208,15 @@ const Events = () => {
       discountValue: event.discountValue,
     });
 
+    const parsedStartDate = parseDate(event.startDate);
+    const parsedEndDate = parseDate(event.endDate);
+
     navigate(`/rooms/${event.hotelId}`, {
       state: {
-        checkIn: formatKSTDate(event.startDate),
-        checkOut: formatKSTDate(event.endDate),
+        checkIn:
+          parsedStartDate && formatDate(parsedStartDate, 'yyyy-MM-dd'),
+        checkOut:
+          parsedEndDate && formatDate(parsedEndDate, 'yyyy-MM-dd'),
         applicableRoomTypes: event.applicableRoomTypes || [],
         discountType: event.discountType,
         discountValue: event.discountValue,
@@ -288,7 +265,7 @@ const Events = () => {
         {/* 본문 영역 - 스크롤 가능 */}
         <Box
           mt={HEADER_HEIGHT} // 상단바 높이만큼 여백 추가
-          h={`calc(100vh - ${HEADER_HEIGHT} - ${BOTTOM_NAV_HEIGHT})`} // 상단바와 하단바 높이를 제
+          h={`calc(100vh - ${HEADER_HEIGHT} - ${BOTTOM_NAV_HEIGHT})`} // 상단바와 하단바 높이를 제외
           overflowY="auto" // 세로 스크롤 활성화
           bg="gray.50"
           css={{
@@ -317,79 +294,89 @@ const Events = () => {
               </Flex>
             ) : events.length > 0 ? (
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                {events.map((event, index) => (
-                  <Box
-                    key={`${event.uuid}-${index}`}
-                    position="relative"
-                    borderRadius="2xl"
-                    overflow="hidden"
-                    boxShadow="sm"
-                    bg="white"
-                    onClick={() => handleEventClick(event)}
-                    cursor="pointer"
-                    transition="all 0.2s"
-                    _hover={{
-                      transform: 'translateY(-4px)',
-                      boxShadow: 'lg',
-                    }}
-                  >
-                    <Image
-                      src={`/assets/hotel${(index % 11) + 1}.jpg`}
-                      alt={`${event.eventName || '이벤트'} 이미지`}
-                      h="240px"
-                      w="100%"
-                      objectFit="cover"
-                      fallbackSrc="/assets/default-hotel.jpg"
-                    />
+                {events.map((event, index) => {
+                  const parsedStartDate = parseDate(event.startDate);
+                  const parsedEndDate = parseDate(event.endDate);
+                  return (
                     <Box
-                      position="absolute"
-                      top={0}
-                      left={0}
-                      right={0}
-                      bottom={0}
-                      bg="linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.8))"
-                    />
-                    <Box position="absolute" top={4} right={4}>
-                      <Badge
-                        colorScheme="red"
-                        fontSize="md"
-                        px={3}
-                        py={1.5}
-                        borderRadius="full"
-                        bg="rgba(255,255,255,0.9)"
-                        boxShadow="md"
-                      >
-                        {event.discountType === 'fixed'
-                          ? `${(event.discountValue || 0).toLocaleString()}원 할인`
-                          : `${event.discountValue || 0}% 할인`}
-                      </Badge>
-                    </Box>
-                    <Box
-                      position="absolute"
-                      bottom={0}
-                      left={0}
-                      right={0}
-                      p={6}
-                      color="white"
+                      key={`${event.uuid}-${index}`}
+                      position="relative"
+                      borderRadius="2xl"
+                      overflow="hidden"
+                      boxShadow="sm"
+                      bg="white"
+                      onClick={() => handleEventClick(event)}
+                      cursor="pointer"
+                      transition="all 0.2s"
+                      _hover={{
+                        transform: 'translateY(-4px)',
+                        boxShadow: 'lg',
+                      }}
                     >
-                      <Flex direction="column" gap={2}>
-                        <Text fontSize="sm" fontWeight="500" opacity={0.9}>
-                          {event.hotelName} |{' '}
-                          {(event.applicableRoomTypes || []).join(', ') ||
-                            '모든 객실'}
-                        </Text>
-                        <Text fontSize="2xl" fontWeight="700" lineHeight="1.2">
-                          {event.eventName || '특가 이벤트'}
-                        </Text>
-                        <Text fontSize="sm" opacity={0.8} mt={1}>
-                          {formatKSTDate(event.startDate, 'yyyy.MM.dd') || 'N/A'}{' '}
-                          ~{' '}
-                          {formatKSTDate(event.endDate, 'yyyy.MM.dd') || 'N/A'}
-                        </Text>
-                      </Flex>
+                      <Image
+                        src={`/assets/hotel${(index % 11) + 1}.jpg`}
+                        alt={`${event.eventName || '이벤트'} 이미지`}
+                        h="240px"
+                        w="100%"
+                        objectFit="cover"
+                        fallbackSrc="/assets/default-hotel.jpg"
+                      />
+                      <Box
+                        position="absolute"
+                        top={0}
+                        left={0}
+                        right={0}
+                        bottom={0}
+                        bg="linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.8))"
+                      />
+                      <Box position="absolute" top={4} right={4}>
+                        <Badge
+                          colorScheme="red"
+                          fontSize="md"
+                          px={3}
+                          py={1.5}
+                          borderRadius="full"
+                          bg="rgba(255,255,255,0.9)"
+                          boxShadow="md"
+                        >
+                          {event.discountType === 'fixed'
+                            ? `${(event.discountValue || 0).toLocaleString()}원 할인`
+                            : `${event.discountValue || 0}% 할인`}
+                        </Badge>
+                      </Box>
+                      <Box
+                        position="absolute"
+                        bottom={0}
+                        left={0}
+                        right={0}
+                        p={6}
+                        color="white"
+                      >
+                        <Flex direction="column" gap={2}>
+                          <Text fontSize="sm" fontWeight="500" opacity={0.9}>
+                            {event.hotelName} |{' '}
+                            {(event.applicableRoomTypes || []).join(', ') ||
+                              '모든 객실'}
+                          </Text>
+                          <Text
+                            fontSize="2xl"
+                            fontWeight="700"
+                            lineHeight="1.2"
+                          >
+                            {event.eventName || '특가 이벤트'}
+                          </Text>
+                          <Text fontSize="sm" opacity={0.8} mt={1}>
+                            {parsedStartDate &&
+                              formatDate(parsedStartDate, 'yyyy.MM.dd')}{' '}
+                            ~{' '}
+                            {parsedEndDate &&
+                              formatDate(parsedEndDate, 'yyyy.MM.dd')}
+                          </Text>
+                        </Flex>
+                      </Box>
                     </Box>
-                  </Box>
-                ))}
+                  );
+                })}
               </SimpleGrid>
             ) : (
               <Text textAlign="center" color="gray.500" pb={4}>
