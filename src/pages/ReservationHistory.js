@@ -105,29 +105,36 @@ const ReservationHistory = () => {
   const enrichReservations = useCallback(
     async (reservations) => {
       const hotelIds = [...new Set(reservations.map((r) => r.hotelId))];
-  
+
       await Promise.all(
-        hotelIds.map((hid) =>
-          settingsCache.current[hid] ||
-          (settingsCache.current[hid] = fetchCustomerHotelSettings(hid).catch(
-            (err) => {
-              console.error(`Failed to fetch settings for hotel ${hid}:`, err);
-              return {};
-            }
-          ))
+        hotelIds.map(
+          (hid) =>
+            settingsCache.current[hid] ||
+            (settingsCache.current[hid] = fetchCustomerHotelSettings(hid).catch(
+              (err) => {
+                console.error(
+                  `Failed to fetch settings for hotel ${hid}:`,
+                  err
+                );
+                return {};
+              }
+            ))
         )
       );
-  
+
       const enriched = await Promise.all(
         reservations.map(async (r) => {
           if (!r || !r.reservationId) {
-            console.warn('[enrichReservations] Skipping invalid reservation:', r);
+            console.warn(
+              '[enrichReservations] Skipping invalid reservation:',
+              r
+            );
             return null;
           }
-  
+
           const settings = await settingsCache.current[r.hotelId];
           let photoUrl = r.photoUrl;
-  
+
           if (!photoUrl || photoUrl === '/assets/default-room1.jpg') {
             const cacheKey = `${r.hotelId}::${r.roomInfo}`;
             if (!photosCache.current[cacheKey]) {
@@ -158,7 +165,7 @@ const ReservationHistory = () => {
               }
             );
           }
-  
+
           return {
             ...r,
             _id: r.reservationId, // 서버에서 제공된 reservationId 사용
@@ -173,7 +180,7 @@ const ReservationHistory = () => {
           };
         })
       );
-  
+
       // 유효한 예약만 필터링
       return enriched.filter((reservation) => reservation !== null);
     },
@@ -244,7 +251,13 @@ const ReservationHistory = () => {
     } finally {
       setIsLoadingPast(false);
     }
-  }, [deletedReservationIds, isPastReservation, enrichReservations, toast, fetchRawHistory]);
+  }, [
+    deletedReservationIds,
+    isPastReservation,
+    enrichReservations,
+    toast,
+    fetchRawHistory,
+  ]);
 
   const handleCancel = useCallback(
     async (id) => {
@@ -257,7 +270,9 @@ const ReservationHistory = () => {
           duration: 3000,
           isClosable: true,
         });
-        const updated = activeReservations.filter((r) => r.reservationId !== id);
+        const updated = activeReservations.filter(
+          (r) => r.reservationId !== id
+        );
         setActiveReservations(updated);
         saveActiveReservationsToCache(updated);
         rawHistoryRef.current = null;
@@ -287,7 +302,9 @@ const ReservationHistory = () => {
       duration: 3000,
       isClosable: true,
     });
-    const updatedActive = activeReservations.filter((r) => r.reservationId !== id);
+    const updatedActive = activeReservations.filter(
+      (r) => r.reservationId !== id
+    );
     setActiveReservations(updatedActive);
     saveActiveReservationsToCache(updatedActive);
     const updatedPast = pastReservations.filter((r) => r.reservationId !== id);
@@ -361,8 +378,14 @@ const ReservationHistory = () => {
 
   useEffect(() => {
     if (!socket?.emit || !customer?._id) return;
+
+    const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630'; // 첫 번째 예약의 hotelId 사용
+
     socket.emit('subscribeToReservationUpdates', customer._id);
     socket.on('reservationUpdated', (upd) => {
+      // hotelId가 일치하는 업데이트만 처리 (선택적)
+      if (upd.hotelId && upd.hotelId !== defaultHotelId) return;
+
       toast({
         title: '예약 상태 변경',
         description: `예약 ${upd.reservationId} 상태가 변경되었습니다.`,

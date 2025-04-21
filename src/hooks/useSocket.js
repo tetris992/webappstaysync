@@ -1,19 +1,28 @@
-// src/hooks/useSocket.js
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
+import { useAuth } from '../contexts/AuthContext';
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004';
 
 const useSocket = () => {
+  const { customer } = useAuth();
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('customerToken');
-    if (!token) return;
+    if (!token || !customer?._id) return;
+
+    // 기본 hotelId 설정 (필요에 따라 동적으로 변경)
+    const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630'; // 첫 번째 예약의 hotelId 사용
 
     const socketInstance = io(BASE_URL, {
-      query: { customerToken: token },
+      query: {
+        customerToken: token,
+        type: 'customer',
+        hotelId: defaultHotelId, // hotelId 추가
+        customerId: customer._id,
+      },
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -50,7 +59,7 @@ const useSocket = () => {
       console.log('WebSocket disconnected');
       setIsConnected(false);
     };
-  }, []);
+  }, [customer]);
 
   return { socket, isConnected };
 };
