@@ -58,7 +58,6 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     eventUuid,
   } = reservation || {};
 
-  // eventUuid 사용 (디버깅 로그)
   console.log(
     `[ReservationCard] Event UUID for reservation ${_id}: ${eventUuid}`
   );
@@ -73,7 +72,22 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
   const toast = useToast();
   const [isMapOpen, setIsMapOpen] = useState(false);
 
-  // 예약 취소 가능 여부 확인
+  // 할인 금액 계산 (소수점 버림)
+  const discountAmount =
+    discountType === 'percentage' && safeDiscount > 0
+      ? Math.floor(safeOriginalPrice * (safeDiscount / 100))
+      : discountType === 'fixed' && safeFixedDiscount > 0
+      ? safeFixedDiscount
+      : 0;
+
+  console.log('[ReservationCard] Discount info:', {
+    discount,
+    fixedDiscount,
+    discountType,
+    discountAmount,
+    eventName,
+  });
+
   const getCancellationStatus = () => {
     if (!reservationDate || !checkIn) {
       console.log('Required dates missing:', { reservationDate, checkIn });
@@ -203,28 +217,38 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
   };
 
   const handleCopyAddress = () => {
-    if (address) {
-      navigator.clipboard
-        .writeText(address)
-        .then(() => {
-          toast({
-            title: '주소 복사 완료',
-            description: '호텔 주소가 클립보드에 복사되었습니다.',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
-        })
-        .catch((error) => {
-          toast({
-            title: '주소 복사 실패',
-            description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
-            status: 'error',
-            duration: 3000,
-            isClosable: true,
-          });
-        });
+    if (!address) {
+      toast({
+        title: '주소 정보 없음',
+        description: '복사할 주소가 없습니다.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
     }
+
+    navigator.clipboard
+      .writeText(address)
+      .then(() => {
+        toast({
+          title: '주소 복사 완료',
+          description: '호텔 주소가 클립보드에 복사되었습니다.',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      })
+      .catch((error) => {
+        console.error('[ReservationCard] 주소 복사 실패:', error);
+        toast({
+          title: '주소 복사 실패',
+          description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      });
   };
 
   return (
@@ -251,6 +275,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
           w="100%"
           objectFit="cover"
           borderRadius="md"
+          onError={(e) => (e.target.src = '../assets/default-room1.jpg')}
         />
         <VStack align="start" spacing={2}>
           <Text fontWeight="bold" fontSize="lg">
@@ -308,7 +333,6 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
             </Text>
             <Text fontSize="sm">{numDays || 1}박</Text>
 
-            {/* 이벤트 정보 표시 */}
             {eventName && (
               <>
                 <Text fontSize="sm" color="gray.600">
@@ -320,7 +344,6 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
               </>
             )}
 
-            {/* 할인 정보 표시 */}
             {(safeDiscount > 0 || safeFixedDiscount > 0) && (
               <>
                 <Text fontSize="sm" color="gray.600">
@@ -339,9 +362,9 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                 <Text fontSize="sm" fontWeight="medium" color="red.500">
                   {discountType === 'fixed' && safeFixedDiscount > 0
                     ? `${safeFixedDiscount.toLocaleString()}원 할인 적용`
-                    : safeDiscount > 0
-                    ? `${safeDiscount}% 할인 적용`
-                    : '할인 없음'}
+                    : discountType === 'percentage' && safeDiscount > 0
+                    ? `${safeDiscount.toFixed(1)}% 할인 적용`
+                    : '할인 정보 없음'}
                 </Text>
               </>
             )}
@@ -428,7 +451,6 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
         </VStack>
       </VStack>
 
-      {/* 지도 모달 */}
       <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">
         <ModalOverlay />
         <ModalContent>

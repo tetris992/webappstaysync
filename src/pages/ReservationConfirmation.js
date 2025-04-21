@@ -45,7 +45,7 @@ const ReservationConfirmation = () => {
   const [hotelInfo, setHotelInfo] = useState(null);
   const [hotelPhoneNumber, setHotelPhoneNumber] = useState(null);
   const [coordinates, setCoordinates] = useState(null);
-  const [roomImage, setRoomImage] = useState('/assets/default-room1.jpg');
+  const [roomImage, setRoomImage] = useState(null); // 초기값 null로 변경
   const [checkIn, setCheckIn] = useState(null);
   const [checkOut, setCheckOut] = useState(null);
   const [price, setPrice] = useState(0);
@@ -121,10 +121,11 @@ const ReservationConfirmation = () => {
           });
         }
 
+        // 객실 사진 로드
         const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
-        if (photosData?.roomPhotos?.length) {
-          setRoomImage(photosData.roomPhotos[0].photoUrl);
-        }
+        const s3PhotoUrl = photosData?.roomPhotos?.[0]?.photoUrl || null;
+        console.log('[ReservationConfirmation] Loaded photo URL:', s3PhotoUrl);
+        setRoomImage(s3PhotoUrl);
 
         const inTime = settings.checkInTime || '15:00';
         const outTime = settings.checkOutTime || '11:00';
@@ -209,6 +210,26 @@ const ReservationConfirmation = () => {
       return navigate('/login');
     }
 
+    // photoUrl이 없거나 디폴트 이미지인 경우 재확인
+    let finalPhotoUrl = roomImage;
+    if (!roomImage) {
+      try {
+        const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
+        finalPhotoUrl =
+          photosData?.roomPhotos?.[0]?.photoUrl || '/assets/default-room1.jpg';
+        console.log(
+          '[ReservationConfirmation] Fallback photo URL:',
+          finalPhotoUrl
+        );
+      } catch (err) {
+        console.error(
+          '[ReservationConfirmation] Fallback photo fetch failed:',
+          err
+        );
+        finalPhotoUrl = '/assets/default-room1.jpg';
+      }
+    }
+
     const finalReservationData = {
       hotelId,
       siteName: '단잠',
@@ -248,7 +269,7 @@ const ReservationConfirmation = () => {
       notificationHistory: [],
       sentCreate: false,
       sentCancel: false,
-      photoUrl: roomImage,
+      photoUrl: finalPhotoUrl,
     };
 
     try {
@@ -262,12 +283,11 @@ const ReservationConfirmation = () => {
         duration: 3000,
         isClosable: true,
       });
-      // 예약이 성공하면 방금 선택한 이미지 URL과 새로 발급된 ID를 같이 보냅니다.
       navigate('/history', {
         replace: true,
         state: {
           newReservationId: res.reservationId,
-          newPhotoUrl: roomImage,
+          newPhotoUrl: finalPhotoUrl,
         },
       });
     } catch (err) {
@@ -284,7 +304,7 @@ const ReservationConfirmation = () => {
     }
   };
 
-  const handleCopyAddress = () => {
+  const handleCopyAddress = async () => {
     if (!hotelInfo?.address) {
       toast({
         title: '주소 정보 없음',
@@ -295,27 +315,26 @@ const ReservationConfirmation = () => {
       });
       return;
     }
-    navigator.clipboard
-      .writeText(hotelInfo.address)
-      .then(() => {
-        toast({
-          title: '주소 복사 완료',
-          description: '주소가 클립보드에 복사되었습니다.',
-          status: 'success',
-          duration: 2000,
-          isClosable: true,
-        });
-      })
-      .catch((err) => {
-        console.error('[ReservationConfirmation] 주소 복사 실패:', err);
-        toast({
-          title: '주소 복사 실패',
-          description: '주소를 복사하는 데 실패했습니다.',
-          status: 'error',
-          duration: 2000,
-          isClosable: true,
-        });
+
+    try {
+      await navigator.clipboard.writeText(hotelInfo.address);
+      toast({
+        title: '주소 복사 완료',
+        description: '주소가 클립보드에 복사되었습니다.',
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
       });
+    } catch (err) {
+      console.error('[ReservationConfirmation] 주소 복사 실패:', err);
+      toast({
+        title: '주소 복사 실패',
+        description: `주소를 복사하는 데 실패했습니다: ${err.message}`,
+        status: 'error',
+        duration: 2000,
+        isClosable: true,
+      });
+    }
   };
 
   const handleTMapNavigation = () => {
@@ -425,7 +444,7 @@ const ReservationConfirmation = () => {
           <VStack spacing={4} align="stretch">
             <Box bg="white" rounded="lg" overflow="hidden">
               <Image
-                src={roomImage}
+                src={roomImage || '/assets/default-room1.jpg'}
                 alt={roomInfo}
                 objectFit="cover"
                 w="100%"
