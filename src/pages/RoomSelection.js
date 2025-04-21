@@ -96,6 +96,23 @@ const RoomSelection = () => {
     ? format(dateRange[0].endDate, 'yyyy-MM-dd')
     : '';
 
+  // 이벤트 기간과 예약 기간 교집합 계산 함수
+  const calculateEventDays = (checkIn, checkOut, eventStart, eventEnd) => {
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    const eventStartDate = new Date(eventStart);
+    const eventEndDate = new Date(eventEnd);
+
+    // 이벤트 종료일은 포함되므로 하루 추가
+    eventEndDate.setDate(eventEndDate.getDate() + 1);
+
+    const start = new Date(Math.max(checkInDate, eventStartDate));
+    const end = new Date(Math.min(checkOutDate, eventEndDate));
+
+    const days = Math.max(0, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+    return days;
+  };
+
   const calculateDiscount = useCallback(
     (roomInfo, checkIn, checkOut) => {
       if (!hotelSettings?.events || !checkIn || !checkOut) {
@@ -105,6 +122,10 @@ const RoomSelection = () => {
           discountType: null,
           eventName: null,
           eventUuid: null,
+          eventStartDate: null,
+          eventEndDate: null,
+          eventDays: 0,
+          totalFixedDiscount: 0,
         };
       }
       const roomKey = roomInfo.toLowerCase();
@@ -124,8 +145,18 @@ const RoomSelection = () => {
       let selectedDiscountType = null;
       let selectedEventName = null;
       let selectedEventUuid = null;
+      let selectedEventStartDate = null;
+      let selectedEventEndDate = null;
+      let eventDays = 0;
+      let totalFixedDiscount = 0;
 
       applicableEvents.forEach((event) => {
+        const currentEventDays = calculateEventDays(
+          checkIn,
+          checkOut,
+          event.startDate,
+          event.endDate
+        );
         if (
           event.discountType === 'percentage' &&
           event.discountValue > maxDiscount
@@ -135,6 +166,9 @@ const RoomSelection = () => {
           selectedDiscountType = 'percentage';
           selectedEventName = event.eventName;
           selectedEventUuid = event.uuid;
+          selectedEventStartDate = event.startDate;
+          selectedEventEndDate = event.endDate;
+          eventDays = currentEventDays;
         } else if (
           event.discountType === 'fixed' &&
           event.discountValue > maxFixedDiscount
@@ -144,6 +178,10 @@ const RoomSelection = () => {
           selectedDiscountType = 'fixed';
           selectedEventName = event.eventName;
           selectedEventUuid = event.uuid;
+          selectedEventStartDate = event.startDate;
+          selectedEventEndDate = event.endDate;
+          eventDays = currentEventDays;
+          totalFixedDiscount = maxFixedDiscount * eventDays;
         }
       });
 
@@ -151,9 +189,13 @@ const RoomSelection = () => {
         roomInfo,
         discount: maxDiscount,
         fixedDiscount: maxFixedDiscount,
+        totalFixedDiscount,
         discountType: selectedDiscountType,
         eventName: selectedEventName,
         eventUuid: selectedEventUuid,
+        eventStartDate: selectedEventStartDate,
+        eventEndDate: selectedEventEndDate,
+        eventDays,
       });
 
       return {
@@ -162,6 +204,10 @@ const RoomSelection = () => {
         discountType: selectedDiscountType,
         eventName: selectedEventName,
         eventUuid: selectedEventUuid,
+        eventStartDate: selectedEventStartDate,
+        eventEndDate: selectedEventEndDate,
+        eventDays,
+        totalFixedDiscount,
       };
     },
     [hotelSettings]
@@ -263,6 +309,10 @@ const RoomSelection = () => {
             discountType,
             eventName,
             eventUuid,
+            eventStartDate,
+            eventEndDate,
+            eventDays,
+            totalFixedDiscount,
           } = calculateDiscount(room.roomInfo, checkIn, checkOut);
           const dayStayPrice = room.price;
           const dayUsePrice = Math.round(dayStayPrice * 0.5);
@@ -275,6 +325,10 @@ const RoomSelection = () => {
             discountType,
             eventName,
             eventUuid,
+            eventStartDate,
+            eventEndDate,
+            eventDays,
+            totalFixedDiscount,
             dayStayPrice,
             dayUsePrice,
           };
@@ -405,7 +459,11 @@ const RoomSelection = () => {
     fixedDiscount,
     discountType,
     eventName,
-    eventUuid
+    eventUuid,
+    eventStartDate,
+    eventEndDate,
+    eventDays,
+    totalFixedDiscount
   ) => {
     const nights = differenceInCalendarDays(
       dateRange[0].endDate,
@@ -414,8 +472,8 @@ const RoomSelection = () => {
     const originalPrice = perNightPrice * nights;
     let totalPrice;
 
-    if (discountType === 'fixed' && fixedDiscount > 0) {
-      totalPrice = Math.max(0, originalPrice - fixedDiscount);
+    if (discountType === 'fixed' && totalFixedDiscount > 0) {
+      totalPrice = Math.max(0, originalPrice - totalFixedDiscount);
     } else if (discountType === 'percentage' && discount > 0) {
       totalPrice = Math.round(originalPrice * (1 - discount / 100));
     } else {
@@ -428,9 +486,13 @@ const RoomSelection = () => {
       totalPrice,
       discount,
       fixedDiscount,
+      totalFixedDiscount,
       discountType,
       eventName,
       eventUuid,
+      eventStartDate,
+      eventEndDate,
+      eventDays,
     });
 
     navigate('/confirm', {
@@ -446,6 +508,8 @@ const RoomSelection = () => {
         discountType,
         eventName,
         eventUuid,
+        eventStartDate,
+        eventEndDate,
         numNights: nights,
         specialRequests: null,
       },
@@ -835,13 +899,17 @@ const RoomSelection = () => {
                       room.fixedDiscount,
                       room.discountType,
                       room.eventName,
-                      room.eventUuid
+                      room.eventUuid,
+                      room.eventStartDate,
+                      room.eventEndDate,
+                      room.eventDays,
+                      room.totalFixedDiscount
                     )
                   }
                   hotelSettings={{
                     discountInfo:
                       room.discountType === 'fixed' && room.fixedDiscount > 0
-                        ? `${room.fixedDiscount.toLocaleString()}원 할인`
+                        ? `${room.fixedDiscount.toLocaleString()}원/박 할인`
                         : room.discount > 0
                         ? `${room.discount}% 할인`
                         : null,
@@ -851,6 +919,7 @@ const RoomSelection = () => {
                             originalPrice: room.dayStayPrice,
                             discountRate: room.discount,
                             fixedDiscount: room.fixedDiscount,
+                            totalFixedDiscount: room.totalFixedDiscount,
                             discountType: room.discountType,
                           }
                         : null,

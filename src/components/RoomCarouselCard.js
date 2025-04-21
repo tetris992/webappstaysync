@@ -41,21 +41,16 @@ const RoomCarouselCard = ({
   const formattedPrice = typeof price === 'number' ? price : 0;
   const formattedStock = typeof stock === 'number' ? stock : 0;
   const formattedNumDays = typeof numDays === 'number' ? numDays : 0;
-  const discount = hotelSettings?.specialPrice?.discountRate || 0;
-  const fixedDiscount = hotelSettings?.specialPrice?.fixedDiscount || 0;
-  const discountType = hotelSettings?.specialPrice?.discountType || null;
+  const totalFixedDiscount =
+    hotelSettings?.specialPrice?.totalFixedDiscount || 0;
   const originalPrice = formattedPrice;
-  const discountedPrice =
-    discountType === 'fixed'
-      ? originalPrice - fixedDiscount
-      : discount > 0
-      ? Math.round(originalPrice * (1 - discount / 100))
-      : originalPrice;
+  const discountedPrice = originalPrice - totalFixedDiscount;
   const totalPrice =
     formattedNumDays > 0 ? discountedPrice * formattedNumDays : discountedPrice;
 
   const eventName = hotelSettings?.eventName || null;
   const badgeLabel = eventName ? eventName : null;
+  const discountInfo = hotelSettings?.discountInfo || null; // hotelSettings.discountInfo 사용
 
   const sliderSettings = {
     dots: true,
@@ -213,7 +208,7 @@ const RoomCarouselCard = ({
         </Flex>
         <Flex justify="space-between" align="center" mb={1}>
           <Box>
-            {(discount > 0 || fixedDiscount > 0) && (
+            {totalFixedDiscount > 0 && (
               <Text
                 fontSize={{ base: 'xs', md: 'sm' }}
                 color="gray.600"
@@ -228,7 +223,7 @@ const RoomCarouselCard = ({
             )}
             <Text
               fontSize={{ base: 'sm', md: 'md' }}
-              color={discount > 0 || fixedDiscount > 0 ? 'red.500' : 'gray.700'}
+              color={totalFixedDiscount > 0 ? 'red.500' : 'gray.700'}
               fontWeight="bold"
               whiteSpace="nowrap"
               overflow="hidden"
@@ -236,7 +231,7 @@ const RoomCarouselCard = ({
             >
               {discountedPrice.toLocaleString()}원
             </Text>
-            {discountType === 'fixed' && fixedDiscount > 0 ? (
+            {discountInfo && (
               <Text
                 fontSize={{ base: 'xs', md: 'sm' }}
                 color="red.500"
@@ -245,20 +240,9 @@ const RoomCarouselCard = ({
                 overflow="hidden"
                 textOverflow="ellipsis"
               >
-                {fixedDiscount.toLocaleString()}원 할인 적용
+                {discountInfo}
               </Text>
-            ) : discount > 0 ? (
-              <Text
-                fontSize={{ base: 'xs', md: 'sm' }}
-                color="red.500"
-                fontWeight="medium"
-                whiteSpace="nowrap"
-                overflow="hidden"
-                textOverflow="ellipsis"
-              >
-                {discount}% 할인 적용
-              </Text>
-            ) : null}
+            )}
           </Box>
           <Text
             fontSize={{ base: 'xs', md: 'sm' }}

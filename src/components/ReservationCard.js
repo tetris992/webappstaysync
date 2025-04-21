@@ -25,6 +25,9 @@ import { format } from 'date-fns';
 import { useToast } from '@chakra-ui/react';
 import Map from './Map';
 
+// 기본 이미지 경로 수정
+const defaultRoomImage = '/assets/default-room1.jpg';
+
 // 한국 시간으로 Date 객체 생성하는 함수
 const getKoreanDate = () => {
   const now = new Date();
@@ -67,7 +70,8 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     typeof originalPrice === 'number' ? originalPrice : safePrice;
   const safeDiscount = typeof discount === 'number' ? discount : 0;
   const safeFixedDiscount = typeof fixedDiscount === 'number' ? fixedDiscount : 0;
-  const thumbnail = photoUrl || '../assets/default-room1.jpg';
+  const safeNumDays = typeof numDays === 'number' && numDays > 0 ? numDays : 1;
+  const thumbnail = photoUrl || defaultRoomImage;
   const cardBg = useColorModeValue('white', 'gray.700');
   const toast = useToast();
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -162,11 +166,19 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
   const handleCancelClick = () => {
     if (cancellationStatus.canCancel && onCancelReservation && _id) {
       onCancelReservation(_id);
+    } else if (!onCancelReservation) {
+      toast({
+        title: '취소 기능 오류',
+        description: '취소 기능이 제공되지 않았습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
   const handleAddressClick = () => {
-    if (latitude || longitude) {
+    if (latitude && longitude) {
       setIsMapOpen(true);
     } else {
       toast({
@@ -275,7 +287,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
           w="100%"
           objectFit="cover"
           borderRadius="md"
-          onError={(e) => (e.target.src = '../assets/default-room1.jpg')}
+          onError={(e) => (e.target.src = defaultRoomImage)}
         />
         <VStack align="start" spacing={2}>
           <Text fontWeight="bold" fontSize="lg">
@@ -286,7 +298,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
             <Text fontSize="sm" color="gray.600">
               예약 번호:
             </Text>
-            <Text fontSize="sm">{`WEB-${_id.slice(-8)}`}</Text>
+            <Text fontSize="sm">{`WEB-${_id?.slice(-8) || '알 수 없음'}`}</Text>
 
             <Text fontSize="sm" color="gray.600">
               예약자:
@@ -331,7 +343,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
             <Text fontSize="sm" color="gray.600">
               숙박 일수:
             </Text>
-            <Text fontSize="sm">{numDays || 1}박</Text>
+            <Text fontSize="sm">{safeNumDays}박</Text>
 
             {eventName && (
               <>
@@ -359,13 +371,19 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                 <Text fontSize="sm" color="gray.600">
                   할인:
                 </Text>
-                <Text fontSize="sm" fontWeight="medium" color="red.500">
-                  {discountType === 'fixed' && safeFixedDiscount > 0
-                    ? `${safeFixedDiscount.toLocaleString()}원 할인 적용`
-                    : discountType === 'percentage' && safeDiscount > 0
-                    ? `${safeDiscount.toFixed(1)}% 할인 적용`
-                    : '할인 정보 없음'}
-                </Text>
+                <Flex direction="column" align="start">
+                  <Text fontSize="sm" fontWeight="medium" color="red.600">
+                    {discountType === 'fixed' && safeFixedDiscount > 0 ? (
+                      <>총 {safeFixedDiscount.toLocaleString()}원 ({safeNumDays}박)</>
+                    ) : discountType === 'percentage' && safeDiscount > 0 ? (
+                      <>
+                        총 {discountAmount.toLocaleString()}원
+                      </>
+                    ) : (
+                      '할인 정보 없음'
+                    )}
+                  </Text>
+                </Flex>
               </>
             )}
 
@@ -464,12 +482,16 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
               주소: {address || '주소 정보 없음'}
             </Text>
             <Box h="400px" w="100%">
-              <Map
-                address={address}
-                latitude={latitude}
-                longitude={longitude}
-                onCoordinatesChange={() => {}}
-              />
+              {latitude && longitude ? (
+                <Map
+                  address={address}
+                  latitude={latitude}
+                  longitude={longitude}
+                  onCoordinatesChange={() => {}}
+                />
+              ) : (
+                <Text color="red.500">지도 데이터를 불러올 수 없습니다.</Text>
+              )}
             </Box>
           </ModalBody>
           <ModalFooter>
@@ -479,6 +501,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                 color="teal.600"
                 leftIcon={<FaMapSigns />}
                 onClick={handleTMapNavigation}
+                isDisabled={!latitude || !longitude}
               >
                 T맵으로 길찾기
               </Button>
@@ -487,6 +510,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                 color="gray.600"
                 leftIcon={<FaCopy />}
                 onClick={handleCopyAddress}
+                isDisabled={!address}
               >
                 주소 복사
               </Button>

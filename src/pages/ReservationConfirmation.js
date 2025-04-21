@@ -45,7 +45,7 @@ const ReservationConfirmation = () => {
   const [hotelInfo, setHotelInfo] = useState(null);
   const [hotelPhoneNumber, setHotelPhoneNumber] = useState(null);
   const [coordinates, setCoordinates] = useState(null);
-  const [roomImage, setRoomImage] = useState(null); // 초기값 null로 변경
+  const [roomImage, setRoomImage] = useState(null);
   const [checkIn, setCheckIn] = useState(null);
   const [checkOut, setCheckOut] = useState(null);
   const [price, setPrice] = useState(0);
@@ -72,7 +72,29 @@ const ReservationConfirmation = () => {
     discountType: initDiscountType = null,
     eventName: initEventName = '',
     eventUuid: initEventUuid = '',
+    eventStartDate: initEventStartDate = null,
+    eventEndDate: initEventEndDate = null,
   } = location.state || {};
+
+  // 교집합 날짜 수 계산 함수
+  const calculateEventDays = (checkIn, checkOut, eventStart, eventEnd) => {
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    const eventStartDate = new Date(eventStart);
+    const eventEndDate = new Date(eventEnd);
+
+    // 이벤트 종료일은 포함되므로 하루 추가
+    eventEndDate.setDate(eventEndDate.getDate() + 1);
+
+    const start = new Date(Math.max(checkInDate, eventStartDate));
+    const end = new Date(Math.min(checkOutDate, eventEndDate));
+
+    const days = Math.max(
+      0,
+      Math.ceil((end - start) / (1000 * 60 * 60 * 24))
+    );
+    return days;
+  };
 
   const numNights =
     stateCheckIn && stateCheckOut
@@ -84,6 +106,32 @@ const ReservationConfirmation = () => {
           1
         )
       : 1;
+
+  // 이벤트 기간과 예약 기간 교집합 계산
+  const eventDays =
+    stateCheckIn && stateCheckOut && initEventStartDate && initEventEndDate
+      ? calculateEventDays(
+          stateCheckIn,
+          stateCheckOut,
+          initEventStartDate,
+          initEventEndDate
+        )
+      : 0;
+
+  // 총 정액 할인 금액 계산
+  const totalFixedDiscount = initFixedDiscount * eventDays;
+
+  // 디버깅 로그 추가
+  console.log('[ReservationConfirmation] Event and Discount Info:', {
+    stateCheckIn,
+    stateCheckOut,
+    initEventStartDate,
+    initEventEndDate,
+    eventDays,
+    numNights,
+    initFixedDiscount,
+    totalFixedDiscount,
+  });
 
   const loadHotelInfoAndPhotos = useCallback(
     async (hotelId) => {
@@ -178,7 +226,7 @@ const ReservationConfirmation = () => {
     setPrice(initPrice);
     setOriginalPrice(initOriginal);
     setDiscount(initDiscount);
-    setFixedDiscount(initFixedDiscount);
+    setFixedDiscount(totalFixedDiscount);
     setDiscountType(initDiscountType);
     setEventName(initEventName);
     setEventUuid(initEventUuid);
@@ -189,13 +237,13 @@ const ReservationConfirmation = () => {
     initPrice,
     initOriginal,
     initDiscount,
-    initFixedDiscount,
     initDiscountType,
     initEventName,
     initEventUuid,
     loadHotelInfoAndPhotos,
     toast,
     navigate,
+    totalFixedDiscount,
   ]);
 
   const handleConfirm = async () => {
@@ -248,7 +296,7 @@ const ReservationConfirmation = () => {
       price,
       originalPrice,
       discount,
-      fixedDiscount,
+      fixedDiscount: totalFixedDiscount,
       discountType,
       eventName: eventName || null,
       eventUuid: eventUuid || null,
@@ -271,6 +319,8 @@ const ReservationConfirmation = () => {
       sentCancel: false,
       photoUrl: finalPhotoUrl,
     };
+
+    console.log('Final reservation data:', finalReservationData);
 
     try {
       setIsLoading(true);
@@ -379,18 +429,7 @@ const ReservationConfirmation = () => {
   }
 
   return (
-    <Box
-      bg="gray.50"
-      minH="100vh"
-      display="flex"
-      flexDir="column"
-      overflow="hidden"
-      position="fixed"
-      top={0}
-      left={0}
-      right={0}
-      bottom={0}
-    >
+    <>
       <Box
         position="fixed"
         top={0}
@@ -565,7 +604,7 @@ const ReservationConfirmation = () => {
                     </Text>
                     {discountType === 'fixed' && fixedDiscount > 0 ? (
                       <Text fontSize="xs" color="red.500">
-                        {fixedDiscount.toLocaleString()}원 할인
+                        총 {fixedDiscount.toLocaleString()}원 ({numNights}박)
                       </Text>
                     ) : discount > 0 ? (
                       <Text fontSize="xs" color="red.500">
@@ -660,7 +699,7 @@ const ReservationConfirmation = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </Box>
+    </>
   );
 };
 

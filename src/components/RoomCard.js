@@ -1,3 +1,5 @@
+//webapp/src/components/RoomCard.js
+
 import React from 'react';
 import { Box, Image, Text, Button, Flex, HStack } from '@chakra-ui/react';
 import { FaQuestionCircle } from 'react-icons/fa';

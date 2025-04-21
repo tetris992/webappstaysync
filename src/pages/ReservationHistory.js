@@ -23,6 +23,7 @@ import {
   fetchHotelPhotos,
   fetchCustomerHotelSettings,
 } from '../api/api';
+import { differenceInCalendarDays } from 'date-fns';
 
 const ReservationHistory = () => {
   const navigate = useNavigate();
@@ -166,9 +167,18 @@ const ReservationHistory = () => {
             );
           }
 
+          // 연박 일수 계산
+          const numNights = Math.max(
+            differenceInCalendarDays(
+              new Date(r.checkOut),
+              new Date(r.checkIn)
+            ),
+            1
+          );
+
           return {
             ...r,
-            _id: r.reservationId, // 서버에서 제공된 reservationId 사용
+            _id: r.reservationId,
             photoUrl,
             hotelPhoneNumber:
               settings?.phoneNumber || r.hotelPhoneNumber || '연락처 준비중',
@@ -177,6 +187,7 @@ const ReservationHistory = () => {
             fixedDiscount: r.fixedDiscount || 0,
             discountType: r.discountType || null,
             eventName: r.eventName || null,
+            numNights, // 추가: 연박 일수
           };
         })
       );
@@ -379,11 +390,10 @@ const ReservationHistory = () => {
   useEffect(() => {
     if (!socket?.emit || !customer?._id) return;
 
-    const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630'; // 첫 번째 예약의 hotelId 사용
+    const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630';
 
     socket.emit('subscribeToReservationUpdates', customer._id);
     socket.on('reservationUpdated', (upd) => {
-      // hotelId가 일치하는 업데이트만 처리 (선택적)
       if (upd.hotelId && upd.hotelId !== defaultHotelId) return;
 
       toast({
