@@ -1,3 +1,4 @@
+// api.js
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
@@ -215,7 +216,7 @@ export const customerLoginSocial = async (provider, data) => {
   try {
     const endpoint = `/api/customer/login/social/${provider}`;
 
-    console.log(`[디버깅] 소셜 로그인 시작 - 공급자: ${provider}`);
+    console.log(`[디버깅] 소셜 로그인 시작 - 공급자:shade${provider}`);
     console.log(`[디버깅] 현재 환경: ${process.env.NODE_ENV}`);
     console.log(`[디버깅] API 기본 URL: ${process.env.REACT_APP_API_BASE_URL}`);
 
@@ -535,6 +536,45 @@ export const verifyPhoneOTP = async (phoneNumber, otp) => {
       error.response?.data || error.message
     );
     throw error;
+  }
+};
+
+// 고객의 쿠폰 보관함 조회 API
+export const fetchCustomerCoupons = async (customerId) => {
+  try {
+    const response = await api.get(`/api/customer/coupons/${customerId}`);
+    return response.data.coupons || [];
+  } catch (error) {
+    handleApiError(error, '쿠폰 보관함 조회 실패');
+  }
+};
+
+// 쿠폰 사용 API
+export const useCoupon = async (hotelId, couponCode, reservationId, customerId) => {
+  try {
+    const response = await api.post('/api/hotel-settings/use-coupon', {
+      hotelId,
+      couponCode,
+      reservationId,
+      customerId,
+    });
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '쿠폰 사용 실패');
+  }
+};
+
+// 쿠폰 다운로드 API
+export const downloadCoupon = async (couponUuid, customerId) => {
+  try {
+    const response = await api.post('/api/customer/download-coupon', {
+      couponUuid,
+      customerId,
+    });
+    console.log('[api.js] Coupon downloaded:', response.data);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '쿠폰 다운로드 실패');
   }
 };
 

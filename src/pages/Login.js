@@ -14,17 +14,40 @@ import {
 import { SiKakao } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
 import { initKakao } from '../utils/kakao';
+import { fetchHotelList, fetchCustomerCoupons } from '../api/api';
 
 const Login = () => {
-  const { customer } = useAuth();
+  const { customer, setHotelList, setCustomerCoupons } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const [isKakaoLoading, setIsKakaoLoading] = useState(false);
   const [isKakaoEnabled, setIsKakaoEnabled] = useState(true);
 
   useEffect(() => {
-    if (customer) navigate('/');
-  }, [customer, navigate]);
+    if (customer) {
+      // 로그인 성공 후 호텔 목록과 쿠폰 로드
+      const loadInitialData = async () => {
+        try {
+          const hotelList = await fetchHotelList();
+          setHotelList(hotelList);
+
+          const coupons = await fetchCustomerCoupons(customer._id);
+          setCustomerCoupons(coupons);
+        } catch (error) {
+          console.error('Initial data load failed:', error);
+          toast({
+            title: '데이터 로드 실패',
+            description: error.message || '호텔 목록 및 쿠폰을 불러오지 못했습니다.',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      };
+      loadInitialData();
+      navigate('/');
+    }
+  }, [customer, navigate, setHotelList, setCustomerCoupons, toast]);
 
   useEffect(() => {
     try {
@@ -56,7 +79,7 @@ const Login = () => {
 
       window.Kakao.Auth.authorize({
         redirectUri,
-        scope: 'openid,account_email,phone_number', // OpenID Connect 및 전화번호 요청
+        scope: 'openid,account_email,phone_number',
       });
     } catch (error) {
       toast({

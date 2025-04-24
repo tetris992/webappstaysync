@@ -19,7 +19,7 @@ const MapUpdater = ({ position }) => {
   return null;
 };
 
-const Map = ({ address, latitude, longitude, onCoordinatesChange }) => {
+const Map = ({ address, latitude, longitude, onCoordinatesChange = () => {} }) => {
   const [position, setPosition] = useState([37.5665, 126.978]); // Default: Seoul
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +82,9 @@ const Map = ({ address, latitude, longitude, onCoordinatesChange }) => {
         const newPosition = [latitude, longitude];
         console.log('[Map] Using provided coordinates:', newPosition);
         setPosition(newPosition);
-        onCoordinatesChange({ lat: latitude, lng: longitude });
+        if (typeof onCoordinatesChange === 'function') {
+          onCoordinatesChange({ lat: latitude, lng: longitude });
+        }
         setError(null);
         setLoading(false);
         return;
@@ -122,7 +124,9 @@ const Map = ({ address, latitude, longitude, onCoordinatesChange }) => {
           const newPosition = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
           console.log('[Map] Using Nominatim coordinates:', newPosition);
           setPosition(newPosition);
-          onCoordinatesChange({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+          if (typeof onCoordinatesChange === 'function') {
+            onCoordinatesChange({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+          }
           setError(null);
           setLoading(false);
           return;
@@ -148,10 +152,12 @@ const Map = ({ address, latitude, longitude, onCoordinatesChange }) => {
           ];
           console.log('[Map] Using Kakao coordinates:', newPosition);
           setPosition(newPosition);
-          onCoordinatesChange({
-            lat: parseFloat(kakaoData.documents[0].y),
-            lng: parseFloat(kakaoData.documents[0].x),
-          });
+          if (typeof onCoordinatesChange === 'function') {
+            onCoordinatesChange({
+              lat: parseFloat(kakaoData.documents[0].y),
+              lng: parseFloat(kakaoData.documents[0].x),
+            });
+          }
           setError(null);
         } else {
           console.log('[Map] No coordinates found for address:', address);

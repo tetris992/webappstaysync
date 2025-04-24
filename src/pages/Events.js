@@ -18,13 +18,11 @@ import { FaArrowLeft } from 'react-icons/fa';
 import { fetchHotelList, fetchCustomerHotelSettings } from '../api/api';
 import {
   format,
-  startOfDay,
   addDays,
-  isBefore,
   differenceInCalendarDays,
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { parseDate, formatDate } from '../utils/dateUtils';
+import BottomNavigation from '../components/BottomNavigation';
 
 // 에러 바운더리 컴포넌트
 class ErrorBoundary extends React.Component {
@@ -64,10 +62,6 @@ const Events = () => {
   const toast = useToast();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // 상단바와 하단바 높이 상수
-  const HEADER_HEIGHT = '64px';
-  const BOTTOM_NAV_HEIGHT = '64px';
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -110,12 +104,8 @@ const Events = () => {
           return;
         }
 
-        const todayKST = startOfDay(
-          new Date(
-            new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' })
-          )
-        );
-        console.log('[Events] KST Today:', todayKST);
+        const todayKST = format(new Date(), 'yyyy-MM-dd', { locale: ko }); // KST 기준 오늘 날짜 문자열
+        console.log('[Events] Today (KST):', todayKST);
 
         const eventPromises = validHotels.map(async (hotel) => {
           try {
@@ -123,30 +113,39 @@ const Events = () => {
               `[Events] Fetching settings for hotelId: ${hotel.hotelId}`
             );
             const settings = await fetchCustomerHotelSettings(hotel.hotelId, {
-              checkIn: format(todayKST, 'yyyy-MM-dd', { locale: ko }),
-              checkOut: format(todayKST, 'yyyy-MM-dd', { locale: ko }),
+              checkIn: todayKST,
+              checkOut: todayKST,
             });
             console.log(`[Events] Settings for ${hotel.hotelId}:`, settings);
-            const hotelEvents = (settings.events || []).map((event) => {
-              console.log(
-                `[Events] Raw event dates for ${hotel.hotelId}:`,
-                event.startDate,
-                event.endDate
-              );
-              return {
-                ...event,
-                uuid:
-                  event.uuid ||
-                  `event-${hotel.hotelId}-${Math.random()
-                    .toString(36)
-                    .slice(2)}`,
-                hotelId: hotel.hotelId,
-                hotelName:
-                  settings.hotelName || hotel.hotelName || '알 수 없는 호텔',
-                address: settings.address || hotel.address || null,
-              };
-            });
-            console.log(`[Events] Events for ${hotel.hotelId}:`, hotelEvents);
+            const hotelEvents = (settings.events || [])
+              .filter((event) => {
+                // 현재 날짜가 이벤트 기간 내에 있는지 확인
+                return (
+                  event.isActive &&
+                  event.startDate <= todayKST &&
+                  event.endDate >= todayKST
+                );
+              })
+              .map((event) => {
+                console.log(
+                  `[Events] Event for ${hotel.hotelId}:`,
+                  event.startDate,
+                  event.endDate
+                );
+                return {
+                  ...event,
+                  uuid:
+                    event.uuid ||
+                    `event-${hotel.hotelId}-${Math.random()
+                      .toString(36)
+                      .slice(2)}`,
+                  hotelId: hotel.hotelId,
+                  hotelName:
+                    settings.hotelName || hotel.hotelName || '알 수 없는 호텔',
+                  address: settings.address || hotel.address || null,
+                };
+              });
+            console.log(`[Events] Active Events for ${hotel.hotelId}:`, hotelEvents);
             return hotelEvents;
           } catch (error) {
             console.error(
@@ -168,7 +167,7 @@ const Events = () => {
 
         const allEvents = (await Promise.all(eventPromises)).flat();
         console.log(
-          '[Events] All events:',
+          '[Events] All active events:',
           allEvents.map((e) => ({
             uuid: e.uuid,
             startDate: e.startDate,
@@ -216,46 +215,36 @@ const Events = () => {
       discountValue: event.discountValue,
     });
 
-    const todayKST = startOfDay(
-      new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
-    );
-    const parsedStartDate = parseDate(event.startDate);
-    const parsedEndDate = parseDate(event.endDate);
+    const todayKST = format(new Date(), 'yyyy-MM-dd', { locale: ko });
+    const parsedStartDate = event.startDate; // 문자열 그대로 사용
+    const parsedEndDate = event.endDate;     // 문자열 그대로 사용
 
     // startDate와 endDate 간의 일수 차이 계산
     const eventDuration =
-      parsedStartDate && parsedEndDate
-        ? differenceInCalendarDays(parsedEndDate, parsedStartDate)
-        : 1;
+      differenceInCalendarDays(
+        new Date(parsedEndDate),
+        new Date(parsedStartDate)
+      ) || 1;
 
     // startDate가 오늘보다 이전이면 오늘로 조정
     const adjustedCheckIn =
-      parsedStartDate && isBefore(parsedStartDate, todayKST)
-        ? todayKST
-        : parsedStartDate;
+      parsedStartDate < todayKST ? todayKST : parsedStartDate;
 
     // endDate도 startDate 조정에 맞춰 업데이트
-    const adjustedCheckOut = adjustedCheckIn
-      ? addDays(adjustedCheckIn, Math.max(eventDuration, 1))
-      : parsedEndDate;
+    const adjustedCheckOut = format(
+      addDays(new Date(adjustedCheckIn), Math.max(eventDuration, 1)),
+      'yyyy-MM-dd'
+    );
 
     console.log('[Events] Adjusted dates:', {
-      adjustedCheckIn: adjustedCheckIn
-        ? format(adjustedCheckIn, 'yyyy-MM-dd')
-        : 'N/A',
-      adjustedCheckOut: adjustedCheckOut
-        ? format(adjustedCheckOut, 'yyyy-MM-dd')
-        : 'N/A',
+      adjustedCheckIn,
+      adjustedCheckOut,
     });
 
     navigate(`/rooms/${event.hotelId}`, {
       state: {
-        checkIn: adjustedCheckIn
-          ? formatDate(adjustedCheckIn, 'yyyy-MM-dd')
-          : '',
-        checkOut: adjustedCheckOut
-          ? formatDate(adjustedCheckOut, 'yyyy-MM-dd')
-          : '',
+        checkIn: adjustedCheckIn,
+        checkOut: adjustedCheckOut,
         applicableRoomTypes: event.applicableRoomTypes || [],
         discountType: event.discountType,
         discountValue: event.discountValue,
@@ -265,13 +254,28 @@ const Events = () => {
 
   return (
     <ErrorBoundary>
-      <Box display="flex" flexDir="column" h="100vh" overflow="hidden">
+      <Container
+        maxW="container.lg"
+        p={0}
+        minH="100vh"
+        display="flex"
+        flexDirection="column"
+        w="100%"
+        overflow="hidden"
+        position="fixed"
+        top={0}
+        left={0}
+        right={0}
+        bottom={0}
+        overflowX="hidden"
+        bg="gray.50"
+      >
         <Box
           position="fixed"
           top={0}
           left={0}
           right={0}
-          h={HEADER_HEIGHT}
+          h="64px"
           bg="white"
           borderBottom="1px"
           borderColor="gray.200"
@@ -296,30 +300,21 @@ const Events = () => {
         </Box>
 
         <Box
-          mt={HEADER_HEIGHT}
-          h={`calc(100vh - ${HEADER_HEIGHT} - ${BOTTOM_NAV_HEIGHT})`}
+          flex="1"
           overflowY="auto"
-          bg="gray.50"
+          overflowX="hidden"
+          position="relative"
+          pt="64px" // 헤더 높이
+          pb={{ base: '58px', md: '50px' }} // BottomNavigation 높이(58px)에 맞춰 조정
           css={{
             '&::-webkit-scrollbar': {
-              width: '4px',
+              display: 'none',
             },
-            '&::-webkit-scrollbar-track': {
-              width: '6px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: 'gray.200',
-              borderRadius: '24px',
-            },
-            scrollBehavior: 'smooth',
-            WebkitOverflowScrolling: 'touch',
+            msOverflowStyle: 'none',
+            scrollbarWidth: 'none',
           }}
         >
-          <Container
-            maxW="container.lg"
-            py={{ base: 4, md: 6 }}
-            pb="calc(32px + env(safe-area-inset-bottom))"
-          >
+          <Container maxW="container.lg" py={{ base: 4, md: 6 }}>
             {loading ? (
               <Flex justify="center" py={8}>
                 <Spinner size="xl" />
@@ -327,8 +322,6 @@ const Events = () => {
             ) : events.length > 0 ? (
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
                 {events.map((event, index) => {
-                  const parsedStartDate = parseDate(event.startDate);
-                  const parsedEndDate = parseDate(event.endDate);
                   return (
                     <Box
                       key={`${event.uuid}-${index}`}
@@ -400,11 +393,8 @@ const Events = () => {
                             {event.eventName || '특가 이벤트'}
                           </Text>
                           <Text fontSize="sm" opacity={0.8} mt={1}>
-                            {parsedStartDate &&
-                              formatDate(parsedStartDate, 'yyyy.MM.dd')}{' '}
-                            ~{' '}
-                            {parsedEndDate &&
-                              formatDate(parsedEndDate, 'yyyy.MM.dd')}
+                            {event.startDate.replace(/-/g, '.')} ~{' '}
+                            {event.endDate.replace(/-/g, '.')}
                           </Text>
                         </Flex>
                       </Box>
@@ -419,7 +409,9 @@ const Events = () => {
             )}
           </Container>
         </Box>
-      </Box>
+
+        <BottomNavigation />
+      </Container>
     </ErrorBoundary>
   );
 };

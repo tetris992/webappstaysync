@@ -19,7 +19,7 @@ import {
   PopoverArrow,
   Badge,
 } from '@chakra-ui/react';
-import { SearchIcon, CalendarIcon } from '@chakra-ui/icons';
+import { SearchIcon, CalendarIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
@@ -29,7 +29,10 @@ import { format, addDays, startOfDay, addMonths, isValid } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
-import { fetchHotelList } from '../api/api';
+import { fetchHotelList, fetchCustomerCoupons } from '../api/api';
+import api from '../api/api';
+import { useToast } from '@chakra-ui/react';
+import BottomNavigation from '../components/BottomNavigation';
 
 // 기본 호텔 데이터 (API 호출 실패 시 사용)
 const recommendedHotels = [
@@ -42,96 +45,6 @@ const recommendedHotels = [
     tag: 'BEST HOT',
     color: 'blue',
     address: '부산 해운대구 해운대해변로 264',
-  },
-  {
-    id: 2,
-    name: '서울 호텔',
-    image: '/assets/hotel2.jpg',
-    rating: 4.8,
-    description: '도심 속 프리미엄 스위트',
-    tag: 'SPECIAL',
-    color: 'purple',
-    address: '서울 중구 을지로 123',
-  },
-  {
-    id: 3,
-    name: '제주 호텔',
-    image: '/assets/hotel3.jpg',
-    rating: 4.2,
-    description: '자연과 함께하는 리조트',
-    tag: 'HOT',
-    color: 'green',
-    address: '제주 서귀포시 중문관광로 72',
-  },
-  {
-    id: 4,
-    name: '대구 호텔',
-    image: '/assets/hotel4.jpg',
-    rating: 4.6,
-    description: '비즈니스 여행객 추천',
-    tag: 'NEW',
-    color: 'orange',
-    address: '대구 중구 국채보상로 660',
-  },
-  {
-    id: 5,
-    name: '광주 호텔',
-    image: '/assets/hotel5.jpg',
-    rating: 4.7,
-    description: '문화 중심지 인근 호텔',
-    tag: 'BEST HOT',
-    color: 'blue',
-    address: '광주 서구 상무중앙로 110',
-  },
-  {
-    id: 6,
-    name: '인천 호텔',
-    image: '/assets/hotel6.jpg',
-    rating: 4.9,
-    description: '공항 근처 프리미엄 호텔',
-    tag: 'SPECIAL',
-    color: 'purple',
-    address: '인천 중구 인주대로 196',
-  },
-  {
-    id: 7,
-    name: '울산 호텔',
-    image: '/assets/hotel7.jpg',
-    rating: 4.3,
-    description: '산업단지 인근 편리한 위치',
-    tag: 'HOT',
-    color: 'green',
-    address: '울산 남구 삼산로 282',
-  },
-  {
-    id: 8,
-    name: '경주 호텔',
-    image: '/assets/hotel8.jpg',
-    rating: 4.1,
-    description: '역사 문화 체험 호텔',
-    tag: 'NEW',
-    color: 'orange',
-    address: '경주 남산순환로 1000',
-  },
-  {
-    id: 9,
-    name: '춘천 호텔',
-    image: '/assets/hotel9.jpg',
-    rating: 4.4,
-    description: '호수 전망 레이크뷰 호텔',
-    tag: 'BEST HOT',
-    color: 'blue',
-    address: '춘천시 호반로 123',
-  },
-  {
-    id: 10,
-    name: '속초 호텔',
-    image: '/assets/hotel10.jpg',
-    rating: 4.0,
-    description: '해변 산책로 인근 호텔',
-    tag: 'SPECIAL',
-    color: 'purple',
-    address: '속초시 해안로 345',
   },
   {
     id: 11,
@@ -148,6 +61,7 @@ const recommendedHotels = [
 const Home = () => {
   const navigate = useNavigate();
   const { customer } = useAuth();
+  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState([
     {
@@ -161,100 +75,184 @@ const Home = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [coupons, setCoupons] = useState([]);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [error, setError] = useState(null);
 
   // 서버에서 호텔 데이터 가져오기
   useEffect(() => {
     const fetchHotels = async () => {
       try {
         setLoading(true);
-        // fetchHotelList API 사용
+        setError(null);
         const hotelList = await fetchHotelList();
         console.log('서버에서 가져온 호텔 데이터:', hotelList);
 
-        // 호텔 데이터에 추가 정보 설정
         const hotelsWithDetails = hotelList.map((hotel) => ({
           ...hotel,
-          rating: Number((Math.random() * 2 + 3).toFixed(1)), // 소수점 한 자리까지만 표시
-          reviewCount: Math.floor(Math.random() * 100) + 10, // 임의의 리뷰 수
-          price: Math.floor(Math.random() * 100000) + 50000, // 임의의 가격
-          image: '/assets/hotel1.jpg', // 기본 이미지
-          tag: 'HOT', // 기본 태그
-          color: 'blue', // 기본 색상
-          description: hotel.address, // 설명으로 주소 사용
+          rating: Number((Math.random() * 2 + 3).toFixed(1)),
+          reviewCount: Math.floor(Math.random() * 100) + 10,
+          price: Math.floor(Math.random() * 100000) + 50000,
+          image: '/assets/hotel1.jpg',
+          tag: 'HOT',
+          color: 'blue',
+          description: hotel.address,
         }));
 
         setHotels(hotelsWithDetails);
       } catch (error) {
         console.error('호텔 데이터 가져오기 실패:', error);
-        // 오류 발생 시 하드코딩된 데이터 사용
+        setError(error.message || '호텔 목록을 불러오지 못했습니다.');
         setHotels(recommendedHotels);
+        toast({
+          title: '호텔 목록 로드 실패',
+          description: error.message || '호텔 목록을 불러오지 못했습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchHotels();
-  }, []);
+  }, [toast]);
+
+  // 고객 쿠폰 데이터 가져오기
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      if (!customer?._id) return;
+      try {
+        setError(null);
+        const customerCoupons = await fetchCustomerCoupons(customer._id);
+        setCoupons(customerCoupons);
+      } catch (error) {
+        console.error('쿠폰 데이터 가져오기 실패:', error);
+        setError(error.message || '쿠폰을 불러오지 못했습니다.');
+        toast({
+          title: '쿠폰 로드 실패',
+          description: error.message || '쿠폰을 불러오지 못했습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    };
+
+    fetchCoupons();
+  }, [customer, toast]);
+
+  // 다운로드 가능한 쿠폰 가져오기
+  useEffect(() => {
+    const fetchAvailableCoupons = async () => {
+      if (!customer?._id) return;
+      try {
+        setError(null);
+        const response = await api.get('/api/customer/available-coupons');
+        setAvailableCoupons(response.data.coupons || []);
+      } catch (error) {
+        console.error('사용 가능 쿠폰 데이터 가져오기 실패:', error);
+        setError(error.message || '사용 가능 쿠폰을 불러오지 못했습니다.');
+        toast({
+          title: '사용 가능 쿠폰 로드 실패',
+          description: error.message || '사용 가능 쿠폰을 불러오지 못했습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    };
+
+    fetchAvailableCoupons();
+  }, [customer, toast]);
+
+  // 쿠폰 다운로드 처리
+  const handleDownloadCoupon = async (couponUuid) => {
+    try {
+      setError(null);
+      const response = await api.post('/api/customer/download-coupon', {
+        couponUuid,
+        customerId: customer._id,
+      });
+      setCoupons([...coupons, response.data.coupon]);
+      setAvailableCoupons(
+        availableCoupons.filter((coupon) => coupon.couponUuid !== couponUuid)
+      );
+      toast({
+        title: '쿠폰 다운로드 성공',
+        description: '쿠폰이 성공적으로 다운로드되었습니다.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('쿠폰 다운로드 실패:', error);
+      setError(error.message || '쿠폰 다운로드에 실패했습니다.');
+      toast({
+        title: '쿠폰 다운로드 실패',
+        description: error.message || '쿠폰 다운로드에 실패했습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
 
   const handleSearch = () => {
     const checkIn = dateRange[0].startDate;
     const checkOut = dateRange[0].endDate;
     if (!isValid(checkIn) || !isValid(checkOut)) {
-      alert('날짜가 올바르지 않습니다.');
+      toast({
+        title: '날짜 오류',
+        description: '체크인/체크아웃 날짜가 올바르지 않습니다.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
       return;
     }
 
-    // 검색어가 비어있는 경우 모든 호텔 표시
+    const checkInFormatted = format(checkIn, 'yyyy-MM-dd');
+    const checkOutFormatted = format(checkOut, 'yyyy-MM-dd');
+
     if (!searchQuery.trim()) {
       navigate('/hotels', {
         state: {
-          checkIn: format(checkIn, 'yyyy-MM-dd'),
-          checkOut: format(checkOut, 'yyyy-MM-dd'),
+          checkIn: checkInFormatted,
+          checkOut: checkOutFormatted,
           guestCount,
         },
       });
       return;
     }
 
-    // 검색어를 소문자로 변환하고 공백 제거
     const searchLower = searchQuery.toLowerCase().trim();
     console.log('검색어:', searchLower);
 
-    // 검색 결과를 저장할 배열
     const filteredHotels = [];
 
-    // 실제 호텔 데이터 또는 하드코딩된 데이터 사용
     const hotelsToSearch = hotels.length > 0 ? hotels : recommendedHotels;
     console.log('검색 대상 호텔 수:', hotelsToSearch.length);
 
-    // 각 호텔에 대해 검색 수행
     hotelsToSearch.forEach((hotel) => {
-      // 호텔 이름 검색 (hotelName 또는 name 속성 사용)
       const hotelName = hotel.hotelName || hotel.name || '';
       const nameMatch = hotelName.toLowerCase().includes(searchLower);
-
-      // 호텔 설명 검색 (description 속성이 있는 경우)
       const description = hotel.description || '';
       const descMatch = description.toLowerCase().includes(searchLower);
-
-      // 전체 주소 검색 (address 속성 사용)
       const address = hotel.address || '';
       const addrMatch = address.toLowerCase().includes(searchLower);
-
-      // 주소를 부분으로 분해하여 검색 (공백, 쉼표, 구분자로 분리)
       const addressParts = address.toLowerCase().split(/[\s,]+/);
       const addressPartMatch = addressParts.some((part) =>
         part.includes(searchLower)
       );
 
-      // 디버깅을 위한 콘솔 로그
       console.log(`호텔: ${hotelName}, 주소: ${address}`);
       console.log(
         `이름 일치: ${nameMatch}, 설명 일치: ${descMatch}, 주소 일치: ${addrMatch}, 주소 부분 일치: ${addressPartMatch}`
       );
       console.log(`주소 부분: ${addressParts.join(', ')}`);
 
-      // 검색 결과가 있으면 배열에 추가
       if (nameMatch || descMatch || addrMatch || addressPartMatch) {
         console.log(`일치하는 호텔 추가: ${hotelName}`);
         filteredHotels.push(hotel);
@@ -267,13 +265,12 @@ const Home = () => {
       filteredHotels.map((h) => h.hotelName || h.name)
     );
 
-    // 검색 결과가 있는 경우 해당 호텔로 이동
     if (filteredHotels.length > 0) {
       navigate('/hotels', {
         state: {
           searchQuery,
-          checkIn: format(checkIn, 'yyyy-MM-dd'),
-          checkOut: format(checkOut, 'yyyy-MM-dd'),
+          checkIn: checkInFormatted,
+          checkOut: checkOutFormatted,
           guestCount,
           filteredHotels: filteredHotels.map(
             (hotel) => hotel.hotelId || hotel.id
@@ -281,12 +278,11 @@ const Home = () => {
         },
       });
     } else {
-      // 검색 결과가 없는 경우 일반 호텔 목록으로 이동
       navigate('/hotels', {
         state: {
           searchQuery,
-          checkIn: format(checkIn, 'yyyy-MM-dd'),
-          checkOut: format(checkOut, 'yyyy-MM-dd'),
+          checkIn: checkInFormatted,
+          checkOut: checkOutFormatted,
           guestCount,
           noResults: true,
         },
@@ -323,14 +319,21 @@ const Home = () => {
   };
 
   return (
-    <Box
+    <Container
+      maxW="container.lg"
+      p={0}
       minH="100vh"
-      bg="gray.50"
       display="flex"
       flexDirection="column"
       w="100%"
+      overflow="hidden"
+      position="fixed"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
       overflowX="hidden"
-      position="relative"
+      bg="gray.50"
     >
       {/* 상단 헤더 - 고정 위치 */}
       <Box
@@ -503,27 +506,6 @@ const Home = () => {
                   </VStack>
                 </PopoverContent>
               </Popover>
-
-              {!customer && (
-                <HStack spacing={2}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    color="gray.600"
-                    onClick={() => navigate('/login')}
-                  >
-                    로그인
-                  </Button>
-                  <Button
-                    variant="solid"
-                    size="sm"
-                    colorScheme="blue"
-                    onClick={() => navigate('/signup')}
-                  >
-                    회원가입
-                  </Button>
-                </HStack>
-              )}
             </Box>
           </Flex>
         </Container>
@@ -565,27 +547,25 @@ const Home = () => {
       {/* 본문 영역 - 스크롤 가능하도록 설정 */}
       <Box
         flex="1"
-        maxH="calc(100vh - 200px)"
         overflowY="auto"
         overflowX="hidden"
         position="relative"
-        sx={{
+        pt="64px" // 헤더 높이
+        pb={{ base: '58px', md: '50px' }} // BottomNavigation 높이(58px)에 맞춰 조정
+        css={{
           '&::-webkit-scrollbar': {
-            width: '4px',
+            display: 'none',
           },
-          '&::-webkit-scrollbar-track': {
-            width: '6px',
-            background: 'transparent',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: '#CBD5E0',
-            borderRadius: '24px',
-          },
-          scrollBehavior: 'smooth',
-          WebkitOverflowScrolling: 'touch',
+          msOverflowStyle: 'none',
+          scrollbarWidth: 'none',
         }}
       >
         <Container maxW="container.md" py={6}>
+          {error && (
+            <Text color="red.500" textAlign="center" mb={4}>
+              {error}
+            </Text>
+          )}
           <VStack spacing={6} align="stretch">
             <Box w="100%" mb={4}>
               <Button
@@ -745,7 +725,89 @@ const Home = () => {
                       {(customer.points || 0).toLocaleString()}P
                     </Text>
                   </Box>
+                  <Box textAlign="center">
+                    <Text fontSize="xs" color="gray.500">
+                      쿠폰
+                    </Text>
+                    <Text fontSize="md" fontWeight="bold" color="gray.800">
+                      {coupons.length}개
+                    </Text>
+                  </Box>
                 </Flex>
+              </Box>
+            )}
+
+            {customer && (
+              <Box w="100%" mb={4}>
+                <Button
+                  w="100%"
+                  size="lg"
+                  variant="outline"
+                  colorScheme="teal"
+                  onClick={() => navigate('/coupon-wallet')}
+                  borderRadius="xl"
+                  py={6}
+                  fontSize="lg"
+                  fontWeight="bold"
+                  boxShadow="md"
+                  rightIcon={<ChevronRightIcon />}
+                  _hover={{
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'lg',
+                  }}
+                  _active={{
+                    transform: 'translateY(0)',
+                  }}
+                >
+                  쿠폰 보관함
+                </Button>
+              </Box>
+            )}
+
+            {customer && availableCoupons.length > 0 && (
+              <Box w="100%" mb={4}>
+                <Text
+                  fontSize={{ base: 'md', md: 'lg' }}
+                  fontWeight="bold"
+                  mb={3}
+                  color="gray.700"
+                >
+                  사용 가능 쿠폰
+                </Text>
+                <VStack spacing={3}>
+                  {availableCoupons.map((coupon) => (
+                    <Box
+                      key={coupon.couponUuid}
+                      bg="white"
+                      p={4}
+                      rounded="lg"
+                      shadow="sm"
+                      w="100%"
+                    >
+                      <Text fontWeight="bold">{coupon.name}</Text>
+                      <Text fontSize="sm" color="gray.600">
+                        코드: {coupon.code}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        할인:{' '}
+                        {coupon.discountType === 'percentage'
+                          ? `${coupon.discountValue}%`
+                          : `${coupon.discountValue.toLocaleString()}원`}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        유효 기간: {coupon.startDate} ~ {coupon.endDate}
+                      </Text>
+                      <Button
+                        mt={2}
+                        colorScheme="blue"
+                        size="sm"
+                        onClick={() => handleDownloadCoupon(coupon.couponUuid)}
+                      >
+                        다운로드
+                      </Button>
+                    </Box>
+                  ))}
+                </VStack>
               </Box>
             )}
 
@@ -799,7 +861,6 @@ const Home = () => {
                   },
                 }}
               >
-                {/* Dynamic Animation Area */}
                 <Box
                   position="absolute"
                   top={0}
@@ -808,7 +869,6 @@ const Home = () => {
                   bottom={0}
                   overflow="hidden"
                 >
-                  {/* Animated Background */}
                   <Box
                     position="absolute"
                     top={0}
@@ -826,7 +886,6 @@ const Home = () => {
                     }}
                   />
 
-                  {/* Animated Patterns */}
                   {[...Array(20)].map((_, i) => (
                     <Box
                       key={i}
@@ -869,7 +928,6 @@ const Home = () => {
                     />
                   ))}
 
-                  {/* Light Beams */}
                   {[...Array(5)].map((_, i) => (
                     <Box
                       key={i}
@@ -898,7 +956,6 @@ const Home = () => {
                     />
                   ))}
 
-                  {/* Interactive Particles */}
                   {[...Array(30)].map((_, i) => (
                     <Box
                       key={i}
@@ -935,7 +992,6 @@ const Home = () => {
                     />
                   ))}
 
-                  {/* Event Text */}
                   <Box
                     position="absolute"
                     top="50%"
@@ -967,7 +1023,9 @@ const Home = () => {
           </VStack>
         </Container>
       </Box>
-    </Box>
+
+      <BottomNavigation />
+    </Container>
   );
 };
 

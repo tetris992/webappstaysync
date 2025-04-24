@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, Text, Icon, useColorModeValue } from '@chakra-ui/react';
-import { FaHome, FaHistory, FaSignOutAlt, FaHotel } from 'react-icons/fa';
+import { FaHome, FaHistory, FaSignOutAlt, FaHeart } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,26 +27,26 @@ const BottomNavigation = () => {
       icon: FaHome,
       label: '홈',
       onClick: () => navigate('/'),
-      path: '/'
+      path: '/',
     },
     {
-      icon: FaHotel,
-      label: '숙소',
+      icon: FaHeart, // FaHotel -> FaHeart
+      label: '찜 숙소', // 숙소 -> 찜 숙소
       onClick: () => navigate('/hotels'),
-      path: '/hotels'
+      path: '/hotels',
     },
     {
       icon: FaSignOutAlt,
       label: '로그아웃',
       onClick: handleLogout,
-      path: '/logout'
+      path: '/logout',
     },
     {
       icon: FaHistory,
-      label: '나의 내역',
+      label: '나의 예약', // 나의 내역 -> 나의 예약
       onClick: () => navigate('/history'),
-      path: '/history'
-    }
+      path: '/history',
+    },
   ];
 
   return (
@@ -98,4 +98,4 @@ const BottomNavigation = () => {
   );
 };
 
-export default BottomNavigation; 
+export default BottomNavigation;

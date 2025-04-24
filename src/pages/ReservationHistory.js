@@ -24,6 +24,7 @@ import {
   fetchCustomerHotelSettings,
 } from '../api/api';
 import { differenceInCalendarDays } from 'date-fns';
+import BottomNavigation from '../components/BottomNavigation';
 
 const ReservationHistory = () => {
   const navigate = useNavigate();
@@ -167,7 +168,6 @@ const ReservationHistory = () => {
             );
           }
 
-          // 연박 일수 계산
           const numNights = Math.max(
             differenceInCalendarDays(
               new Date(r.checkOut),
@@ -187,12 +187,16 @@ const ReservationHistory = () => {
             fixedDiscount: r.fixedDiscount || 0,
             discountType: r.discountType || null,
             eventName: r.eventName || null,
-            numNights, // 추가: 연박 일수
+            couponDiscount: r.couponDiscount || 0,
+            couponFixedDiscount: r.couponFixedDiscount || 0,
+            couponTotalFixedDiscount: r.couponTotalFixedDiscount || 0,
+            couponCode: r.couponCode || null,
+            couponUuid: r.couponUuid || null,
+            numNights,
           };
         })
       );
 
-      // 유효한 예약만 필터링
       return enriched.filter((reservation) => reservation !== null);
     },
     [isReservationConfirmed]
@@ -409,20 +413,22 @@ const ReservationHistory = () => {
     return () => socket.off?.('reservationUpdated');
   }, [customer, loadHistory, socket, toast]);
 
-  const isOnHistoryPage = location.pathname === '/history';
-
   return (
-    <Box
+    <Container
+      maxW="container.sm"
+      p={0}
       minH="100vh"
-      bg="gray.50"
       display="flex"
       flexDirection="column"
+      w="100%"
+      overflow="hidden"
       position="fixed"
       top={0}
       left={0}
       right={0}
       bottom={0}
-      overflow="hidden"
+      overflowX="hidden"
+      bg="gray.50"
     >
       <Box
         position="fixed"
@@ -453,20 +459,18 @@ const ReservationHistory = () => {
       </Box>
 
       <Box
-        pt="64px"
-        pb="80px"
         flex="1"
-        maxH="calc(100vh - 124px)"
         overflowY="auto"
+        overflowX="hidden"
+        position="relative"
+        pt="64px" // 헤더 높이
+        pb={{ base: '58px', md: '50px' }} // BottomNavigation 높이(58px)에 맞춰 조정
         css={{
-          '&::-webkit-scrollbar': { width: '4px' },
-          '&::-webkit-scrollbar-track': { width: '6px' },
-          '&::-webkit-scrollbar-thumb': {
-            background: 'gray.200',
-            borderRadius: '24px',
+          '&::-webkit-scrollbar': {
+            display: 'none',
           },
-          scrollBehavior: 'smooth',
-          WebkitOverflowScrolling: 'touch',
+          msOverflowStyle: 'none',
+          scrollbarWidth: 'none',
         }}
       >
         <Container maxW="container.sm" py={4}>
@@ -582,41 +586,8 @@ const ReservationHistory = () => {
         </Container>
       </Box>
 
-      <Box
-        position="fixed"
-        bottom={0}
-        left={0}
-        right={0}
-        bg="white"
-        borderTop="1px"
-        borderColor="gray.200"
-        py={2}
-        zIndex={1000}
-        height="60px"
-      >
-        <Container maxW="container.sm">
-          <Flex justify="space-around">
-            <Button variant="ghost" onClick={() => navigate('/')}>
-              홈
-            </Button>
-            <Button variant="ghost" onClick={() => navigate('/rooms')}>
-              숙소
-            </Button>
-            <Button variant="ghost" onClick={() => navigate('/logout')}>
-              로그아웃
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => !isOnHistoryPage && loadHistory()}
-              isDisabled={isOnHistoryPage}
-              isLoading={isLoadingActive && isOnHistoryPage}
-            >
-              나의 내역
-            </Button>
-          </Flex>
-        </Container>
-      </Box>
-    </Box>
+      <BottomNavigation />
+    </Container>
   );
 };
 

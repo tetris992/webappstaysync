@@ -59,6 +59,9 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     discountType = null,
     eventName,
     eventUuid,
+    couponDiscount = 0,
+    couponFixedDiscount = 0,
+    couponCode = null,
   } = reservation || {};
 
   console.log(
@@ -70,6 +73,9 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     typeof originalPrice === 'number' ? originalPrice : safePrice;
   const safeDiscount = typeof discount === 'number' ? discount : 0;
   const safeFixedDiscount = typeof fixedDiscount === 'number' ? fixedDiscount : 0;
+  const safeCouponDiscount = typeof couponDiscount === 'number' ? couponDiscount : 0;
+  const safeCouponFixedDiscount = typeof couponFixedDiscount === 'number' ? couponFixedDiscount : 0;
+  const safeCouponTotalFixedDiscount = safeCouponFixedDiscount * (typeof numDays === 'number' && numDays > 0 ? numDays : 1);
   const safeNumDays = typeof numDays === 'number' && numDays > 0 ? numDays : 1;
   const thumbnail = photoUrl || defaultRoomImage;
   const cardBg = useColorModeValue('white', 'gray.700');
@@ -77,19 +83,31 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
   const [isMapOpen, setIsMapOpen] = useState(false);
 
   // 할인 금액 계산 (소수점 버림)
-  const discountAmount =
+  const eventDiscountAmount =
     discountType === 'percentage' && safeDiscount > 0
       ? Math.floor(safeOriginalPrice * (safeDiscount / 100))
       : discountType === 'fixed' && safeFixedDiscount > 0
       ? safeFixedDiscount
       : 0;
 
+  const couponDiscountAmount =
+    couponDiscount > 0
+      ? Math.floor((safeOriginalPrice - eventDiscountAmount) * (safeCouponDiscount / 100))
+      : safeCouponFixedDiscount > 0
+      ? safeCouponTotalFixedDiscount
+      : 0;
+
   console.log('[ReservationCard] Discount info:', {
-    discount,
-    fixedDiscount,
+    eventDiscount: safeDiscount,
+    fixedDiscount: safeFixedDiscount,
     discountType,
-    discountAmount,
+    eventDiscountAmount,
+    couponDiscount: safeCouponDiscount,
+    couponFixedDiscount: safeCouponFixedDiscount,
+    couponTotalFixedDiscount: safeCouponTotalFixedDiscount,
+    couponDiscountAmount,
     eventName,
+    couponCode,
   });
 
   const getCancellationStatus = () => {
@@ -356,7 +374,18 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
               </>
             )}
 
-            {(safeDiscount > 0 || safeFixedDiscount > 0) && (
+            {couponCode && (
+              <>
+                <Text fontSize="sm" color="gray.600">
+                  적용된 쿠폰:
+                </Text>
+                <Text fontSize="sm" fontWeight="medium" color="teal.600">
+                  {couponCode}
+                </Text>
+              </>
+            )}
+
+            {(safeDiscount > 0 || safeFixedDiscount > 0 || safeCouponDiscount > 0 || safeCouponFixedDiscount > 0) && (
               <>
                 <Text fontSize="sm" color="gray.600">
                   할인 전 금액:
@@ -368,22 +397,42 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                 >
                   {safeOriginalPrice.toLocaleString()}원
                 </Text>
-                <Text fontSize="sm" color="gray.600">
-                  할인:
-                </Text>
-                <Flex direction="column" align="start">
-                  <Text fontSize="sm" fontWeight="medium" color="red.600">
-                    {discountType === 'fixed' && safeFixedDiscount > 0 ? (
-                      <>총 {safeFixedDiscount.toLocaleString()}원 ({safeNumDays}박)</>
-                    ) : discountType === 'percentage' && safeDiscount > 0 ? (
-                      <>
-                        총 {discountAmount.toLocaleString()}원
-                      </>
-                    ) : (
-                      '할인 정보 없음'
-                    )}
-                  </Text>
-                </Flex>
+                {(safeDiscount > 0 || safeFixedDiscount > 0) && (
+                  <>
+                    <Text fontSize="sm" color="gray.600">
+                      이벤트 할인:
+                    </Text>
+                    <Flex direction="column" align="start">
+                      <Text fontSize="sm" fontWeight="medium" color="red.600">
+                        {discountType === 'fixed' && safeFixedDiscount > 0 ? (
+                          <>총 {safeFixedDiscount.toLocaleString()}원 ({safeNumDays}박)</>
+                        ) : discountType === 'percentage' && safeDiscount > 0 ? (
+                          <>총 {eventDiscountAmount.toLocaleString()}원</>
+                        ) : (
+                          '할인 정보 없음'
+                        )}
+                      </Text>
+                    </Flex>
+                  </>
+                )}
+                {(safeCouponDiscount > 0 || safeCouponFixedDiscount > 0) && (
+                  <>
+                    <Text fontSize="sm" color="gray.600">
+                      쿠폰 할인:
+                    </Text>
+                    <Flex direction="column" align="start">
+                      <Text fontSize="sm" fontWeight="medium" color="red.600">
+                        {safeCouponFixedDiscount > 0 ? (
+                          <>총 {safeCouponTotalFixedDiscount.toLocaleString()}원 ({safeNumDays}박)</>
+                        ) : safeCouponDiscount > 0 ? (
+                          <>총 {couponDiscountAmount.toLocaleString()}원</>
+                        ) : (
+                          '할인 정보 없음'
+                        )}
+                      </Text>
+                    </Flex>
+                  </>
+                )}
               </>
             )}
 

@@ -24,6 +24,8 @@ const RoomCarouselCard = ({
   activeAmenities,
   photos,
   onSelect,
+  availableCoupons,
+  onViewCoupons,
   hotelSettings,
 }) => {
   const defaultPhoto = '/assets/default-room1.jpg';
@@ -42,15 +44,33 @@ const RoomCarouselCard = ({
   const formattedStock = typeof stock === 'number' ? stock : 0;
   const formattedNumDays = typeof numDays === 'number' ? numDays : 0;
   const totalFixedDiscount =
-    hotelSettings?.specialPrice?.totalFixedDiscount || 0;
+    (hotelSettings?.specialPrice?.totalFixedDiscount || 0) +
+    (hotelSettings?.specialPrice?.couponTotalFixedDiscount || 0);
   const originalPrice = formattedPrice;
-  const discountedPrice = originalPrice - totalFixedDiscount;
+  let discountedPrice = originalPrice;
+
+  // 이벤트 할인 적용
+  if (hotelSettings?.specialPrice?.discountType === 'fixed' && hotelSettings?.specialPrice?.totalFixedDiscount > 0) {
+    discountedPrice = Math.max(0, discountedPrice - hotelSettings.specialPrice.totalFixedDiscount);
+  } else if (hotelSettings?.specialPrice?.discountRate > 0) {
+    discountedPrice = Math.round(discountedPrice * (1 - hotelSettings.specialPrice.discountRate / 100));
+  }
+
+  // 쿠폰 할인 적용
+  if (hotelSettings?.specialPrice?.couponDiscount > 0) {
+    discountedPrice = Math.round(discountedPrice * (1 - hotelSettings.specialPrice.couponDiscount / 100));
+  } else if (hotelSettings?.specialPrice?.couponTotalFixedDiscount > 0) {
+    discountedPrice = Math.max(0, discountedPrice - hotelSettings.specialPrice.couponTotalFixedDiscount);
+  }
+
   const totalPrice =
     formattedNumDays > 0 ? discountedPrice * formattedNumDays : discountedPrice;
 
   const eventName = hotelSettings?.eventName || null;
   const badgeLabel = eventName ? eventName : null;
-  const discountInfo = hotelSettings?.discountInfo || null; // hotelSettings.discountInfo 사용
+  const discountInfo = hotelSettings?.discountInfo || null;
+  const couponDiscountInfo = hotelSettings?.couponDiscountInfo || null;
+  const selectedCoupon = hotelSettings?.selectedCoupon || null;
 
   const sliderSettings = {
     dots: true,
@@ -208,7 +228,7 @@ const RoomCarouselCard = ({
         </Flex>
         <Flex justify="space-between" align="center" mb={1}>
           <Box>
-            {totalFixedDiscount > 0 && (
+            {totalFixedDiscount > 0 || hotelSettings?.specialPrice?.discountRate > 0 || hotelSettings?.specialPrice?.couponDiscount > 0 ? (
               <Text
                 fontSize={{ base: 'xs', md: 'sm' }}
                 color="gray.600"
@@ -220,10 +240,10 @@ const RoomCarouselCard = ({
               >
                 {originalPrice.toLocaleString()}원
               </Text>
-            )}
+            ) : null}
             <Text
               fontSize={{ base: 'sm', md: 'md' }}
-              color={totalFixedDiscount > 0 ? 'red.500' : 'gray.700'}
+              color={totalFixedDiscount > 0 || hotelSettings?.specialPrice?.discountRate > 0 || hotelSettings?.specialPrice?.couponDiscount > 0 ? 'red.500' : 'gray.700'}
               fontWeight="bold"
               whiteSpace="nowrap"
               overflow="hidden"
@@ -243,6 +263,31 @@ const RoomCarouselCard = ({
                 {discountInfo}
               </Text>
             )}
+            {couponDiscountInfo && (
+              <Text
+                fontSize={{ base: 'xs', md: 'sm' }}
+                color="red.500"
+                fontWeight="medium"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
+              >
+                {couponDiscountInfo}
+              </Text>
+            )}
+            {/* 총액 표시를 금액 아래로 이동 */}
+            {formattedNumDays > 0 && (
+              <Text
+                fontSize={{ base: 'xs', md: 'sm' }}
+                color="gray.700"
+                fontWeight="medium"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
+              >
+                총액 ({formattedNumDays}박): {totalPrice.toLocaleString()}원
+              </Text>
+            )}
           </Box>
           <Text
             fontSize={{ base: 'xs', md: 'sm' }}
@@ -256,19 +301,29 @@ const RoomCarouselCard = ({
             {formattedStock > 0 ? `남은 객실 ${formattedStock}개` : '객실 마감'}
           </Text>
         </Flex>
-        {formattedNumDays > 0 && (
+        <Flex justify="space-between" align="center" mb={1}>
           <Text
             fontSize={{ base: 'xs', md: 'sm' }}
-            color="gray.700"
+            color="blue.500"
             fontWeight="medium"
-            mb={1}
-            whiteSpace="nowrap"
-            overflow="hidden"
-            textOverflow="ellipsis"
+            onClick={onViewCoupons}
+            cursor="pointer"
           >
-            총액 ({formattedNumDays}박): {totalPrice.toLocaleString()}원
+            적용 가능한 쿠폰: {availableCoupons}개
           </Text>
-        )}
+          {selectedCoupon && (
+            <Text
+              fontSize={{ base: 'xs', md: 'sm' }}
+              color="gray.600"
+              fontWeight="medium"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
+            >
+              적용 쿠폰: {selectedCoupon.name}
+            </Text>
+          )}
+        </Flex>
         <Flex justify="space-between" align="center">
           {activeAmenities && activeAmenities.length > 0 ? (
             <HStack spacing={1}>
