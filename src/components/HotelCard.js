@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Image,
@@ -6,34 +6,25 @@ import {
   Button,
   Flex,
   IconButton,
-  HStack,
   Icon,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  VStack, // Added import for VStack
-  Badge,  // Added import for Badge
-  useToast,
+  Badge,
+  Collapse,
+  AspectRatio,
+  Divider,
 } from '@chakra-ui/react';
 import {
-  FaRegStar,
-  FaStar,
-  FaQuestionCircle,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from '@chakra-ui/icons';
+import {
+  FaHeart,
+  FaRegHeart,
   FaMapMarkerAlt,
   FaCopy,
   FaRoute,
 } from 'react-icons/fa';
-import Slider from 'react-slick';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
-import iconMap from '../utils/iconMap';
-import Map from './Map';
-import { motion } from 'framer-motion';
-
-const MotionBox = motion(Box);
+import { useSwipeable } from 'react-swipeable'; // 스와이프 제스처 라이브러리
+import Map from './Map'; // Map 컴포넌트 임포트
 
 const HotelCard = ({
   hotel,
@@ -41,243 +32,246 @@ const HotelCard = ({
   toggleFavorite,
   onSelect,
   onViewCoupons,
+  onOpenGallery,
+  currentPhotoIndex,
+  handlePrevPhoto,
+  handleNextPhoto,
+  photoCount,
+  toggleMap,
+  isMapVisible,
+  handleCopyAddress,
+  handleTMapNavigation,
+  index,
+  totalHotels,
 }) => {
-  const [isMapOpen, setIsMapOpen] = useState(false);
-  const toast = useToast();
-
-  const sliderSettings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    arrows: true,
-    adaptiveHeight: true,
-  };
-
-  const photos =
-    hotel.photos && hotel.photos.length > 0
-      ? hotel.photos
-      : [{ photoUrl: '/assets/default-hotel.jpg' }];
-
-  const handleCopyAddress = (e) => {
-    e.stopPropagation();
-    if (hotel.address) {
-      navigator.clipboard
-        .writeText(hotel.address)
-        .then(() => {
-          toast({
-            title: '주소 복사 완료',
-            description: '호텔 주소가 클립보드에 복사되었습니다.',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
-        })
-        .catch((error) => {
-          toast({
-            title: '주소 복사 실패',
-            description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
-            status: 'error',
-            duration: 3000,
-            isClosable: true,
-          });
-        });
-    }
-  };
-
-  const handleTMapNavigation = () => {
-    if (!hotel.latitude || !hotel.longitude) {
-      setIsMapOpen(true);
-      return;
-    }
-    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${hotel.latitude}&name=${encodeURIComponent(hotel.hotelName)}`;
-    window.location.href = tmapUrl;
-    setTimeout(() => {
-      setIsMapOpen(true);
-    }, 2000);
-  };
+  // 스와이프 핸들러 설정
+  const swipeHandlers = useSwipeable({
+    onSwipedUp: () => {
+      if (!isMapVisible) {
+        toggleMap(hotel.hotelId);
+      }
+    },
+    onSwipedDown: () => {
+      if (isMapVisible) {
+        toggleMap(hotel.hotelId);
+      }
+    },
+    delta: 10, // 스와이프 감지 거리
+    trackTouch: true,
+    trackMouse: false,
+  });
 
   return (
-    <>
-      <MotionBox
-        whileHover={{ scale: 1.02 }}
-        transition={{ duration: 0.2 }}
-        borderWidth="1px"
-        borderRadius="lg"
-        overflow="hidden"
-        bg="white"
-        shadow="sm"
-        _hover={{ shadow: 'lg' }}
-      >
-        <Slider {...sliderSettings}>
-          {photos.map((photo) => (
-            <Box key={photo.photoUrl} height="200px">
-              <Image
-                src={photo.photoUrl}
-                alt={`${hotel.hotelName} - Photo`}
-                height="100%"
-                width="100%"
-                objectFit="cover"
-                loading="lazy"
-                onError={(e) => {
-                  e.target.src = '/assets/default-hotel.jpg';
+    <Box w="100%">
+      {/* 사진 영역 */}
+      <AspectRatio ratio={16 / 9}>
+        <Box position="relative">
+          <Image
+            src={hotel.photos[currentPhotoIndex]?.photoUrl || '/assets/default-hotel.jpg'}
+            alt={`${hotel.hotelName} 이미지`}
+            objectFit="cover"
+            onError={(e) => (e.target.src = '/assets/default-hotel.jpg')}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log(`[HotelCard] Image clicked for hotel ID: ${hotel.hotelId}`);
+              onSelect(hotel.hotelId);
+            }}
+            cursor="pointer"
+          />
+          {photoCount > 1 && (
+            <>
+              <IconButton
+                icon={<ChevronLeftIcon />}
+                position="absolute"
+                top="50%"
+                left="12px"
+                transform="translateY(-50%)"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrevPhoto(hotel.hotelId);
                 }}
+                aria-label="이전 사진"
+                bg="whiteAlpha.800"
+                _hover={{ bg: 'white' }}
+                size="sm"
+                borderRadius="full"
               />
-            </Box>
-          ))}
-        </Slider>
+              <IconButton
+                icon={<ChevronRightIcon />}
+                position="absolute"
+                top="50%"
+                right="12px"
+                transform="translateY(-50%)"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNextPhoto(hotel.hotelId);
+                }}
+                aria-label="다음 사진"
+                bg="whiteAlpha.800"
+                _hover={{ bg: 'white' }}
+                size="sm"
+                borderRadius="full"
+              />
+              <Text
+                position="absolute"
+                bottom="8px"
+                right="8px"
+                bg="blackAlpha.600"
+                color="white"
+                px={2}
+                py={1}
+                borderRadius="md"
+                fontSize="xs"
+              >
+                {currentPhotoIndex + 1}/{photoCount}
+              </Text>
+            </>
+          )}
+          <IconButton
+            icon={isFavorite ? <FaHeart /> : <FaRegHeart />}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFavorite(hotel.hotelId);
+            }}
+            position="absolute"
+            top="12px"
+            right="12px"
+            size="sm"
+            bg="white"
+            borderRadius="full"
+            color={isFavorite ? 'red.400' : 'gray.400'}
+            _hover={{ bg: 'gray.100' }}
+            aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 등록'}
+          />
+        </Box>
+      </AspectRatio>
 
-        <Box p={4}>
-          <Flex justify="space-between" align="center" mb={3}>
-            <Text fontSize="xl" fontWeight="semibold" noOfLines={1}>
-              {hotel.hotelName || '호텔 이름 없음'}
+      {/* 정보 영역 */}
+      <Box px={4} py={4}>
+        <Flex direction="column" gap={2}>
+          <Flex justify="space-between" align="center">
+            <Flex align="center" gap={2}>
+              <Text
+                fontSize="lg"
+                fontWeight="semibold"
+                color="gray.800"
+                noOfLines={1}
+              >
+                {hotel.hotelName || '호텔 이름 없음'}
+              </Text>
+              {hotel.availableCoupons > 0 && (
+                <Badge
+                  colorScheme="blue"
+                  borderRadius="full"
+                  px={3}
+                  py={1}
+                  fontSize="xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewCoupons(hotel.hotelId);
+                  }}
+                  cursor="pointer"
+                >
+                  {hotel.availableCoupons}개 쿠폰
+                </Badge>
+              )}
+            </Flex>
+            <Flex align="center" gap={1}>
+              <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                {hotel.rating?.toFixed(1) || '0.0'}
+              </Text>
+              <Text fontSize="xs" color="gray.500">
+                ({hotel.reviewCount || 0})
+              </Text>
+            </Flex>
+          </Flex>
+
+          <Flex align="center" gap={2}>
+            <Icon as={FaMapMarkerAlt} color="gray.500" boxSize={4} />
+            <Text
+              fontSize="sm"
+              color="gray.600"
+              noOfLines={1}
+              cursor="pointer"
+              onClick={() => toggleMap(hotel.hotelId)}
+              _hover={{
+                color: 'blue.600',
+                textDecoration: 'underline',
+              }}
+            >
+              {hotel.address || '주소 정보 없음'}
             </Text>
             <IconButton
-              icon={isFavorite ? <FaStar /> : <FaRegStar />}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFavorite();
-              }}
+              icon={<FaCopy />}
               variant="ghost"
-              aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 등록'}
-              color={isFavorite ? 'yellow.400' : 'gray.400'}
+              size="sm"
+              onClick={() => handleCopyAddress(hotel.address)}
+              aria-label="주소 복사"
+              color="gray.500"
             />
           </Flex>
 
-          <HStack spacing={1} mb={3}>
-            {[...Array(5)].map((_, i) => (
-              <Icon
-                key={i}
-                as={i < Math.floor(hotel.rating || 0) ? FaStar : FaRegStar}
-                boxSize={4}
-                color={i < Math.floor(hotel.rating || 0) ? 'yellow.400' : 'gray.300'}
-              />
-            ))}
-            <Text fontSize="sm" color="gray.600" ml={2}>
-              {(hotel.rating || 0).toFixed(1)} ({hotel.reviewCount || 0} 리뷰)
-            </Text>
-          </HStack>
-
-          <VStack spacing={2} align="stretch" mb={3}>
-            <Flex justify="space-between">
-              <Text fontSize="sm" color="gray.600">
-                체크인
-              </Text>
-              <Text fontSize="sm" fontWeight="medium">
-                {hotel.checkInTime || 'N/A'}
-              </Text>
-            </Flex>
-            <Flex justify="space-between">
-              <Text fontSize="sm" color="gray.600">
-                체크아웃
-              </Text>
-              <Text fontSize="sm" fontWeight="medium">
-                {hotel.checkOutTime || 'N/A'}
-              </Text>
-            </Flex>
-            <Flex justify="space-between">
-              <Text fontSize="sm" color="gray.600">
-                1박 요금
-              </Text>
-              <Text fontSize="sm" fontWeight="bold" color="blue.600">
-                {(hotel.price || 0).toLocaleString()}원
-              </Text>
-            </Flex>
-            {hotel.availableCoupons > 0 && (
-              <Flex justify="space-between">
-                <Text fontSize="sm" color="gray.600">
-                  사용 가능 쿠폰
-                </Text>
-                <Badge colorScheme="green">{hotel.availableCoupons}개</Badge>
-              </Flex>
-            )}
-          </VStack>
-
-          <Box mb={3}>
-            <Flex align="center" mb={2}>
-              <Icon as={FaMapMarkerAlt} color="teal.500" mr={2} />
-              <Text noOfLines={2} flex="1">
-                {hotel.address || '주소 정보 없음'}
-              </Text>
-              <IconButton
-                icon={<FaCopy />}
-                variant="ghost"
-                size="sm"
-                onClick={handleCopyAddress}
-                aria-label="주소 복사"
-              />
-            </Flex>
-          </Box>
+          {/* 지도 슬라이드 영역 */}
+          <Collapse
+            in={isMapVisible}
+            animateOpacity
+            transition={{ enter: { duration: 0.5 }, exit: { duration: 0.5 } }}
+          >
+            <Box
+              h="200px"
+              w="100%"
+              mt={2}
+              boxShadow="0 2px 8px rgba(0, 0, 0, 0.1)"
+              {...swipeHandlers} // 스와이프 제스처 적용
+            >
+              {isMapVisible && hotel.latitude && hotel.longitude ? (
+                <Map
+                  address={hotel.address}
+                  latitude={hotel.latitude}
+                  longitude={hotel.longitude}
+                />
+              ) : (
+                <Text color="red.500">지도 데이터를 로드할 수 없습니다.</Text>
+              )}
+            </Box>
+          </Collapse>
 
           <Flex justify="space-between" align="center">
-            {hotel.amenities?.length > 0 ? (
-              <HStack spacing={3}>
-                {hotel.amenities.slice(0, 3).map((amenity, idx) => {
-                  const IconComp = iconMap[amenity.icon] || FaQuestionCircle;
-                  // Note: Using idx as key; replace with amenity.id or another unique identifier if available
-                  return <Icon as={IconComp} key={idx} boxSize={4} />;
-                })}
-                {hotel.amenities.length > 3 && (
-                  <Text>+{hotel.amenities.length - 3}</Text>
-                )}
-              </HStack>
-            ) : (
-              <Box flex="1" />
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              leftIcon={<FaRoute />}
-              onClick={handleTMapNavigation}
-            >
-              T맵
-            </Button>
+            <Text fontSize="md" fontWeight="bold" color="blue.600">
+              ₩{(hotel.price || 0).toLocaleString()} / 박
+            </Text>
           </Flex>
 
-          <Flex justify="space-between" mt={3}>
-            {hotel.availableCoupons > 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                colorScheme="blue"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewCoupons();
-                }}
-              >
-                쿠폰 보기
-              </Button>
-            )}
-            <Button size="sm" colorScheme="teal" onClick={onSelect} flex="1" ml={2}>
+          <Flex justify="space-between" align="center" gap={2} mt={2}>
+            <Button
+              size="md"
+              variant="outline"
+              colorScheme="gray"
+              borderRadius="full"
+              flex="1"
+              leftIcon={<FaRoute />}
+              onClick={() => handleTMapNavigation(hotel)}
+            >
+              길찾기
+            </Button>
+            <Button
+              size="md"
+              colorScheme="blue"
+              borderRadius="full"
+              flex="2"
+              onClick={() => onOpenGallery(hotel.photos)}
+            >
               자세히 보기
             </Button>
           </Flex>
-        </Box>
-      </MotionBox>
+        </Flex>
+      </Box>
 
-      {/* 지도 모달 */}
-      <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>호텔 위치</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {hotel.latitude && hotel.longitude ? (
-              <Map
-                address={hotel.address}
-                latitude={hotel.latitude}
-                longitude={hotel.longitude}
-              />
-            ) : (
-              <Text color="red.500">지도 데이터를 로드할 수 없습니다.</Text>
-            )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </>
+      {/* 구분선 */}
+      {index < totalHotels - 1 && (
+        <Divider borderColor="gray.600" borderWidth="1px" />
+      )}
+    </Box>
   );
 };
 

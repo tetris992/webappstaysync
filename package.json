@@ -33,7 +33,7 @@
     "react-router-dom": "^6",
     "react-scripts": "^5",
     "react-slick": "^0",
-    "react-swipeable": "^7",
+    "react-swipeable": "^7.0.2",
     "resolve-url-loader": "4.0.0",
     "slick-carousel": "^1",
     "socket.io-client": "^4",

@@ -1,5 +1,3 @@
-//webapp/src/components/RoomCard.js
-
 import React from 'react';
 import { Box, Image, Text, Button, Flex, HStack } from '@chakra-ui/react';
 import { FaQuestionCircle } from 'react-icons/fa';
@@ -8,7 +6,7 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import iconMap from '../utils/iconMap';
 
-const RoomCard = ({ room, onSelect }) => {
+const RoomCard = ({ room, onSelect, hotelId, availableCoupons = 0, onViewCoupons, selectedCoupon, numNights }) => {
   // 슬라이드 설정
   const sliderSettings = {
     dots: true,
@@ -28,16 +26,38 @@ const RoomCard = ({ room, onSelect }) => {
       ? room.photos
       : [{ photoUrl: '/assets/default-room1.jpg' }];
 
-  // room 객체에서 필요한 데이터 추출 (좌표는 prop으로 추가되지만 여기서는 사용 안 함)
+  // room 객체에서 필요한 데이터 추출
   const {
     roomInfo,
     price,
     availableRooms,
     stock,
     activeAmenities,
-    // latitude, // 좌표 prop 추가 (미래 사용 대비)
-    // longitude, // 좌표 prop 추가 (미래 사용 대비)
   } = room || {};
+
+  const handleSelect = () => {
+    const reservationData = {
+      hotelId, // Pass hotelId explicitly
+      roomInfo,
+      price: price || 0,
+      originalPrice: price || 0,
+      discount: 0, // Default values if no event discount
+      fixedDiscount: 0,
+      totalFixedDiscount: 0,
+      discountType: null,
+      eventName: null,
+      eventUuid: null,
+      couponDiscount: selectedCoupon?.discountValue || 0,
+      couponFixedDiscount: selectedCoupon?.discountType === 'fixed' ? selectedCoupon?.discountValue || 0 : 0,
+      couponTotalFixedDiscount: selectedCoupon?.discountType === 'fixed' ? (selectedCoupon?.discountValue || 0) : 0,
+      couponCode: selectedCoupon?.code || null,
+      couponUuid: selectedCoupon?.couponUuid || null,
+      numNights: numNights || 1, // Ensure numNights is passed
+    };
+
+    console.log('[RoomCard] Passing data to ReservationConfirmation:', reservationData);
+    onSelect(reservationData);
+  };
 
   return (
     <Box
@@ -78,7 +98,7 @@ const RoomCard = ({ room, onSelect }) => {
             가격:
           </Text>
           <Text fontSize="sm" color="gray.600" ml={2}>
-            {price.toLocaleString()}원 / 박
+            {(price || 0).toLocaleString()}원 / 박
           </Text>
         </Flex>
         <Flex align="center" mb={3}>
@@ -86,8 +106,31 @@ const RoomCard = ({ room, onSelect }) => {
             재고:
           </Text>
           <Text fontSize="sm" color="gray.600" ml={2}>
-            {availableRooms || stock}개
+            {availableRooms || stock || 0}개
           </Text>
+        </Flex>
+        <Flex justify="space-between" align="center" mb={1}>
+          <Text
+            fontSize="sm"
+            color="blue.500"
+            fontWeight="medium"
+            onClick={onViewCoupons}
+            cursor="pointer"
+          >
+            적용 가능한 쿠폰: {availableCoupons}개
+          </Text>
+          {selectedCoupon && (
+            <Text
+              fontSize="sm"
+              color="gray.600"
+              fontWeight="medium"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
+            >
+              적용 쿠폰: {selectedCoupon.code}
+            </Text>
+          )}
         </Flex>
         <Flex justify="space-between" align="center">
           {activeAmenities && activeAmenities.length > 0 ? (
@@ -112,7 +155,7 @@ const RoomCard = ({ room, onSelect }) => {
           <Button
             colorScheme="blue"
             size="md"
-            onClick={() => onSelect(room)}
+            onClick={handleSelect}
             px={5}
             py={2}
             fontSize="sm"

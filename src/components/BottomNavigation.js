@@ -1,24 +1,35 @@
-import React from 'react';
-import { Box, Flex, Text, Icon, useColorModeValue } from '@chakra-ui/react';
-import { FaHome, FaHistory, FaSignOutAlt, FaHeart } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { Box, Flex, Text, Icon, useColorModeValue, Badge } from '@chakra-ui/react';
+import { FaHome, FaHistory, FaHeart, FaUser } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchCustomerCoupons } from '../api/api';
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { customer } = useAuth();
+  const [coupons, setCoupons] = useState([]);
   const bg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error('로그아웃 실패:', error);
-    }
-  };
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      if (!customer) {
+        console.log('[BottomNavigation] Customer not available, skipping fetchCoupons');
+        return;
+      }
+      try {
+        const customerCoupons = await fetchCustomerCoupons();
+        console.log('[BottomNavigation] Fetched customer coupons:', customerCoupons);
+        setCoupons(customerCoupons || []);
+      } catch (error) {
+        console.error('쿠폰 데이터 가져오기 실패:', error);
+      }
+    };
+
+    fetchCoupons();
+  }, [customer]);
 
   const isActive = (path) => location.pathname === path;
 
@@ -30,22 +41,23 @@ const BottomNavigation = () => {
       path: '/',
     },
     {
-      icon: FaHeart, // FaHotel -> FaHeart
-      label: '찜 숙소', // 숙소 -> 찜 숙소
+      icon: FaHeart,
+      label: '찜 숙소',
       onClick: () => navigate('/hotels'),
       path: '/hotels',
     },
     {
-      icon: FaSignOutAlt,
-      label: '로그아웃',
-      onClick: handleLogout,
-      path: '/logout',
-    },
-    {
       icon: FaHistory,
-      label: '나의 예약', // 나의 내역 -> 나의 예약
+      label: '나의 예약',
       onClick: () => navigate('/history'),
       path: '/history',
+    },
+    {
+      icon: FaUser,
+      label: '나의 정보',
+      onClick: () => navigate('/my-info'),
+      path: '/my-info',
+      hasBadge: true, // Badge 표시 여부
     },
   ];
 
@@ -77,6 +89,7 @@ const BottomNavigation = () => {
             _hover={{ color: 'blue.600' }}
             role="group"
             flex={1}
+            position="relative"
           >
             <Icon
               as={item.icon}
@@ -85,6 +98,19 @@ const BottomNavigation = () => {
               transition="all 0.2s"
               _groupHover={{ transform: 'scale(1.1)' }}
             />
+            {item.hasBadge && coupons.length > 0 && (
+              <Badge
+                position="absolute"
+                top="2px"
+                right="30%"
+                bg="red.500"
+                w="8px"
+                h="8px"
+                borderRadius="full"
+                p={0}
+                minW="unset"
+              />
+            )}
             <Text
               fontSize="xs"
               fontWeight={isActive(item.path) ? 'bold' : 'normal'}

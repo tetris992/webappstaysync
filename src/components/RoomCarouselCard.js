@@ -27,6 +27,7 @@ const RoomCarouselCard = ({
   availableCoupons,
   onViewCoupons,
   hotelSettings,
+  hotelId, // Ensure hotelId is passed as a prop
 }) => {
   const defaultPhoto = '/assets/default-room1.jpg';
   const [isLoading, setIsLoading] = useState(true);
@@ -115,6 +116,31 @@ const RoomCarouselCard = ({
     }
   };
 
+  const handleSelect = () => {
+    // Ensure all necessary data is passed to ReservationConfirmation.js
+    const reservationData = {
+      hotelId, // Explicitly pass hotelId
+      roomInfo,
+      price: formattedPrice,
+      originalPrice,
+      discount: hotelSettings?.specialPrice?.discountRate || 0,
+      fixedDiscount: hotelSettings?.specialPrice?.totalFixedDiscount || 0,
+      totalFixedDiscount: hotelSettings?.specialPrice?.totalFixedDiscount || 0,
+      discountType: hotelSettings?.specialPrice?.discountType || null,
+      eventName: hotelSettings?.eventName || null,
+      eventUuid: hotelSettings?.eventUuid || null,
+      couponDiscount: hotelSettings?.specialPrice?.couponDiscount || 0,
+      couponFixedDiscount: hotelSettings?.specialPrice?.couponFixedDiscount || 0,
+      couponTotalFixedDiscount: hotelSettings?.specialPrice?.couponTotalFixedDiscount || 0,
+      couponCode: selectedCoupon?.code || null,
+      couponUuid: selectedCoupon?.couponUuid || null,
+      numNights: formattedNumDays, // Ensure numNights is passed for coupon calculations
+    };
+
+    console.log('[RoomCarouselCard] Passing data to ReservationConfirmation:', reservationData);
+    onSelect(reservationData);
+  };
+
   return (
     <Box
       variant="card"
@@ -140,7 +166,7 @@ const RoomCarouselCard = ({
         overflow="hidden"
         borderRadius="lg"
         flexShrink={0}
-        onClick={onSelect}
+        onClick={handleSelect}
         cursor="pointer"
       >
         {isLoading && (
@@ -347,7 +373,7 @@ const RoomCarouselCard = ({
           <Button
             variant="solid"
             size="sm"
-            onClick={onSelect}
+            onClick={handleSelect}
             px={4}
             py={1}
             fontSize={{ base: 'xs', md: 'sm' }}

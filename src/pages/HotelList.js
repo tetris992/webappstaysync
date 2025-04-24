@@ -23,294 +23,18 @@ import {
   ModalBody,
   ModalCloseButton,
   Image,
-  Badge,
-  Icon,
-  Button,
-  IconButton as ChakraIconButton,
-  Tooltip,
 } from '@chakra-ui/react';
 import {
   SearchIcon,
   ArrowBackIcon,
-  StarIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  ChevronDownIcon,
 } from '@chakra-ui/icons';
-import {
-  FaHeart,
-  FaRegHeart,
-  FaTag,
-  FaMapMarkerAlt,
-  FaWifi,
-  FaParking,
-  FaTv,
-} from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  fetchHotelList,
-  fetchHotelPhotos,
-  fetchCustomerHotelSettings,
-} from '../api/api';
+import { fetchHotelList, fetchHotelPhotos, fetchCustomerHotelSettings } from '../api/api';
 import BottomNavigation from '../components/BottomNavigation';
 import pLimit from 'p-limit';
 import { format, addDays } from 'date-fns';
-
-// Map 컴포넌트 추가
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-
-// Leaflet 아이콘 설정
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-});
-
-const MapUpdater = ({ position }) => {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(position, 15);
-  }, [position, map]);
-  return null;
-};
-
-const Map = ({
-  address,
-  latitude,
-  longitude,
-  onCoordinatesChange = () => {},
-}) => {
-  const [position, setPosition] = useState([37.5665, 126.978]); // Default: Seoul
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const toast = useToast();
-
-  console.log('[Map] Received props:', { address, latitude, longitude });
-
-  // 주소 정규화 함수
-  const normalizeAddress = (address) => {
-    if (!address) return null;
-    let normalized = address.trim();
-
-    const provinceMap = {
-      창원시: '경상남도',
-      부산: '부산광역시',
-      서울: '서울특별시',
-      대구: '대구광역시',
-      인천: '인천광역시',
-      광주: '광주광역시',
-      대전: '대전광역시',
-      울산: '울산광역시',
-      세종: '세종특별자치시',
-    };
-
-    const cityMatch = Object.keys(provinceMap).find((city) =>
-      normalized.includes(city)
-    );
-    if (cityMatch && !normalized.includes(provinceMap[cityMatch])) {
-      normalized = `${provinceMap[cityMatch]} ${normalized}`;
-    }
-
-    const cityMap = {
-      창원시: 'Changwon-si',
-      성산구: 'Seongsan-gu',
-      마디미서로: 'Madimi-seoro',
-      부산광역시: 'Busan',
-      서울특별시: 'Seoul',
-      대구광역시: 'Daegu',
-      인천광역시: 'Incheon',
-      광주광역시: 'Gwangju',
-      대전광역시: 'Daejeon',
-      울산광역시: 'Ulsan',
-      세종특별자치시: 'Sejong',
-    };
-
-    Object.keys(cityMap).forEach((key) => {
-      normalized = normalized.replace(key, cityMap[key]);
-    });
-
-    normalized = normalized
-      .replace(/로\s/g, ' Road ')
-      .replace(/길\s/g, ' Street ');
-    normalized = normalized.replace(/\s\d+번지/g, '');
-    normalized = normalized.replace(/,\s*/g, ' ');
-
-    return normalized;
-  };
-
-  // openTMap 함수를 useCallback으로 감싸기
-  const openTMap = useCallback(
-    (latitude, longitude, name) => {
-      if (!latitude || !longitude) {
-        toast({
-          title: '좌표 정보 없음',
-          description: '호텔 좌표를 찾을 수 없습니다.',
-          status: 'warning',
-          duration: 3000,
-          isClosable: true,
-        });
-        return;
-      }
-
-      const tmapUrl = `tmap://route?goalx=${longitude}&goaly=${latitude}&name=${encodeURIComponent(
-        name || '호텔'
-      )}`;
-      window.location.href = tmapUrl;
-
-      setTimeout(() => {
-        const isAndroid = /android/i.test(navigator.userAgent);
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (isAndroid) {
-          window.location.href =
-            'https://play.google.com/store/apps/details?id=com.skt.tmap.ku';
-        } else if (isIOS) {
-          window.location.href =
-            'https://apps.apple.com/kr/app/tmap/id431589174';
-        } else {
-          toast({
-            title: 'T맵 설치 필요',
-            description:
-              'T맵 앱이 설치되어 있지 않습니다. 설치 페이지로 이동합니다.',
-            status: 'info',
-            duration: 3000,
-            isClosable: true,
-          });
-        }
-      }, 2000);
-    },
-    [toast]
-  );
-
-  useEffect(() => {
-    const fetchCoordinates = async () => {
-      console.log('[Map] Starting fetchCoordinates with:', {
-        latitude,
-        longitude,
-        address,
-      });
-
-      // 좌표가 제공된 경우 우선 사용
-      if (latitude && longitude) {
-        const newPosition = [latitude, longitude];
-        console.log('[Map] Using provided coordinates:', newPosition);
-        setPosition(newPosition);
-        if (typeof onCoordinatesChange === 'function') {
-          onCoordinatesChange({ lat: latitude, lng: longitude });
-        }
-        setError(null);
-        setLoading(false);
-        return;
-      }
-
-      // 좌표가 없고 주소가 없는 경우
-      if (!address) {
-        console.log('[Map] No address provided, setting error');
-        setError('주소가 제공되지 않았습니다.');
-        setLoading(false);
-        openTMap(latitude, longitude, address);
-        return;
-      }
-
-      // 주소 기반 좌표 조회
-      try {
-        setLoading(true);
-        const normalizedAddress = normalizeAddress(address);
-        console.log('[Map] Normalized address:', normalizedAddress);
-
-        let data = [];
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-              normalizedAddress
-            )}`,
-            {
-              headers: {
-                'User-Agent': 'DanjamApp/0.1.0 (nomac74@example.com)',
-              },
-            }
-          );
-          data = await response.json();
-          console.log('[Map] Nominatim API response:', data);
-        } catch (error) {
-          console.error('[Map] Nominatim API failed:', error);
-        }
-
-        if (data && data.length > 0) {
-          const newPosition = [
-            parseFloat(data[0].lat),
-            parseFloat(data[0].lon),
-          ];
-          console.log('[Map] Using Nominatim coordinates:', newPosition);
-          setPosition(newPosition);
-          if (typeof onCoordinatesChange === 'function') {
-            onCoordinatesChange({
-              lat: parseFloat(data[0].lat),
-              lng: parseFloat(data[0].lon),
-            });
-          }
-          setError(null);
-        } else {
-          console.log('[Map] No coordinates found for address:', address);
-          setError(`해당 주소의 좌표를 찾을 수 없습니다: ${address}`);
-          openTMap(latitude, longitude, address);
-        }
-      } catch (error) {
-        console.error('[Map] Failed to fetch coordinates:', error);
-        setError(`좌표를 가져오는 데 실패했습니다: ${error.message}`);
-        openTMap(latitude, longitude, address);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCoordinates();
-  }, [address, latitude, longitude, onCoordinatesChange, openTMap]);
-
-  if (loading) {
-    return (
-      <Flex justify="center" align="center" h="200px" w="100%">
-        <Spinner size="lg" color="teal.500" />
-        <Text ml={2}>지도 로딩 중...</Text>
-      </Flex>
-    );
-  }
-
-  if (error) {
-    return (
-      <Flex
-        direction="column"
-        align="center"
-        justify="center"
-        h="200px"
-        w="100%"
-      >
-        <Text color="red.500">{error}</Text>
-        <Text mt={2} color="gray.500">
-          T맵 내비게이션이 실행되었습니다.
-        </Text>
-      </Flex>
-    );
-  }
-
-  return (
-    <MapContainer
-      center={position}
-      zoom={15}
-      style={{ height: '200px', width: '100%' }}
-    >
-      <MapUpdater position={position} />
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
-      <Marker position={position}>
-        <Popup>{address || '위치 정보 없음'}</Popup>
-      </Marker>
-    </MapContainer>
-  );
-};
+import HotelCard from '../components/HotelCard';
 
 // 주소 정규화 함수
 const normalizeAddress = (address) => {
@@ -359,19 +83,18 @@ const HotelList = ({ loadHotelSettings }) => {
   const [mapVisible, setMapVisible] = useState({}); // 호텔별 지도 표시 상태
   const mainRef = React.useRef(null);
 
-  // load favorites from localStorage
+  // Load favorites from localStorage
   useEffect(() => {
     const fav = JSON.parse(localStorage.getItem('favorites')) || {};
     setFavorites(fav);
   }, []);
 
-  // fetch hotel list, photos, coupons
+  // Fetch hotel list, photos, coupons
   useEffect(() => {
     const load = async () => {
       try {
         setIsLoading(true);
         const list = await fetchHotelList();
-        // enrich with additional data
         const enriched = await Promise.all(
           list.map(async (h) => {
             try {
@@ -384,7 +107,7 @@ const HotelList = ({ loadHotelSettings }) => {
                 address: normalizeAddress(h.address),
                 checkInTime: settings.checkInTime || '15:00',
                 checkOutTime: settings.checkOutTime || '11:00',
-                amenities: settings.amenities || ['WiFi', 'Parking', 'Netflix'], // 넷플릭스 추가
+                amenities: settings.amenities || ['WiFi', 'Parking', 'Netflix'],
                 latitude: settings.latitude,
                 longitude: settings.longitude,
               };
@@ -397,7 +120,7 @@ const HotelList = ({ loadHotelSettings }) => {
                 address: normalizeAddress(h.address),
                 checkInTime: '15:00',
                 checkOutTime: '11:00',
-                amenities: ['WiFi', 'Parking', 'Netflix'], // 넷플릭스 추가
+                amenities: ['WiFi', 'Parking sprinkling', 'Netflix'],
                 latitude: null,
                 longitude: null,
               };
@@ -407,13 +130,8 @@ const HotelList = ({ loadHotelSettings }) => {
         setHotels(enriched);
         setFilteredHotels(enriched);
 
-        if (
-          isAuthenticated &&
-          customer &&
-          localStorage.getItem('customerToken')
-        ) {
+        if (isAuthenticated && customer && localStorage.getItem('customerToken')) {
           const limit = pLimit(3);
-          // photos
           const photoPromises = enriched.map((h) =>
             limit(async () => {
               try {
@@ -443,7 +161,6 @@ const HotelList = ({ loadHotelSettings }) => {
             }, {})
           );
 
-          // coupons
           const couponPromises = enriched.map((h) =>
             limit(async () => {
               try {
@@ -484,11 +201,10 @@ const HotelList = ({ loadHotelSettings }) => {
     load();
   }, [isAuthenticated, customer, toast]);
 
-  // filtering & sorting
+  // Filtering & sorting
   useEffect(() => {
     let list = [...hotels];
 
-    // search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter((h) => {
@@ -502,7 +218,6 @@ const HotelList = ({ loadHotelSettings }) => {
       });
     }
 
-    // price
     if (priceFilter !== 'all') {
       const [min, max] = priceFilter.split('-').map(Number);
       list = list.filter(
@@ -510,13 +225,11 @@ const HotelList = ({ loadHotelSettings }) => {
       );
     }
 
-    // rating
     if (ratingFilter !== 'all') {
       const r = Number(ratingFilter);
       list = list.filter((h) => h.rating >= r);
     }
 
-    // favorites first
     list.sort((a, b) => {
       const fa = favorites[a.hotelId] ? 0 : 1;
       const fb = favorites[b.hotelId] ? 0 : 1;
@@ -548,13 +261,20 @@ const HotelList = ({ loadHotelSettings }) => {
 
   const handleNav = async (id) => {
     try {
+      console.log(`[HotelList] Attempting to navigate to room selection for hotel ID: ${id}`);
+      console.log('[HotelList] Calling loadHotelSettings...');
       await loadHotelSettings(id);
+      console.log('[HotelList] loadHotelSettings completed successfully');
+      console.log('[HotelList] Navigating to /rooms/...');
       navigate(`/rooms/${id}`, {
         state: { checkIn, checkOut, guestCount },
       });
-    } catch {
+      console.log('[HotelList] Navigation completed');
+    } catch (err) {
+      console.error('[HotelList] Failed to load hotel settings:', err);
       toast({
         title: '설정 로드 실패',
+        description: err.message || '호텔 설정을 로드하지 못했습니다.',
         status: 'error',
         duration: 3000,
       });
@@ -582,8 +302,7 @@ const HotelList = ({ loadHotelSettings }) => {
     setCurrentPhotoIndices((prev) => {
       const photos = photosMap[hotelId] || [];
       const currentIndex = prev[hotelId] || 0;
-      const newIndex =
-        currentIndex === 0 ? photos.length - 1 : currentIndex - 1;
+      const newIndex = currentIndex === 0 ? photos.length - 1 : currentIndex - 1;
       return { ...prev, [hotelId]: newIndex };
     });
   };
@@ -592,10 +311,58 @@ const HotelList = ({ loadHotelSettings }) => {
     setCurrentPhotoIndices((prev) => {
       const photos = photosMap[hotelId] || [];
       const currentIndex = prev[hotelId] || 0;
-      const newIndex =
-        currentIndex === photos.length - 1 ? 0 : currentIndex + 1;
+      const newIndex = currentIndex === photos.length - 1 ? 0 : currentIndex + 1;
       return { ...prev, [hotelId]: newIndex };
     });
+  };
+
+  const handleCopyAddress = (address) => {
+    if (address) {
+      navigator.clipboard
+        .writeText(address)
+        .then(() => {
+          toast({
+            title: '주소 복사 완료',
+            description: '호텔 주소가 클립보드에 복사되었습니다.',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        })
+        .catch((error) => {
+          toast({
+            title: '주소 복사 실패',
+            description: `주소를 복사하는 데 실패했습니다: ${error.message}`,
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        });
+    }
+  };
+
+  const handleTMapNavigation = (hotel) => {
+    if (!hotel.latitude || !hotel.longitude) {
+      toast({
+        title: '좌표 정보 없음',
+        description: '호텔 좌표를 찾을 수 없습니다.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${hotel.latitude}&name=${encodeURIComponent(hotel.hotelName)}`;
+    window.location.href = tmapUrl;
+    setTimeout(() => {
+      toast({
+        title: 'T맵 설치 필요',
+        description: 'T맵 앱이 설치되어 있지 않다면 설치 페이지로 이동합니다.',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
+    }, 2000);
   };
 
   const onInteract = useCallback(() => {
@@ -622,21 +389,20 @@ const HotelList = ({ loadHotelSettings }) => {
 
   return (
     <Container
-      maxW="container.xl"
+      maxW="100%"
+      w="100%"
       p={0}
-      bg="white"
+      bg="gray.50"
       minH="100vh"
       ref={mainRef}
       display="flex"
       flexDirection="column"
-      w="100%"
       overflow="hidden"
       position="fixed"
       top={0}
       left={0}
       right={0}
       bottom={0}
-      // overflowX="auto"
     >
       {/* Fixed Header */}
       <Box
@@ -647,9 +413,9 @@ const HotelList = ({ loadHotelSettings }) => {
         borderBottom="1px solid"
         borderColor="gray.200"
         zIndex={1000}
-        boxShadow={isOpen ? 'lg' : 'sm'}
+        boxShadow={isOpen ? 'lg' : 'none'}
       >
-        <Container maxW="container.sm" py={4}>
+        <Container maxW="container.sm" py={4} px={4}>
           <Flex align="center" justify="space-between">
             <IconButton
               icon={<ArrowBackIcon />}
@@ -658,8 +424,9 @@ const HotelList = ({ loadHotelSettings }) => {
               aria-label="뒤로"
               color="gray.700"
               _hover={{ bg: 'gray.100' }}
+              size="lg"
             />
-            <Text fontSize="xl" fontWeight="bold" color="gray.800">
+            <Text fontSize="lg" fontWeight="semibold" color="gray.800">
               찜한 호텔
             </Text>
             <IconButton
@@ -667,8 +434,9 @@ const HotelList = ({ loadHotelSettings }) => {
               variant="ghost"
               onClick={onToggle}
               aria-label="검색"
-              color={isOpen ? 'teal.600' : 'gray.600'}
+              color={isOpen ? 'blue.600' : 'gray.600'}
               _hover={{ bg: 'gray.100' }}
+              size="lg"
             />
           </Flex>
           <Collapse in={isOpen}>
@@ -677,7 +445,7 @@ const HotelList = ({ loadHotelSettings }) => {
               spacing={3}
               bg="white"
               p={4}
-              borderRadius="md"
+              borderRadius="xl"
               boxShadow="md"
             >
               <InputGroup>
@@ -688,11 +456,11 @@ const HotelList = ({ loadHotelSettings }) => {
                   placeholder="호텔 이름 또는 주소 검색"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  borderRadius="md"
+                  borderRadius="lg"
                   bg="gray.50"
                   _focus={{
-                    borderColor: 'teal.400',
-                    boxShadow: '0 0 0 1px teal.400',
+                    borderColor: 'blue.400',
+                    boxShadow: '0 0 0 1px blue.400',
                   }}
                 />
               </InputGroup>
@@ -701,11 +469,12 @@ const HotelList = ({ loadHotelSettings }) => {
                   value={sortOption}
                   onChange={(e) => setSortOption(e.target.value)}
                   flex={1}
-                  borderRadius="md"
+                  borderRadius="lg"
                   bg="gray.50"
+                  icon={<ChevronDownIcon />}
                   _focus={{
-                    borderColor: 'teal.400',
-                    boxShadow: '0 0 0 1px teal.400',
+                    borderColor: 'blue.400',
+                    boxShadow: '0 0 0 1px blue.400',
                   }}
                 >
                   <option value="name">이름순</option>
@@ -717,11 +486,12 @@ const HotelList = ({ loadHotelSettings }) => {
                   value={priceFilter}
                   onChange={(e) => setPriceFilter(e.target.value)}
                   flex={1}
-                  borderRadius="md"
+                  borderRadius="lg"
                   bg="gray.50"
+                  icon={<ChevronDownIcon />}
                   _focus={{
-                    borderColor: 'teal.400',
-                    boxShadow: '0 0 0 1px teal.400',
+                    borderColor: 'blue.400',
+                    boxShadow: '0 0 0 1px blue.400',
                   }}
                 >
                   <option value="all">모든 가격</option>
@@ -734,11 +504,12 @@ const HotelList = ({ loadHotelSettings }) => {
                   value={ratingFilter}
                   onChange={(e) => setRatingFilter(e.target.value)}
                   flex={1}
-                  borderRadius="md"
+                  borderRadius="lg"
                   bg="gray.50"
+                  icon={<ChevronDownIcon />}
                   _focus={{
-                    borderColor: 'teal.400',
-                    boxShadow: '0 0 0 1px teal.400',
+                    borderColor: 'blue.400',
+                    boxShadow: '0 0 0 1px blue.400',
                   }}
                 >
                   <option value="all">모든 평점</option>
@@ -756,311 +527,58 @@ const HotelList = ({ loadHotelSettings }) => {
       <Box
         flex="1"
         overflowY="auto"
-        px={{ base: 2, sm: 4 }} // 수정: 반응형 패딩
-        pt={
-          isOpen ? { base: '160px', sm: '180px' } : { base: '70px', sm: '80px' }
-        } // 수정: 반응형 상단 패딩
-        pb="60px"
-        overflowX="hidden"
+        pt={isOpen ? '180px' : '80px'}
+        pb="80px"
         css={{
           '&::-webkit-scrollbar': {
-            display: 'none',
+            width: '4px',
           },
-          msOverflowStyle: 'none',
-          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'gray.300',
+            borderRadius: '4px',
+          },
         }}
       >
-        <Container
-          maxW={{ base: '100%', sm: 'container.sm' }}
-          py={{ base: 2, sm: 4 }}
-        >
-          {isLoading ? (
-            <Flex justify="center" align="center" h="200px">
-              <Spinner size="xl" color="teal.500" />
-            </Flex>
-          ) : filteredHotels.length === 0 ? (
-            <Text textAlign="center" color="gray.500" fontSize="lg">
-              조건에 맞는 호텔이 없습니다.
-            </Text>
-          ) : (
-            <VStack spacing={6} align="stretch">
-              {filteredHotels.map((h) => {
-                const photos = photosMap[h.hotelId] || [];
-                const currentIndex = currentPhotoIndices[h.hotelId] || 0;
-                const photoCount = photos.length;
-                const isMapVisible = mapVisible[h.hotelId] || false;
-                return (
-                  <Box
-                    key={h.hotelId}
-                    borderRadius="lg"
-                    overflow="hidden"
-                    bg="white"
-                    boxShadow="sm"
-                    transition="all 0.3s ease"
-                    _hover={{
-                      boxShadow: 'md',
-                    }}
-                  >
-                    {/* Image or Map Section */}
-                    <Box position="relative">
-                      {isMapVisible ? (
-                        <Map
-                          address={h.address}
-                          latitude={h.latitude}
-                          longitude={h.longitude}
-                          onCoordinatesChange={() => {}}
-                        />
-                      ) : (
-                        <>
-                          <Image
-                            src={
-                              photos[currentIndex]?.photoUrl ||
-                              '/assets/default-hotel.jpg'
-                            }
-                            alt={`${h.hotelName} 이미지`}
-                            h="250px"
-                            w="100%"
-                            objectFit="cover"
-                            fallbackSrc="/assets/default-hotel.jpg"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (photos.length > 0) {
-                                openGallery(photos);
-                              }
-                            }}
-                            cursor="pointer"
-                          />
-                          {photoCount > 1 && (
-                            <>
-                              <ChakraIconButton
-                                icon={<ChevronLeftIcon />}
-                                position="absolute"
-                                top="50%"
-                                left="2"
-                                transform="translateY(-50%)"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePrevPhoto(h.hotelId);
-                                }}
-                                aria-label="이전 사진"
-                                bg="whiteAlpha.800"
-                                _hover={{ bg: 'white' }}
-                                size="sm"
-                                borderRadius="full"
-                              />
-                              <ChakraIconButton
-                                icon={<ChevronRightIcon />}
-                                position="absolute"
-                                top="50%"
-                                right="2"
-                                transform="translateY(-50%)"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleNextPhoto(h.hotelId);
-                                }}
-                                aria-label="다음 사진"
-                                bg="whiteAlpha.800"
-                                _hover={{ bg: 'white' }}
-                                size="sm"
-                                borderRadius="full"
-                              />
-                              <Text
-                                position="absolute"
-                                bottom="2"
-                                right="2"
-                                bg="blackAlpha.600"
-                                color="white"
-                                px="2"
-                                py="1"
-                                borderRadius="md"
-                                fontSize="xs"
-                              >
-                                {currentIndex + 1}/{photoCount}
-                              </Text>
-                            </>
-                          )}
-                          <ChakraIconButton
-                            icon={
-                              favorites[h.hotelId] ? (
-                                <FaHeart />
-                              ) : (
-                                <FaRegHeart />
-                              )
-                            }
-                            position="absolute"
-                            top="2"
-                            right="2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFav(h.hotelId);
-                            }}
-                            aria-label="즐겨찾기"
-                            colorScheme={favorites[h.hotelId] ? 'red' : 'gray'}
-                            variant="solid"
-                            size="sm"
-                            bg={favorites[h.hotelId] ? 'red.400' : 'white'}
-                            color={favorites[h.hotelId] ? 'white' : 'gray.600'}
-                            _hover={{
-                              bg: favorites[h.hotelId] ? 'red.500' : 'gray.100',
-                            }}
-                          />
-                        </>
-                      )}
-                    </Box>
-                    {/* Information Section */}
-                    <Box p={4}>
-                      <Flex direction="column" gap={2}>
-                        <Flex justify="space-between" align="center">
-                          <Text
-                            fontSize="lg"
-                            fontWeight="bold"
-                            color="gray.800"
-                          >
-                            {h.hotelName}
-                          </Text>
-                          <Flex align="center" gap={1}>
-                            <StarIcon color="teal.500" boxSize={4} />
-                            <Text
-                              fontSize="sm"
-                              fontWeight="bold"
-                              color="gray.700"
-                            >
-                              {h.rating.toFixed(1)}
-                            </Text>
-                            <Text fontSize="xs" color="gray.500">
-                              ({h.reviewCount} 리뷰)
-                            </Text>
-                          </Flex>
-                        </Flex>
-                        <Flex align="center" gap={1}>
-                          <Icon
-                            as={FaMapMarkerAlt}
-                            color="teal.500"
-                            boxSize={4}
-                          />
-                          <Text
-                            fontSize="sm"
-                            color="gray.600"
-                            noOfLines={1}
-                            cursor="pointer"
-                            onClick={() => toggleMap(h.hotelId)}
-                            _hover={{
-                              color: 'teal.500',
-                              textDecoration: 'underline',
-                            }}
-                          >
-                            {h.address}
-                          </Text>
-                        </Flex>
-                        <HStack spacing={2}>
-                          <Text fontSize="xs" color="gray.500">
-                            체크인: {h.checkInTime}
-                          </Text>
-                          <Text fontSize="xs" color="gray.500">
-                            체크아웃: {h.checkOutTime}
-                          </Text>
-                        </HStack>
-                        <HStack spacing={2} wrap="wrap">
-                          {h.amenities.slice(0, 3).map((amenity, idx) => {
-                            let icon;
-                            let color;
-                            if (amenity.toLowerCase() === 'wifi') {
-                              icon = FaWifi;
-                              color = 'teal.500';
-                            } else if (amenity.toLowerCase() === 'parking') {
-                              icon = FaParking;
-                              color = 'teal.500';
-                            } else if (amenity.toLowerCase() === 'netflix') {
-                              icon = FaTv; // 넷플릭스는 FaTv 아이콘 사용
-                              color = 'red.500'; // 넷플릭스 붉은색
-                            } else {
-                              return (
-                                <Badge
-                                  key={idx}
-                                  colorScheme="teal"
-                                  variant="outline"
-                                  fontSize="xs"
-                                >
-                                  {amenity}
-                                </Badge>
-                              );
-                            }
-                            return (
-                              <Tooltip label={amenity} key={idx}>
-                                <Box>
-                                  <Icon as={icon} color={color} boxSize={4} />
-                                </Box>
-                              </Tooltip>
-                            );
-                          })}
-                          {h.amenities.length > 3 && (
-                            <Text fontSize="xs" color="gray.500">
-                              +{h.amenities.length - 3}
-                            </Text>
-                          )}
-                        </HStack>
-                        <Flex justify="space-between" align="center" mt={2}>
-                          <Text
-                            fontSize="md"
-                            fontWeight="bold"
-                            color="teal.600"
-                          >
-                            ₩{h.price.toLocaleString()} / 박
-                          </Text>
-                          {hotelCoupons[h.hotelId]?.length > 0 && (
-                            <Badge
-                              colorScheme="teal"
-                              fontSize="xs"
-                              px={2}
-                              py={1}
-                              borderRadius="full"
-                              bg="teal.500"
-                              color="white"
-                              display="flex"
-                              alignItems="center"
-                              gap={1}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openCoupons(h.hotelId);
-                              }}
-                              cursor="pointer"
-                            >
-                              <Icon as={FaTag} boxSize={3} />
-                              {hotelCoupons[h.hotelId].length}개 쿠폰
-                            </Badge>
-                          )}
-                        </Flex>
-                        <HStack spacing={2} mt={2}>
-                          <Button
-                            colorScheme="teal"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleNav(h.hotelId);
-                            }}
-                          >
-                            예약하기
-                          </Button>
-                          <Button
-                            colorScheme="gray"
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/rooms/${h.hotelId}/details`);
-                            }}
-                          >
-                            자세히 보기
-                          </Button>
-                        </HStack>
-                      </Flex>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </VStack>
-          )}
-        </Container>
+        {isLoading ? (
+          <Flex justify="center" align="center" h="200px">
+            <Spinner size="xl" color="blue.500" />
+          </Flex>
+        ) : filteredHotels.length === 0 ? (
+          <Text textAlign="center" color="gray.500" fontSize="lg" mt={8}>
+            조건에 맞는 호텔이 없습니다.
+          </Text>
+        ) : (
+          <VStack spacing={0} align="stretch" w="100%">
+            {filteredHotels.map((h, index) => (
+              <HotelCard
+                key={h.hotelId}
+                hotel={{
+                  ...h,
+                  photos: photosMap[h.hotelId] || [],
+                  availableCoupons: hotelCoupons[h.hotelId]?.length || 0,
+                }}
+                isFavorite={favorites[h.hotelId] || false}
+                toggleFavorite={toggleFav}
+                onSelect={handleNav}
+                onViewCoupons={openCoupons}
+                onOpenGallery={openGallery}
+                currentPhotoIndex={currentPhotoIndices[h.hotelId] || 0}
+                handlePrevPhoto={handlePrevPhoto}
+                handleNextPhoto={handleNextPhoto}
+                photoCount={(photosMap[h.hotelId] || []).length}
+                toggleMap={toggleMap}
+                isMapVisible={mapVisible[h.hotelId] || false}
+                handleCopyAddress={handleCopyAddress}
+                handleTMapNavigation={handleTMapNavigation}
+                index={index}
+                totalHotels={filteredHotels.length}
+              />
+            ))}
+          </VStack>
+        )}
       </Box>
 
       {/* 쿠폰 모달 */}
@@ -1069,36 +587,43 @@ const HotelList = ({ loadHotelSettings }) => {
         onClose={() => setIsCouponModalOpen(false)}
       >
         <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>사용 가능 쿠폰</ModalHeader>
+        <ModalContent borderRadius="xl">
+          <ModalHeader fontSize="md" fontWeight="semibold">
+            사용 가능 쿠폰
+          </ModalHeader>
           <ModalCloseButton />
-          <ModalBody>
+          <ModalBody pb={6}>
             {selectedCoupons.length > 0 ? (
               <VStack spacing={3}>
                 {selectedCoupons.map((c) => (
                   <Box
                     key={c.uuid}
-                    p={3}
+                    p={4}
                     borderWidth="1px"
-                    borderRadius="md"
+                    borderRadius="lg"
                     w="100%"
+                    bg="gray.50"
                   >
-                    <Text fontWeight="bold">{c.name}</Text>
-                    <Text>코드: {c.code}</Text>
-                    <Text>
+                    <Text fontWeight="semibold" color="gray.800">
+                      {c.name}
+                    </Text>
+                    <Text fontSize="sm" color="gray.600">
+                      코드: {c.code}
+                    </Text>
+                    <Text fontSize="sm" color="gray.600">
                       할인:{' '}
                       {c.discountType === 'percentage'
                         ? `${c.discountValue}%`
                         : `${c.discountValue.toLocaleString()}원`}
                     </Text>
-                    <Text>
+                    <Text fontSize="sm" color="gray.600">
                       유효: {c.startDate} ~ {c.endDate}
                     </Text>
                   </Box>
                 ))}
               </VStack>
             ) : (
-              <Text>사용 가능한 쿠폰이 없습니다.</Text>
+              <Text color="gray.500">사용 가능한 쿠폰이 없습니다.</Text>
             )}
           </ModalBody>
         </ModalContent>
@@ -1111,10 +636,12 @@ const HotelList = ({ loadHotelSettings }) => {
         size="xl"
       >
         <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>호텔 사진 갤러리</ModalHeader>
+        <ModalContent borderRadius="xl">
+          <ModalHeader fontSize="md" fontWeight="semibold">
+            호텔 사진 갤러리
+          </ModalHeader>
           <ModalCloseButton />
-          <ModalBody>
+          <ModalBody pb={6}>
             <VStack spacing={4}>
               {selectedPhotos.map((photo, idx) => (
                 <Image
@@ -1124,7 +651,7 @@ const HotelList = ({ loadHotelSettings }) => {
                   h="300px"
                   w="100%"
                   objectFit="cover"
-                  borderRadius="md"
+                  borderRadius="lg"
                   fallbackSrc="/assets/default-hotel.jpg"
                 />
               ))}

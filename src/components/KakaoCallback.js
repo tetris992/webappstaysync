@@ -1,9 +1,9 @@
-// webapp/src/components/KakaoCallback.js
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast, Spinner, Center, Box, Text } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
 import { customerLoginSocial } from '../api/api';
+import io from 'socket.io-client';
 
 const KakaoCallback = () => {
   const navigate = useNavigate();
@@ -13,6 +13,25 @@ const KakaoCallback = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const processingRef = useRef(false);
+
+  useEffect(() => {
+    const socket = io(process.env.REACT_APP_API_URL);
+
+    socket.on('couponIssued', ({ message, coupons }) => {
+      toast({
+        title: '새 쿠폰 발행',
+        description: message,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      console.log('[KakaoCallback] New coupons received:', coupons);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [toast]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -53,7 +72,6 @@ const KakaoCallback = () => {
         if (response && response.success) {
           if (response.needPhoneVerification) {
             console.log('[KakaoCallback] Phone verification required, customerId:', response.customerId);
-            // 토큰 저장
             localStorage.setItem('customerToken', response.token);
             localStorage.setItem('refreshToken', response.refreshToken);
             console.log('[KakaoCallback] Stored tokens:', {

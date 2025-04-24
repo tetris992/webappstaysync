@@ -1,4 +1,3 @@
-// src/pages/AuthCallback.js
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
@@ -10,12 +9,32 @@ import {
   Spinner,
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
+import io from 'socket.io-client';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
   const { login } = useAuth();
+
+  useEffect(() => {
+    const socket = io(process.env.REACT_APP_API_URL);
+
+    socket.on('couponIssued', ({ message, coupons }) => {
+      toast({
+        title: '새 쿠폰 발행',
+        description: message,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      console.log('[AuthCallback] New coupons received:', coupons);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [toast]);
 
   useEffect(() => {
     const handleCallback = async () => {

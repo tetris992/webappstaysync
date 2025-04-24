@@ -17,9 +17,10 @@ import {
   PopoverTrigger,
   PopoverContent,
   PopoverArrow,
+  SlideFade,
   Badge,
 } from '@chakra-ui/react';
-import { SearchIcon, CalendarIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { SearchIcon, CalendarIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
@@ -32,7 +33,8 @@ import 'react-date-range/dist/theme/default.css';
 import { fetchHotelList, fetchCustomerCoupons } from '../api/api';
 import api from '../api/api';
 import { useToast } from '@chakra-ui/react';
-import BottomNavigation from '../components/BottomNavigation'; // 하단 네비게이션 바 추가
+import BottomNavigation from '../components/BottomNavigation';
+import io from 'socket.io-client';
 
 // 기본 호텔 데이터 (API 호출 실패 시 사용)
 const recommendedHotels = [
@@ -78,6 +80,39 @@ const Home = () => {
   const [coupons, setCoupons] = useState([]);
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [error, setError] = useState(null);
+  const [isCouponPanelOpen, setIsCouponPanelOpen] = useState(false);
+
+  // Socket.io 연결 및 couponIssued 이벤트 처리
+  useEffect(() => {
+    const socket = io(process.env.REACT_APP_API_URL, {
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
+
+    socket.on('connect', () => {
+      console.log('[Home] Socket.io connected');
+    });
+
+    socket.on('couponIssued', ({ message }) => {
+      toast({
+        title: '새 쿠폰 발행',
+        description: message,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[Home] Socket.io disconnected, attempting to reconnect...');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [toast]);
 
   // 서버에서 호텔 데이터 가져오기
   useEffect(() => {
@@ -122,11 +157,15 @@ const Home = () => {
   // 고객 쿠폰 데이터 가져오기
   useEffect(() => {
     const fetchCoupons = async () => {
-      if (!customer?._id) return;
+      if (!customer) {
+        console.log('[Home] Customer not available, skipping fetchCoupons');
+        return;
+      }
       try {
         setError(null);
-        const customerCoupons = await fetchCustomerCoupons(customer._id);
-        setCoupons(customerCoupons);
+        const customerCoupons = await fetchCustomerCoupons();
+        console.log('[Home] Fetched customer coupons:', customerCoupons);
+        setCoupons(customerCoupons || []);
       } catch (error) {
         console.error('쿠폰 데이터 가져오기 실패:', error);
         setError(error.message || '쿠폰을 불러오지 못했습니다.');
@@ -146,11 +185,16 @@ const Home = () => {
   // 다운로드 가능한 쿠폰 가져오기
   useEffect(() => {
     const fetchAvailableCoupons = async () => {
-      if (!customer?._id) return;
+      if (!customer) {
+        console.log('[Home] Customer not available, skipping fetchAvailableCoupons');
+        return;
+      }
       try {
         setError(null);
         const response = await api.get('/api/customer/available-coupons');
-        setAvailableCoupons(response.data.coupons || []);
+        const available = response.data.coupons || [];
+        console.log('[Home] Fetched available coupons:', available);
+        setAvailableCoupons(available);
       } catch (error) {
         console.error('사용 가능 쿠폰 데이터 가져오기 실패:', error);
         setError(error.message || '사용 가능 쿠폰을 불러오지 못했습니다.');
@@ -171,17 +215,30 @@ const Home = () => {
   const handleDownloadCoupon = async (couponUuid) => {
     try {
       setError(null);
-      const response = await api.post('/api/customer/download-coupon', {
+      const response = await api.post('/api/customer/coupons/download', {
         couponUuid,
         customerId: customer._id,
       });
-      setCoupons([...coupons, response.data.coupon]);
-      setAvailableCoupons(
-        availableCoupons.filter((coupon) => coupon.couponUuid !== couponUuid)
+      const newCoupon = response.data.coupon;
+      setCoupons((prev) => [...prev, newCoupon]);
+      setAvailableCoupons((prev) =>
+        prev.filter((coupon) => coupon.couponUuid !== couponUuid)
       );
       toast({
         title: '쿠폰 다운로드 성공',
-        description: '쿠폰이 성공적으로 다운로드되었습니다.',
+        description: (
+          <Box>
+            <Text>쿠폰이 성공적으로 다운로드되었습니다.</Text>
+            <Button
+              size="sm"
+              mt={2}
+              colorScheme="blue"
+              onClick={() => setIsCouponPanelOpen(true)}
+            >
+              쿠폰 확인하기
+            </Button>
+          </Box>
+        ),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -321,18 +378,17 @@ const Home = () => {
   return (
     <Box
       minH="100vh"
-      bg="gray.50"
+      bg="gray.100"
       display="flex"
       flexDirection="column"
       w="100%"
-      overflowX="hidden"
-      position="relative"
+      overflow="auto"
     >
       {/* 상단 헤더 - 고정 위치 */}
       <Box
         bg="white"
         borderBottom="1px solid"
-        borderColor="gray.100"
+        borderColor="gray.200"
         width="100%"
         py={3}
         position="sticky"
@@ -351,14 +407,14 @@ const Home = () => {
               mx="auto"
             >
               <Box
-                bg="blue.500"
+                bg="blue.600"
                 w="36px"
                 h="36px"
                 borderRadius="lg"
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
-                boxShadow="lg"
+                boxShadow="sm"
                 position="relative"
                 _before={{
                   content: '""',
@@ -369,14 +425,14 @@ const Home = () => {
                   bottom: 0,
                   borderRadius: 'lg',
                   background:
-                    'linear-gradient(135deg, #4299E1 0%, #3182CE 100%)',
+                    'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
                   opacity: 0.8,
                 }}
               >
                 <Text
                   color="white"
                   fontSize="xl"
-                  fontWeight="black"
+                  fontWeight="bold"
                   position="relative"
                   zIndex={1}
                 >
@@ -422,8 +478,8 @@ const Home = () => {
                     onClick={() => setIsSearchOpen(!isSearchOpen)}
                     p={2}
                     borderRadius="full"
-                    bg="gray.50"
-                    _hover={{ bg: 'gray.100' }}
+                    bg="gray.100"
+                    _hover={{ bg: 'gray.200' }}
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
@@ -449,7 +505,8 @@ const Home = () => {
                         placeholder="목적지 검색 (예: 부산, 해운대, 서울)"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        borderRadius="full"
+                        borderRadius="lg"
+                        bg="gray.100"
                       />
                     </InputGroup>
 
@@ -469,14 +526,16 @@ const Home = () => {
                         onClick={() => setIsCalendarOpen(!isCalendarOpen)}
                         readOnly
                         cursor="pointer"
-                        borderRadius="full"
+                        borderRadius="lg"
+                        bg="gray.100"
                       />
                     </InputGroup>
 
                     <Select
                       value={guestCount}
                       onChange={(e) => setGuestCount(Number(e.target.value))}
-                      borderRadius="full"
+                      borderRadius="lg"
+                      bg="gray.100"
                     >
                       {[...Array(10)].map((_, i) => (
                         <option key={i + 1} value={i + 1}>
@@ -492,7 +551,9 @@ const Home = () => {
                         handleSearch();
                         setIsSearchOpen(false);
                       }}
-                      borderRadius="full"
+                      borderRadius="lg"
+                      bg="blue.600"
+                      _hover={{ bg: 'blue.700' }}
                     >
                       검색
                     </Button>
@@ -532,7 +593,7 @@ const Home = () => {
             locale={ko}
             minDate={startOfDay(new Date())}
             maxDate={addMonths(startOfDay(new Date()), 3)}
-            rangeColors={['#3182CE']}
+            rangeColors={['#3B82F6']}
           />
         </Box>
       )}
@@ -542,7 +603,7 @@ const Home = () => {
         flex="1"
         overflowY="auto"
         overflowX="hidden"
-        pb="60px" // 하단 네비게이션 바 높이만큼 여백 추가
+        pb="60px"
         css={{
           '&::-webkit-scrollbar': {
             width: '4px',
@@ -552,7 +613,7 @@ const Home = () => {
             background: 'transparent',
           },
           '&::-webkit-scrollbar-thumb': {
-            background: '#CBD5E0',
+            background: '#D1D5DB',
             borderRadius: '24px',
           },
         }}
@@ -578,17 +639,21 @@ const Home = () => {
                     },
                   });
                 }}
-                borderRadius="xl"
+                borderRadius="lg"
                 py={6}
                 fontSize="lg"
-                fontWeight="bold"
-                boxShadow="md"
+                fontWeight="semibold"
+                bg="blue.600"
+                color="white"
+                boxShadow="sm"
                 _hover={{
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'lg',
+                  bg: 'blue.700',
+                  transform: 'translateY(-1px)',
+                  boxShadow: 'md',
                 }}
                 _active={{
                   transform: 'translateY(0)',
+                  boxShadow: 'sm',
                 }}
               >
                 숙소 예약하기
@@ -600,7 +665,7 @@ const Home = () => {
                 fontSize={{ base: 'md', md: 'lg' }}
                 fontWeight="bold"
                 mb={3}
-                color="gray.700"
+                color="gray.800"
               >
                 추천 호텔
               </Text>
@@ -618,7 +683,7 @@ const Home = () => {
                       position="relative"
                       cursor="pointer"
                       h={{ base: '240px', sm: '300px', md: '400px' }}
-                      borderRadius="xl"
+                      borderRadius="lg"
                       overflow="hidden"
                       role="group"
                     >
@@ -651,7 +716,9 @@ const Home = () => {
                           px={3}
                           py={1}
                           borderRadius="full"
-                          boxShadow="md"
+                          boxShadow="sm"
+                          bg="blue.600"
+                          color="white"
                         >
                           {hotel.tag || 'HOT'}
                         </Badge>
@@ -663,7 +730,7 @@ const Home = () => {
                         right={0}
                         p={5}
                         align="flex-start"
-                        spacing={2}
+                        spacing={1}
                       >
                         <Text
                           color="white"
@@ -704,117 +771,95 @@ const Home = () => {
             </Box>
 
             {customer && (
-              <Box w="100%" bg="white" borderRadius="xl" boxShadow="md" p={4}>
-                <Flex justify="space-between" align="center">
-                  <Box textAlign="center">
-                    <Text fontSize="xs" color="gray.500">
-                      방문 횟수
-                    </Text>
-                    <Text fontSize="md" fontWeight="bold" color="gray.800">
-                      {customer.totalVisits || 0}
-                    </Text>
-                  </Box>
-                  <Box textAlign="center">
-                    <Text fontSize="xs" color="gray.500">
-                      포인트
-                    </Text>
-                    <Text fontSize="md" fontWeight="bold" color="gray.800">
-                      {(customer.points || 0).toLocaleString()}P
-                    </Text>
-                  </Box>
-                  <Box textAlign="center">
-                    <Text fontSize="xs" color="gray.500">
-                      쿠폰
-                    </Text>
-                    <Text fontSize="md" fontWeight="bold" color="gray.800">
-                      {coupons.length}개
-                    </Text>
-                  </Box>
-                </Flex>
-              </Box>
-            )}
-
-            {customer && (
               <Box w="100%" mb={4}>
+                <Text
+                  fontSize={{ base: 'md', md: 'lg' }}
+                  fontWeight="bold"
+                  mb={3}
+                  color="gray.800"
+                >
+                  쿠폰
+                </Text>
+                {availableCoupons.length > 0 ? (
+                  <VStack spacing={3}>
+                    {availableCoupons.map((coupon) => (
+                      <Box
+                        key={coupon.couponUuid}
+                        bg="white"
+                        p={4}
+                        rounded="lg"
+                        shadow="sm"
+                        w="100%"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        position="relative"
+                        overflow="hidden"
+                        _before={{
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '4px',
+                          bg: 'blue.600',
+                        }}
+                      >
+                        <Text fontWeight="bold" color="gray.800">
+                          {coupon.name}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          코드: {coupon.code}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          할인:{' '}
+                          {coupon.discountType === 'percentage'
+                            ? `${coupon.discountValue}%`
+                            : `${coupon.discountValue.toLocaleString()}원`}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          유효 기간: {coupon.startDate} ~ {coupon.endDate}
+                        </Text>
+                        <Button
+                          mt={2}
+                          colorScheme="blue"
+                          size="sm"
+                          onClick={() => handleDownloadCoupon(coupon.couponUuid)}
+                          borderRadius="lg"
+                          bg="blue.600"
+                          _hover={{ bg: 'blue.700' }}
+                        >
+                          다운로드
+                        </Button>
+                      </Box>
+                    ))}
+                  </VStack>
+                ) : (
+                  <Text color="gray.500" textAlign="center">
+                    사용 가능한 쿠폰이 없습니다.
+                  </Text>
+                )}
                 <Button
                   w="100%"
-                  size="lg"
-                  variant="outline"
-                  colorScheme="teal"
-                  onClick={() => navigate('/coupon-wallet')}
-                  borderRadius="xl"
-                  py={6}
-                  fontSize="lg"
-                  fontWeight="bold"
-                  boxShadow="md"
-                  rightIcon={<ChevronRightIcon />}
-                  _hover={{
-                    transform: 'translateY(-2px)',
-                    boxShadow: 'lg',
-                  }}
-                  _active={{
-                    transform: 'translateY(0)',
-                  }}
+                  colorScheme="blue"
+                  size="md"
+                  onClick={() => setIsCouponPanelOpen(true)}
+                  borderRadius="lg"
+                  bg="blue.600"
+                  _hover={{ bg: 'blue.700' }}
+                  mt={4}
                 >
                   쿠폰 보관함
                 </Button>
               </Box>
             )}
 
-            {customer && availableCoupons.length > 0 && (
-              <Box w="100%" mb={4}>
-                <Text
-                  fontSize={{ base: 'md', md: 'lg' }}
-                  fontWeight="bold"
-                  mb={3}
-                  color="gray.700"
-                >
-                  사용 가능 쿠폰
-                </Text>
-                <VStack spacing={3}>
-                  {availableCoupons.map((coupon) => (
-                    <Box
-                      key={coupon.couponUuid}
-                      bg="white"
-                      p={4}
-                      rounded="lg"
-                      shadow="sm"
-                      w="100%"
-                    >
-                      <Text fontWeight="bold">{coupon.name}</Text>
-                      <Text fontSize="sm" color="gray.600">
-                        코드: {coupon.code}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        할인:{' '}
-                        {coupon.discountType === 'percentage'
-                          ? `${coupon.discountValue}%`
-                          : `${coupon.discountValue.toLocaleString()}원`}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        유효 기간: {coupon.startDate} ~ {coupon.endDate}
-                      </Text>
-                      <Button
-                        mt={2}
-                        colorScheme="blue"
-                        size="sm"
-                        onClick={() => handleDownloadCoupon(coupon.couponUuid)}
-                      >
-                        다운로드
-                      </Button>
-                    </Box>
-                  ))}
-                </VStack>
-              </Box>
-            )}
-
-            <Box w="100%" position="relative" mb={4}>
+            <Box w="100%" mb={4}>
               <Box
                 position="relative"
                 w="100%"
                 h={{ base: '80px', sm: '100px', md: '133px' }}
                 bg="gray.900"
-                borderRadius="xl"
+                borderRadius="lg"
                 overflow="hidden"
                 boxShadow="md"
                 cursor="pointer"
@@ -1001,15 +1046,15 @@ const Home = () => {
                     <Text
                       fontSize={{ base: 'xl', md: '2xl' }}
                       fontWeight="bold"
-                      mb={2}
-                      textShadow="0 2px 4px rgba(0,0,0,0.3)"
+                      mb={1}
+                      textShadow="0 1px 2px rgba(0,0,0,0.2)"
                     >
                       이벤트
                     </Text>
                     <Text
                       fontSize={{ base: 'sm', md: 'md' }}
                       opacity={0.9}
-                      textShadow="0 1px 2px rgba(0,0,0,0.3)"
+                      textShadow="0 1px 2px rgba(0,0,0,0.2)"
                     >
                       클릭하여 이벤트 확인하기
                     </Text>
@@ -1017,11 +1062,113 @@ const Home = () => {
                 </Box>
               </Box>
             </Box>
+
+            {/* 더미 콘텐츠 추가로 스크롤 테스트 */}
+            <Box h="100vh" bg="gray.200" borderRadius="lg" p={4} mb={4}>
+              <Text color="gray.700">더미 콘텐츠 (스크롤 테스트용)</Text>
+            </Box>
           </VStack>
         </Container>
       </Box>
 
-      {/* 하단 네비게이션 바 */}
+      {/* 쿠폰 보관함 드랍다운 패널 */}
+      {isCouponPanelOpen && (
+        <Box
+          position="fixed"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          bg="blackAlpha.600"
+          zIndex={98}
+          onClick={() => setIsCouponPanelOpen(false)}
+          backdropFilter="blur(4px)"
+        />
+      )}
+      <SlideFade in={isCouponPanelOpen} offsetY="-20px">
+        <Box
+          position="fixed"
+          top="60px"
+          left="0"
+          right="0"
+          bg="white"
+          zIndex={99}
+          boxShadow="md"
+          maxH="50vh"
+          overflowY="auto"
+          borderBottomRadius="xl"
+          p={4}
+        >
+          <Flex justify="space-between" align="center" mb={4}>
+            <Text fontSize="lg" fontWeight="bold">
+              쿠폰 보관함
+            </Text>
+            <Button
+              size="sm"
+              onClick={() => setIsCouponPanelOpen(false)}
+              variant="ghost"
+            >
+              닫기
+            </Button>
+          </Flex>
+          {coupons.length === 0 ? (
+            <Text color="gray.500" textAlign="center">
+              보유한 쿠폰이 없습니다.
+            </Text>
+          ) : (
+            <VStack spacing={3}>
+              {coupons.map((coupon) => (
+                <Box
+                  key={coupon.couponUuid}
+                  bg="gray.50"
+                  p={3}
+                  rounded="lg"
+                  w="100%"
+                  borderTop="1px dashed"
+                  borderColor="gray.300"
+                >
+                  <Text fontWeight="bold" color="gray.800">
+                    {coupon.name}
+                  </Text>
+                  <Text fontSize="sm" color="gray.600">
+                    코드: {coupon.code}
+                  </Text>
+                  <Text fontSize="sm" color="gray.600">
+                    할인:{' '}
+                    {coupon.discountType === 'percentage'
+                      ? `${coupon.discountValue}%`
+                      : `${coupon.discountValue.toLocaleString()}원`}
+                  </Text>
+                  <Text fontSize="sm" color="gray.600">
+                    유효 기간: {coupon.startDate} ~ {coupon.endDate}
+                  </Text>
+                  <Text
+                    fontSize="sm"
+                    color={coupon.used ? 'red.500' : 'green.500'}
+                  >
+                    상태: {coupon.used ? '사용됨' : '사용 가능'}
+                  </Text>
+                </Box>
+              ))}
+              <Button
+                w="100%"
+                colorScheme="blue"
+                size="sm"
+                onClick={() => {
+                  setIsCouponPanelOpen(false);
+                  setTimeout(() => navigate('/coupon-wallet'), 300);
+                }}
+                borderRadius="lg"
+                bg="blue.600"
+                _hover={{ bg: 'blue.700' }}
+              >
+                쿠폰 보관함으로 이동
+              </Button>
+            </VStack>
+          )}
+        </Box>
+      </SlideFade>
+
       <BottomNavigation />
     </Box>
   );

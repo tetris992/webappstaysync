@@ -51,7 +51,6 @@ import {
   fetchHotelAvailability,
   fetchCustomerHotelSettings,
   fetchHotelPhotos,
-  fetchCustomerCoupons,
   downloadCoupon,
 } from '../api/api';
 import Map from '../components/Map';
@@ -62,7 +61,7 @@ const RoomSelection = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const location = useLocation();
-  const { customer } = useAuth();
+  const { customer, customerCoupons, setCustomerCoupons, couponsLoadError } = useAuth();
   const {
     checkIn: initialCheckIn = format(new Date(), 'yyyy-MM-dd'),
     checkOut: initialCheckOut = format(addDays(new Date(), 1), 'yyyy-MM-dd'),
@@ -96,7 +95,6 @@ const RoomSelection = () => {
   const [shouldFetchAvailability, setShouldFetchAvailability] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [sortMode, setSortMode] = useState('event');
-  const [customerCoupons, setCustomerCoupons] = useState([]);
   const [selectedCoupons, setSelectedCoupons] = useState({});
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [currentRoomInfo, setCurrentRoomInfo] = useState(null);
@@ -127,30 +125,10 @@ const RoomSelection = () => {
   };
 
   useEffect(() => {
-    const loadCoupons = async () => {
-      if (!customer?._id) return;
-      try {
-        setError(null);
-        const coupons = await fetchCustomerCoupons(customer._id);
-        console.log('[RoomSelection] Loaded customer coupons:', coupons);
-        setCustomerCoupons(coupons || []);
-      } catch (error) {
-        console.error(
-          '[RoomSelection] Failed to load customer coupons:',
-          error
-        );
-        setError(error.message || '쿠폰을 불러오지 못했습니다.');
-        toast({
-          title: '쿠폰 로드 실패',
-          description: error.message || '쿠폰을 불러오지 못했습니다.',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-    };
-    loadCoupons();
-  }, [customer, toast]);
+    if (couponsLoadError) {
+      setError(couponsLoadError);
+    }
+  }, [couponsLoadError]);
 
   useEffect(() => {
     let isMounted = true;
@@ -309,7 +287,7 @@ const RoomSelection = () => {
       }
     };
     syncAutoDistributeCoupons();
-  }, [customer, hotelCoupons, toast, hotelId, customerCoupons]);
+  }, [customer, hotelCoupons, toast, hotelId, customerCoupons, setCustomerCoupons]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -716,6 +694,17 @@ const RoomSelection = () => {
         totalPrice = Math.max(0, totalPrice - couponTotalFixedDiscount);
       }
 
+      // 쿠폰 사용 후 customerCoupons 갱신 (used 상태 반영)
+      if (couponUuid) {
+        const updatedCoupons = customerCoupons.map((coupon) =>
+          coupon.couponUuid === couponUuid
+            ? { ...coupon, used: true }
+            : coupon
+        );
+        setCustomerCoupons(updatedCoupons);
+        console.log('[RoomSelection] Updated customerCoupons after coupon use:', updatedCoupons);
+      }
+
       navigate('/confirm', {
         state: {
           hotelId,
@@ -741,7 +730,7 @@ const RoomSelection = () => {
         },
       });
     },
-    [dateRange, hotelId, guestCount, navigate]
+    [dateRange, hotelId, guestCount, navigate, customerCoupons, setCustomerCoupons]
   );
 
   const handleApplyCoupon = (roomInfo, coupon) => {

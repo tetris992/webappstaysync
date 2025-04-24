@@ -1,4 +1,3 @@
-// webapp/src/AppContent.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Box } from '@chakra-ui/react';
@@ -11,8 +10,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import KakaoCallback from './components/KakaoCallback';
 import PrivacyConsentPage from './pages/PrivacyConsentModal';
-import PhoneVerification from './pages/PhoneVerification'; // 추가
+import PhoneVerification from './pages/PhoneVerification';
 import BottomNavigation from './components/BottomNavigation';
+import MyInfo from './pages/MyInfo'; // 새로운 페이지 추가
 import { useAuth } from './contexts/AuthContext';
 import { fetchCustomerHotelSettings } from './api/api';
 import Events from './pages/Events';
@@ -85,6 +85,7 @@ function AppContent() {
           <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
           <Route path="/consent" element={<PrivacyConsentPage />} />
           <Route path="/events" element={<Events />} />
+          <Route path="/my-info" element={<MyInfo />} /> {/* 새로운 라우팅 추가 */}
           <Route
             path="/verify-phone/:customerId"
             element={<PhoneVerification />}
