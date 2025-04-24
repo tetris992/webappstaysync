@@ -12,10 +12,7 @@ import {
   AspectRatio,
   Divider,
 } from '@chakra-ui/react';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from '@chakra-ui/icons';
+import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import {
   FaHeart,
   FaRegHeart,
@@ -24,7 +21,7 @@ import {
   FaRoute,
 } from 'react-icons/fa';
 import { useSwipeable } from 'react-swipeable'; // 스와이프 제스처 라이브러리
-import Map from './Map'; // Map 컴포넌트 임포트
+import Map from './HotelMap'; // Map 컴포넌트 임포트
 
 const HotelCard = ({
   hotel,
@@ -67,13 +64,18 @@ const HotelCard = ({
       <AspectRatio ratio={16 / 9}>
         <Box position="relative">
           <Image
-            src={hotel.photos[currentPhotoIndex]?.photoUrl || '/assets/default-hotel.jpg'}
+            src={
+              hotel.photos[currentPhotoIndex]?.photoUrl ||
+              '/assets/default-hotel.jpg'
+            }
             alt={`${hotel.hotelName} 이미지`}
             objectFit="cover"
             onError={(e) => (e.target.src = '/assets/default-hotel.jpg')}
             onClick={(e) => {
               e.stopPropagation();
-              console.log(`[HotelCard] Image clicked for hotel ID: ${hotel.hotelId}`);
+              console.log(
+                `[HotelCard] Image clicked for hotel ID: ${hotel.hotelId}`
+              );
               onSelect(hotel.hotelId);
             }}
             cursor="pointer"

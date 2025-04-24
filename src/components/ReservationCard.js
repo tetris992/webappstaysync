@@ -23,7 +23,7 @@ import {
 import { FaMapMarkerAlt, FaMapSigns, FaCopy, FaPhone } from 'react-icons/fa';
 import { format } from 'date-fns';
 import { useToast } from '@chakra-ui/react';
-import Map from './Map';
+import Map from './HotelMap';
 
 // 기본 이미지 경로 수정
 const defaultRoomImage = '/assets/default-room1.jpg';
@@ -72,10 +72,15 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
   const safeOriginalPrice =
     typeof originalPrice === 'number' ? originalPrice : safePrice;
   const safeDiscount = typeof discount === 'number' ? discount : 0;
-  const safeFixedDiscount = typeof fixedDiscount === 'number' ? fixedDiscount : 0;
-  const safeCouponDiscount = typeof couponDiscount === 'number' ? couponDiscount : 0;
-  const safeCouponFixedDiscount = typeof couponFixedDiscount === 'number' ? couponFixedDiscount : 0;
-  const safeCouponTotalFixedDiscount = safeCouponFixedDiscount * (typeof numDays === 'number' && numDays > 0 ? numDays : 1);
+  const safeFixedDiscount =
+    typeof fixedDiscount === 'number' ? fixedDiscount : 0;
+  const safeCouponDiscount =
+    typeof couponDiscount === 'number' ? couponDiscount : 0;
+  const safeCouponFixedDiscount =
+    typeof couponFixedDiscount === 'number' ? couponFixedDiscount : 0;
+  const safeCouponTotalFixedDiscount =
+    safeCouponFixedDiscount *
+    (typeof numDays === 'number' && numDays > 0 ? numDays : 1);
   const safeNumDays = typeof numDays === 'number' && numDays > 0 ? numDays : 1;
   const thumbnail = photoUrl || defaultRoomImage;
   const cardBg = useColorModeValue('white', 'gray.700');
@@ -92,7 +97,9 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
 
   const couponDiscountAmount =
     couponDiscount > 0
-      ? Math.floor((safeOriginalPrice - eventDiscountAmount) * (safeCouponDiscount / 100))
+      ? Math.floor(
+          (safeOriginalPrice - eventDiscountAmount) * (safeCouponDiscount / 100)
+        )
       : safeCouponFixedDiscount > 0
       ? safeCouponTotalFixedDiscount
       : 0;
@@ -385,7 +392,10 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
               </>
             )}
 
-            {(safeDiscount > 0 || safeFixedDiscount > 0 || safeCouponDiscount > 0 || safeCouponFixedDiscount > 0) && (
+            {(safeDiscount > 0 ||
+              safeFixedDiscount > 0 ||
+              safeCouponDiscount > 0 ||
+              safeCouponFixedDiscount > 0) && (
               <>
                 <Text fontSize="sm" color="gray.600">
                   할인 전 금액:
@@ -405,8 +415,12 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                     <Flex direction="column" align="start">
                       <Text fontSize="sm" fontWeight="medium" color="red.600">
                         {discountType === 'fixed' && safeFixedDiscount > 0 ? (
-                          <>총 {safeFixedDiscount.toLocaleString()}원 ({safeNumDays}박)</>
-                        ) : discountType === 'percentage' && safeDiscount > 0 ? (
+                          <>
+                            총 {safeFixedDiscount.toLocaleString()}원 (
+                            {safeNumDays}박)
+                          </>
+                        ) : discountType === 'percentage' &&
+                          safeDiscount > 0 ? (
                           <>총 {eventDiscountAmount.toLocaleString()}원</>
                         ) : (
                           '할인 정보 없음'
@@ -423,7 +437,10 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                     <Flex direction="column" align="start">
                       <Text fontSize="sm" fontWeight="medium" color="red.600">
                         {safeCouponFixedDiscount > 0 ? (
-                          <>총 {safeCouponTotalFixedDiscount.toLocaleString()}원 ({safeNumDays}박)</>
+                          <>
+                            총 {safeCouponTotalFixedDiscount.toLocaleString()}원
+                            ({safeNumDays}박)
+                          </>
                         ) : safeCouponDiscount > 0 ? (
                           <>총 {couponDiscountAmount.toLocaleString()}원</>
                         ) : (

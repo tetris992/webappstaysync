@@ -35,14 +35,20 @@ import {
   useCoupon as applyCoupon,
 } from '../api/api';
 import { differenceInCalendarDays, format } from 'date-fns';
-import Map from '../components/Map';
+import Map from '../components/HotelMap';
 import BottomNavigation from '../components/BottomNavigation';
 
 const ReservationConfirmation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
-  const { customer, customerCoupons, setCustomerCoupons, isCouponsLoading, couponsLoadError } = useAuth();
+  const {
+    customer,
+    customerCoupons,
+    isCouponsLoading,
+    couponsLoadError,
+    updateCustomerCouponsAfterUse,
+  } = useAuth();
 
   const [reservationState, setReservationState] = useState({
     hotelId: null,
@@ -68,7 +74,8 @@ const ReservationConfirmation = () => {
     reservationId: '',
     isLoading: false,
     isMapOpen: false,
-    isCouponsLoaded: false,
+    isHotelInfoLoading: true,
+    hotelInfoError: null,
   });
 
   const {
@@ -110,59 +117,32 @@ const ReservationConfirmation = () => {
   const updateReservationState = (updates) => {
     setReservationState((prev) => {
       const newState = { ...prev, ...updates };
-      console.log('[ReservationConfirmation] Updated reservationState:', newState);
+      console.log(
+        '[ReservationConfirmation] Updated reservationState:',
+        newState
+      );
       return newState;
     });
   };
 
   const applicableCoupons = useMemo(() => {
-    console.log('[ReservationConfirmation] Calculating applicableCoupons with:', {
-      customerCoupons: customerCoupons?.length,
-      customerCouponsData: customerCoupons,
-      hotelId: reservationState.hotelId,
-      roomInfo,
-      isCouponsLoading,
-    });
-
     if (!customerCoupons || !reservationState.hotelId || !roomInfo) {
-      console.log('[ReservationConfirmation] Missing required data for coupon filtering:', {
-        customerCoupons: customerCoupons?.length,
-        hotelId: reservationState.hotelId,
-        roomInfo,
-      });
       return [];
     }
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    console.log('[ReservationConfirmation] Current date for comparison:', todayStr);
-
-    let applicable = customerCoupons.filter(c => c.isActive && !c.used);
-    console.log('➀ After active/used filter:', applicable);
-
-    applicable = applicable.filter(c => String(c.hotelId) === String(reservationState.hotelId));
-    console.log('➁ After hotelId filter:', applicable);
-
-    applicable = applicable.filter(c =>
-      !c.applicableRoomType || // If field is missing, assume it applies to all
-      c.applicableRoomType.toLowerCase() === 'all' ||
-      c.applicableRoomType.toLowerCase() === roomInfo.toLowerCase()
+    return customerCoupons.filter(
+      (coupon) =>
+        coupon.isActive &&
+        !coupon.used &&
+        String(coupon.hotelId) === String(reservationState.hotelId) &&
+        (!coupon.applicableRoomType ||
+          coupon.applicableRoomType.toLowerCase() === 'all' ||
+          coupon.applicableRoomType.toLowerCase() === roomInfo.toLowerCase()) &&
+        coupon.startDate <= todayStr &&
+        coupon.endDate >= todayStr
     );
-    console.log('➂ After roomType filter:', applicable);
-
-    applicable = applicable.filter(c =>
-      c.startDate <= todayStr &&
-      c.endDate >= todayStr
-    );
-    console.log('➃ After date filter:', applicable);
-
-    console.log('[ReservationConfirmation] Final applicable coupons:', applicable);
-    console.log('[ReservationConfirmation] Checking if initCouponUuid exists in applicableCoupons:', {
-      initCouponUuid,
-      exists: applicable.some((coupon) => coupon.couponUuid === initCouponUuid),
-    });
-
-    return applicable;
-  }, [customerCoupons, reservationState.hotelId, roomInfo, initCouponUuid, isCouponsLoading]);
+  }, [customerCoupons, reservationState.hotelId, roomInfo]);
 
   useEffect(() => {
     if (isCouponsLoading) {
@@ -182,153 +162,227 @@ const ReservationConfirmation = () => {
         initCouponUuid &&
         applicableCoupons.some((coupon) => coupon.couponUuid === initCouponUuid)
       ) {
+        // 초기 쿠폰 적용 시 할인 계산
+        const selectedCoupon = applicableCoupons.find(
+          (coupon) => coupon.couponUuid === initCouponUuid
+        );
+        let newPrice = initOriginal;
+        let newCouponDiscount = 0;
+        let newCouponFixedDiscount = 0;
+        let newCouponTotalFixedDiscount = 0;
+
+        if (initDiscountType === 'fixed' && initTotalFixedDiscount > 0) {
+          newPrice = Math.max(0, newPrice - initTotalFixedDiscount);
+        } else if (initDiscountType === 'percentage' && initDiscount > 0) {
+          newPrice = Math.round(newPrice * (1 - initDiscount / 100));
+        } else if (selectedCoupon) {
+          if (selectedCoupon.discountType === 'percentage') {
+            newCouponDiscount = selectedCoupon.discountValue;
+            newPrice = Math.round(newPrice * (1 - newCouponDiscount / 100));
+          } else if (selectedCoupon.discountType === 'fixed') {
+            newCouponFixedDiscount = selectedCoupon.discountValue;
+            newCouponTotalFixedDiscount = newCouponFixedDiscount * numNights;
+            newPrice = Math.max(0, newPrice - newCouponTotalFixedDiscount);
+          }
+        }
+
         updateReservationState({
           couponUuid: initCouponUuid,
           couponCode: initCouponCode,
+          price: newPrice,
+          couponDiscount: newCouponDiscount,
+          couponFixedDiscount: newCouponFixedDiscount,
+          couponTotalFixedDiscount: newCouponTotalFixedDiscount,
         });
-        console.log(
-          '[ReservationConfirmation] Applied coupon from state:',
-          { initCouponUuid, initCouponCode }
-        );
-      } else if (initCouponUuid) {
-        console.warn(
-          '[ReservationConfirmation] Applied coupon not found in applicableCoupons:',
-          initCouponUuid
-        );
       }
     }
-  }, [isCouponsLoading, couponsLoadError, applicableCoupons, initCouponUuid, initCouponCode, toast]);
+  }, [
+    isCouponsLoading,
+    couponsLoadError,
+    applicableCoupons,
+    initCouponUuid,
+    initCouponCode,
+    initOriginal,
+    initDiscountType,
+    initTotalFixedDiscount,
+    initDiscount,
+    numNights,
+    toast,
+  ]);
 
-  const handleCouponChange = (couponUuid) => {
-    const selectedCoupon = customerCoupons.find(
-      (coupon) => coupon.couponUuid === couponUuid
-    );
-    let newPrice = reservationState.originalPrice;
-    let newCouponDiscount = 0;
-    let newCouponFixedDiscount = 0;
-    let newCouponTotalFixedDiscount = 0;
-    let newCouponCode = null;
-    let newCouponUuid = null;
+  const handleCouponChange = useCallback(
+    (couponUuid) => {
+      const selectedCoupon = customerCoupons.find(
+        (coupon) => coupon.couponUuid === couponUuid
+      );
+      let newPrice = reservationState.originalPrice;
+      let newCouponDiscount = 0;
+      let newCouponFixedDiscount = 0;
+      let newCouponTotalFixedDiscount = 0;
+      let newCouponCode = null;
+      let newCouponUuid = null;
 
-    if (reservationState.discountType === 'fixed' && reservationState.totalFixedDiscount > 0) {
-      toast({
-        title: '할인 중복 적용 불가',
-        description: '이벤트 할인과 쿠폰 할인은 중복 적용할 수 없습니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      newPrice = Math.max(0, newPrice - reservationState.totalFixedDiscount);
-    } else if (reservationState.discountType === 'percentage' && reservationState.discount > 0) {
-      toast({
-        title: '할인 중복 적용 불가',
-        description: '이벤트 할인과 쿠폰 할인은 중복 적용할 수 없습니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      newPrice = Math.round(newPrice * (1 - reservationState.discount / 100));
-    } else if (selectedCoupon) {
-      if (selectedCoupon.discountType === 'percentage') {
-        newCouponDiscount = selectedCoupon.discountValue;
-        newPrice = Math.round(newPrice * (1 - newCouponDiscount / 100));
-      } else if (selectedCoupon.discountType === 'fixed') {
-        newCouponFixedDiscount = selectedCoupon.discountValue;
-        newCouponTotalFixedDiscount = newCouponFixedDiscount * numNights;
-        newPrice = Math.max(0, newPrice - newCouponTotalFixedDiscount);
-      }
-      newCouponCode = selectedCoupon.code;
-      newCouponUuid = selectedCoupon.couponUuid;
-    }
-
-    updateReservationState({
-      price: newPrice,
-      couponDiscount: newCouponDiscount,
-      couponFixedDiscount: newCouponFixedDiscount,
-      couponTotalFixedDiscount: newCouponTotalFixedDiscount,
-      couponCode: newCouponCode,
-      couponUuid: newCouponUuid,
-    });
-
-    console.log('[ReservationConfirmation] Coupon changed:', {
-      newPrice,
-      newCouponDiscount,
-      newCouponFixedDiscount,
-      newCouponTotalFixedDiscount,
-      newCouponCode,
-      newCouponUuid,
-    });
-  };
-
-  const loadHotelInfoAndPhotos = useCallback(async (hotelId) => {
-    if (!hotelId) {
-      toast({
-        title: '호텔 ID 누락',
-        description: '호텔 ID가 제공되지 않았습니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    try {
-      const [hotelList, settings, photosData] = await Promise.all([
-        fetchHotelList(),
-        fetchCustomerHotelSettings(hotelId, {
-          checkIn: stateCheckIn,
-          checkOut: stateCheckOut,
-        }),
-        fetchHotelPhotos(hotelId, 'room', roomInfo),
-      ]);
-
-      const hotelData = hotelList.find((h) => h.hotelId === hotelId);
-      updateReservationState({
-        hotelPhoneNumber: hotelData?.phoneNumber || '연락처 준비중',
-        hotelInfo: settings,
-      });
-
-      if (settings.latitude && settings.longitude) {
-        updateReservationState({
-          coordinates: { lat: settings.latitude, lng: settings.longitude },
-        });
-      } else {
+      if (
+        reservationState.discountType === 'fixed' &&
+        reservationState.totalFixedDiscount > 0
+      ) {
         toast({
-          title: '좌표 정보 없음',
-          description: '호텔 위치 정보를 불러올 수 없습니다.',
-          status: 'warning',
+          title: '할인 중복 적용 불가',
+          description: '이벤트 할인과 쿠폰 할인은 중복 적용할 수 없습니다.',
+          status: 'error',
           duration: 3000,
           isClosable: true,
         });
+        newPrice = Math.max(0, newPrice - reservationState.totalFixedDiscount);
+      } else if (
+        reservationState.discountType === 'percentage' &&
+        reservationState.discount > 0
+      ) {
+        toast({
+          title: '할인 중복 적용 불가',
+          description: '이벤트 할인과 쿠폰 할인은 중복 적용할 수 없습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        newPrice = Math.round(newPrice * (1 - reservationState.discount / 100));
+      } else if (selectedCoupon) {
+        if (selectedCoupon.discountType === 'percentage') {
+          newCouponDiscount = selectedCoupon.discountValue;
+          newPrice = Math.round(newPrice * (1 - newCouponDiscount / 100));
+        } else if (selectedCoupon.discountType === 'fixed') {
+          newCouponFixedDiscount = selectedCoupon.discountValue;
+          newCouponTotalFixedDiscount = newCouponFixedDiscount * numNights;
+          newPrice = Math.max(0, newPrice - newCouponTotalFixedDiscount);
+        }
+        newCouponCode = selectedCoupon.code;
+        newCouponUuid = selectedCoupon.couponUuid;
+      } else {
+        // 쿠폰 선택 해제 시 원래 가격 복원
+        if (
+          reservationState.discountType === 'fixed' &&
+          reservationState.totalFixedDiscount > 0
+        ) {
+          newPrice = Math.max(
+            0,
+            newPrice - reservationState.totalFixedDiscount
+          );
+        } else if (
+          reservationState.discountType === 'percentage' &&
+          reservationState.discount > 0
+        ) {
+          newPrice = Math.round(
+            newPrice * (1 - reservationState.discount / 100)
+          );
+        }
       }
 
-      const s3PhotoUrl = photosData?.roomPhotos?.[0]?.photoUrl || null;
-      console.log('[ReservationConfirmation] Loaded photo URL:', s3PhotoUrl);
-      updateReservationState({ roomImage: s3PhotoUrl });
-
-      const inTime = settings.checkInTime || '15:00';
-      const outTime = settings.checkOutTime || '11:00';
-      const inDt = stateCheckIn
-        ? new Date(`${stateCheckIn}T${inTime}:00+09:00`)
-        : null;
-      const outDt = stateCheckOut
-        ? new Date(`${stateCheckOut}T${outTime}:00+09:00`)
-        : null;
-      updateReservationState({ checkIn: inDt, checkOut: outDt });
-    } catch (err) {
-      console.error('[ReservationConfirmation] load error:', err);
-      toast({
-        title: '호텔 정보 로드 실패',
-        description: '호텔 정보를 불러오는 중 오류가 발생했습니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
+      updateReservationState({
+        price: newPrice,
+        couponDiscount: newCouponDiscount,
+        couponFixedDiscount: newCouponFixedDiscount,
+        couponTotalFixedDiscount: newCouponTotalFixedDiscount,
+        couponCode: newCouponCode,
+        couponUuid: newCouponUuid,
       });
-    }
-  }, [roomInfo, stateCheckIn, stateCheckOut, toast]);
+    },
+    [
+      customerCoupons,
+      reservationState.originalPrice,
+      reservationState.discountType,
+      reservationState.totalFixedDiscount,
+      reservationState.discount,
+      numNights,
+      toast,
+    ]
+  );
+
+  const loadHotelInfoAndPhotos = useCallback(
+    async (hotelId) => {
+      if (!hotelId) {
+        updateReservationState({
+          hotelInfoError: '호텔 ID가 제공되지 않았습니다.',
+          isHotelInfoLoading: false,
+        });
+        toast({
+          title: '호텔 ID 누락',
+          description: '호텔 ID가 제공되지 않았습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      try {
+        updateReservationState({
+          isHotelInfoLoading: true,
+          hotelInfoError: null,
+        });
+        const [hotelList, settings, photosData] = await Promise.all([
+          fetchHotelList(),
+          fetchCustomerHotelSettings(hotelId, {
+            checkIn: stateCheckIn,
+            checkOut: stateCheckOut,
+          }),
+          fetchHotelPhotos(hotelId, 'room', roomInfo),
+        ]);
+
+        const hotelData = hotelList.find((h) => h.hotelId === hotelId);
+        updateReservationState({
+          hotelPhoneNumber: hotelData?.phoneNumber || '연락처 준비중',
+          hotelInfo: settings,
+        });
+
+        if (settings.latitude && settings.longitude) {
+          updateReservationState({
+            coordinates: { lat: settings.latitude, lng: settings.longitude },
+          });
+        } else {
+          toast({
+            title: '좌표 정보 없음',
+            description: '호텔 위치 정보를 불러올 수 없습니다.',
+            status: 'warning',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+
+        const s3PhotoUrl = photosData?.roomPhotos?.[0]?.photoUrl || null;
+        updateReservationState({ roomImage: s3PhotoUrl });
+
+        const inTime = settings.checkInTime || '15:00';
+        const outTime = settings.checkOutTime || '11:00';
+        const inDt = stateCheckIn
+          ? new Date(`${stateCheckIn}T${inTime}:00+09:00`)
+          : null;
+        const outDt = stateCheckOut
+          ? new Date(`${stateCheckOut}T${outTime}:00+09:00`)
+          : null;
+        updateReservationState({ checkIn: inDt, checkOut: outDt });
+      } catch (err) {
+        console.error('[ReservationConfirmation] load error:', err);
+        updateReservationState({
+          hotelInfoError:
+            err.message || '호텔 정보를 불러오는 중 오류가 발생했습니다.',
+          isHotelInfoLoading: false,
+        });
+        toast({
+          title: '호텔 정보 로드 실패',
+          description:
+            err.message || '호텔 정보를 불러오는 중 오류가 발생했습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        updateReservationState({ isHotelInfoLoading: false });
+      }
+    },
+    [roomInfo, stateCheckIn, stateCheckOut, toast]
+  );
 
   useEffect(() => {
-    console.log('[ReservationConfirmation] location.state:', location.state);
     if (!location.state) {
       toast({
         title: '필수 정보 누락',
@@ -417,18 +471,14 @@ const ReservationConfirmation = () => {
     let finalPhotoUrl = reservationState.roomImage;
     if (!reservationState.roomImage) {
       try {
-        const photosData = await fetchHotelPhotos(reservationState.hotelId, 'room', roomInfo);
+        const photosData = await fetchHotelPhotos(
+          reservationState.hotelId,
+          'room',
+          roomInfo
+        );
         finalPhotoUrl =
           photosData?.roomPhotos?.[0]?.photoUrl || '/assets/default-room1.jpg';
-        console.log(
-          '[ReservationConfirmation] Fallback photo URL:',
-          finalPhotoUrl
-        );
       } catch (err) {
-        console.error(
-          '[ReservationConfirmation] Fallback photo fetch failed:',
-          err
-        );
         finalPhotoUrl = '/assets/default-room1.jpg';
       }
     }
@@ -480,45 +530,26 @@ const ReservationConfirmation = () => {
       photoUrl: finalPhotoUrl,
     };
 
-    console.log('Final reservation data:', finalReservationData);
-
     try {
       updateReservationState({ isLoading: true });
       const res = await createReservation(finalReservationData);
       updateReservationState({ reservationId: res.reservationId });
 
       if (reservationState.couponCode && reservationState.couponUuid) {
-        try {
-          await applyCoupon({
-            hotelId: reservationState.hotelId,
-            couponUuid: reservationState.couponUuid,
-            reservationId: res.reservationId,
-            customerId: customer._id,
-          });
-          const updatedCoupons = customerCoupons.map((coupon) =>
-            coupon.couponUuid === reservationState.couponUuid
-              ? { ...coupon, used: true }
-              : coupon
-          );
-          setCustomerCoupons(updatedCoupons);
-          console.log('[ReservationConfirmation] Updated customerCoupons after coupon use:', updatedCoupons);
-          toast({
-            title: '쿠폰 사용 성공',
-            description: '쿠폰이 성공적으로 사용되었습니다.',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
-        } catch (error) {
-          toast({
-            title: '쿠폰 사용 실패',
-            description: error.message || '쿠폰 사용에 실패했습니다.',
-            status: 'error',
-            duration: 3000,
-            isClosable: true,
-          });
-          return;
-        }
+        await applyCoupon({
+          hotelId: reservationState.hotelId,
+          couponUuid: reservationState.couponUuid,
+          reservationId: res.reservationId,
+          customerId: customer._id,
+        });
+        updateCustomerCouponsAfterUse(reservationState.couponUuid);
+        toast({
+          title: '쿠폰 사용 성공',
+          description: '쿠폰이 성공적으로 사용되었습니다.',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
       }
 
       toast({
@@ -583,13 +614,18 @@ const ReservationConfirmation = () => {
   };
 
   const handleTMapNavigation = () => {
-    if (!reservationState.coordinates?.lat || !reservationState.coordinates?.lng) {
+    if (
+      !reservationState.coordinates?.lat ||
+      !reservationState.coordinates?.lng
+    ) {
       updateReservationState({ isMapOpen: true });
       return;
     }
     const url = `tmap://route?goalx=${reservationState.coordinates.lng}&goaly=${
       reservationState.coordinates.lat
-    }&name=${encodeURIComponent(reservationState.hotelInfo?.hotelName || '호텔')}`;
+    }&name=${encodeURIComponent(
+      reservationState.hotelInfo?.hotelName || '호텔'
+    )}`;
     window.location.href = url;
     setTimeout(() => {
       const isAndroid = /android/i.test(navigator.userAgent);
@@ -649,7 +685,11 @@ const ReservationConfirmation = () => {
               color="gray.600"
               _hover={{ bg: 'gray.100' }}
             />
-            <Text fontSize="xl" fontWeight="bold" color="gray.800">
+            <Text
+              fontSize={{ base: 'lg', md: 'xl' }}
+              fontWeight="bold"
+              color="gray.800"
+            >
               예약 확인
             </Text>
           </Flex>
@@ -671,133 +711,195 @@ const ReservationConfirmation = () => {
           scrollbarWidth: 'none',
         }}
       >
-        <VStack spacing={3} align="stretch">
-          <Box bg="white" rounded="lg" overflow="hidden">
-            <Image
-              src={reservationState.roomImage || '/assets/default-room1.jpg'}
-              alt={roomInfo}
-              objectFit="cover"
-              w="100%"
-              h={{ base: '120px', sm: '180px', md: '250px' }}
-              onError={(e) => (e.target.src = '/assets/default-room1.jpg')}
-            />
-          </Box>
+        {reservationState.isHotelInfoLoading ? (
+          <Flex justify="center" align="center" minH="50vh">
+            <Spinner size="lg" color="teal.500" />
+          </Flex>
+        ) : reservationState.hotelInfoError ? (
+          <VStack spacing={4} align="stretch" minH="50vh" justify="center">
+            <Text color="red.500" textAlign="center">
+              {reservationState.hotelInfoError}
+            </Text>
+            <Button colorScheme="blue" onClick={() => navigate('/hotels')}>
+              호텔 목록으로 돌아가기
+            </Button>
+          </VStack>
+        ) : (
+          <VStack spacing={4} align="stretch">
+            <Box bg="white" rounded="lg" overflow="hidden" shadow="sm">
+              <Image
+                src={reservationState.roomImage || '/assets/default-room1.jpg'}
+                alt={roomInfo}
+                objectFit="cover"
+                w="100%"
+                h={{ base: '150px', sm: '180px', md: '250px' }}
+                onError={(e) => (e.target.src = '/assets/default-room1.jpg')}
+              />
+            </Box>
 
-          <Box
-            bg="white"
-            p={{ base: 3, sm: 4 }}
-            rounded="lg"
-            shadow="md"
-            borderWidth="1px"
-            borderColor="gray.200"
-          >
-            <VStack align="stretch" spacing={2}>
-              <Flex align="center" justify="space-between">
-                <Text fontSize="lg" fontWeight="bold" color="gray.800">
-                  {reservationState.hotelInfo?.hotelName || '호텔 정보 로드 중...'}
-                </Text>
-                <IconButton
-                  icon={<FaCopy />}
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCopyAddress}
-                  isDisabled={!reservationState.hotelInfo?.address}
-                  aria-label="주소 복사"
-                  color="teal.500"
-                  _hover={{ color: 'teal.600' }}
-                />
-              </Flex>
-              <Flex align="center">
-                <Icon as={FaMapMarkerAlt} mr={2} color="teal.500" />
-                <Text
-                  flex={1}
-                  onClick={() => updateReservationState({ isMapOpen: true })}
-                  cursor="pointer"
-                  color={reservationState.coordinates ? 'teal.600' : 'gray.500'}
-                  _hover={
-                    reservationState.coordinates
-                      ? { color: 'teal.800', textDecoration: 'underline' }
-                      : {}
-                  }
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                  overflow="hidden"
-                  textOverflow="ellipsis"
-                >
-                  {reservationState.hotelInfo?.address || '주소 정보 없음'}
-                </Text>
-              </Flex>
-              {reservationState.hotelPhoneNumber && (
-                <Flex align="center" justify="flex-end">
-                  <Icon as={FaPhone} mr={2} color="teal.500" />
+            <Box
+              bg="white"
+              p={{ base: 4, sm: 5 }}
+              rounded="lg"
+              shadow="md"
+              borderWidth="1px"
+              borderColor="gray.200"
+            >
+              <VStack align="stretch" spacing={3}>
+                <Flex align="center" justify="space-between">
                   <Text
-                    color="teal.600"
-                    cursor="pointer"
-                    fontSize="sm"
-                    onClick={() =>
-                      (window.location.href = `tel:${reservationState.hotelPhoneNumber.replace(
-                        /[^0-9]/g,
-                        ''
-                      )}`)
-                    }
-                    _hover={{
-                      color: 'teal.800',
-                      textDecoration: 'underline',
-                    }}
+                    fontSize={{ base: 'lg', md: 'xl' }}
+                    fontWeight="bold"
+                    color="gray.800"
                   >
-                    {reservationState.hotelPhoneNumber}
+                    {reservationState.hotelInfo?.hotelName ||
+                      '호텔 정보 로드 중...'}
+                  </Text>
+                  <IconButton
+                    icon={<FaCopy />}
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyAddress}
+                    isDisabled={!reservationState.hotelInfo?.address}
+                    aria-label="주소 복사"
+                    color="teal.500"
+                    _hover={{ color: 'teal.600' }}
+                  />
+                </Flex>
+                <Flex align="center">
+                  <Icon as={FaMapMarkerAlt} mr={2} color="teal.500" />
+                  <Text
+                    flex={1}
+                    onClick={() => updateReservationState({ isMapOpen: true })}
+                    cursor="pointer"
+                    color={
+                      reservationState.coordinates ? 'teal.600' : 'gray.500'
+                    }
+                    _hover={
+                      reservationState.coordinates
+                        ? { color: 'teal.800', textDecoration: 'underline' }
+                        : {}
+                    }
+                    fontSize={{ base: 'sm', md: 'md' }}
+                    whiteSpace="nowrap"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                  >
+                    {reservationState.hotelInfo?.address || '주소 정보 없음'}
                   </Text>
                 </Flex>
-              )}
-            </VStack>
-          </Box>
-
-          <Box
-            bg="white"
-            p={{ base: 3, sm: 4 }}
-            rounded="lg"
-            shadow="md"
-            borderWidth="1px"
-            borderColor="gray.200"
-          >
-            <VStack align="stretch" spacing={2}>
-              <Text fontWeight="bold" fontSize="md" color="gray.800">
-                예약 정보
-              </Text>
-              <Divider borderColor="gray.200" />
-              <Grid templateColumns="1fr 2fr" gap={2}>
-                <Text color="gray.600" fontSize="sm">예약 번호</Text>
-                <Text fontSize="sm">{reservationState.reservationId || '생성 중...'}</Text>
-                <Text color="gray.600" fontSize="sm">예약자</Text>
-                <Text fontSize="sm">{customer?.name || '정보 없음'}</Text>
-                <Text color="gray.600" fontSize="sm">객실</Text>
-                <Text fontSize="sm">{roomInfo || '정보 없음'}</Text>
-                <Text color="gray.600" fontSize="sm">체크인</Text>
-                <Text fontSize="sm">
-                  {reservationState.checkIn ? format(reservationState.checkIn, 'yyyy-MM-dd HH:mm') : 'N/A'}
-                </Text>
-                <Text color="gray.600" fontSize="sm">체크아웃</Text>
-                <Text fontSize="sm">
-                  {reservationState.checkOut ? format(reservationState.checkOut, 'yyyy-MM-dd HH:mm') : 'N/A'}
-                </Text>
-                <Text color="gray.600" fontSize="sm">숙박 일수</Text>
-                <Text fontSize="sm">{numNights}박</Text>
-                <Text color="gray.600" fontSize="sm">결제</Text>
-                <Text fontSize="sm">현장결제</Text>
-                <Text color="gray.600" fontSize="sm">예약 일시</Text>
-                <Text fontSize="sm" color="gray.400">
-                  {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
-                </Text>
-                {reservationState.eventName && (
-                  <>
-                    <Text color="gray.600" fontSize="sm">적용된 이벤트</Text>
-                    <Text fontSize="sm" color="teal.600">{reservationState.eventName}</Text>
-                  </>
+                {reservationState.hotelPhoneNumber && (
+                  <Flex align="center" justify="flex-end">
+                    <Icon as={FaPhone} mr={2} color="teal.500" />
+                    <Text
+                      color="teal.600"
+                      cursor="pointer"
+                      fontSize={{ base: 'sm', md: 'md' }}
+                      onClick={() =>
+                        (window.location.href = `tel:${reservationState.hotelPhoneNumber.replace(
+                          /[^0-9]/g,
+                          ''
+                        )}`)
+                      }
+                      _hover={{
+                        color: 'teal.800',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      {reservationState.hotelPhoneNumber}
+                    </Text>
+                  </Flex>
                 )}
-                <Text color="gray.600" fontSize="sm">쿠폰 선택</Text>
-                <Flex align="center">
-                  {reservationState.isCouponsLoaded ? (
-                    applicableCoupons.length > 0 ? (
+              </VStack>
+            </Box>
+
+            <Box
+              bg="white"
+              p={{ base: 4, sm: 5 }}
+              rounded="lg"
+              shadow="md"
+              borderWidth="1px"
+              borderColor="gray.200"
+            >
+              <VStack align="stretch" spacing={3}>
+                <Text
+                  fontWeight="bold"
+                  fontSize={{ base: 'md', md: 'lg' }}
+                  color="gray.800"
+                >
+                  예약 정보
+                </Text>
+                <Divider borderColor="gray.200" />
+                <Grid
+                  templateColumns={{ base: '1fr 2fr', md: '1fr 3fr' }}
+                  gap={3}
+                >
+                  <Text color="gray.600" fontSize="sm">
+                    예약 번호
+                  </Text>
+                  <Text fontSize="sm">
+                    {reservationState.reservationId || '생성 중...'}
+                  </Text>
+                  <Text color="gray.600" fontSize="sm">
+                    예약자
+                  </Text>
+                  <Text fontSize="sm">{customer?.name || '정보 없음'}</Text>
+                  <Text color="gray.600" fontSize="sm">
+                    객실
+                  </Text>
+                  <Text fontSize="sm">{roomInfo || '정보 없음'}</Text>
+                  <Text color="gray.600" fontSize="sm">
+                    체크인
+                  </Text>
+                  <Text fontSize="sm">
+                    {reservationState.checkIn
+                      ? format(reservationState.checkIn, 'yyyy-MM-dd HH:mm')
+                      : 'N/A'}
+                  </Text>
+                  <Text color="gray.600" fontSize="sm">
+                    체크아웃
+                  </Text>
+                  <Text fontSize="sm">
+                    {reservationState.checkOut
+                      ? format(reservationState.checkOut, 'yyyy-MM-dd HH:mm')
+                      : 'N/A'}
+                  </Text>
+                  <Text color="gray.600" fontSize="sm">
+                    숙박 일수
+                  </Text>
+                  <Text fontSize="sm">{numNights}박</Text>
+                  <Text color="gray.600" fontSize="sm">
+                    결제
+                  </Text>
+                  <Text fontSize="sm">현장결제</Text>
+                  <Text color="gray.600" fontSize="sm">
+                    예약 일시
+                  </Text>
+                  <Text fontSize="sm" color="gray.400">
+                    {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
+                  </Text>
+                  {reservationState.eventName && (
+                    <>
+                      <Text color="gray.600" fontSize="sm">
+                        적용된 이벤트
+                      </Text>
+                      <Text fontSize="sm" color="teal.600">
+                        {reservationState.eventName}
+                      </Text>
+                    </>
+                  )}
+                  <Text color="gray.600" fontSize="sm">
+                    쿠폰 선택
+                  </Text>
+                  <Flex align="center">
+                    {isCouponsLoading ? (
+                      <Flex align="center">
+                        <Spinner size="xs" color="teal.500" mr={2} />
+                        <Text fontSize="sm" color="gray.500">
+                          쿠폰 로드 중...
+                        </Text>
+                      </Flex>
+                    ) : applicableCoupons.length > 0 ? (
                       <Select
                         value={reservationState.couponUuid || ''}
                         onChange={(e) => handleCouponChange(e.target.value)}
@@ -806,7 +908,10 @@ const ReservationConfirmation = () => {
                         size="sm"
                         variant="outline"
                         borderColor="gray.300"
-                        _focus={{ borderColor: 'teal.500', boxShadow: '0 0 0 1px teal.500' }}
+                        _focus={{
+                          borderColor: 'teal.500',
+                          boxShadow: '0 0 0 1px teal.500',
+                        }}
                       >
                         <option value="">쿠폰 사용 안함</option>
                         {applicableCoupons.map((coupon) => (
@@ -817,114 +922,128 @@ const ReservationConfirmation = () => {
                             {coupon.code} (
                             {coupon.discountType === 'percentage'
                               ? `${coupon.discountValue}% 할인`
-                              : `${coupon.discountValue.toLocaleString()}원 할인`}
+                              : `${(coupon.discountValue ?? 0).toLocaleString()}원 할인`}
                             )
                           </option>
                         ))}
                       </Select>
                     ) : (
-                      <Text fontSize="sm" color="gray.500">적용 가능한 쿠폰 없음</Text>
-                    )
-                  ) : (
-                    <Flex align="center">
-                      <Spinner size="xs" color="teal.500" mr={2} />
-                      <Text fontSize="sm" color="gray.500">쿠폰 로드 중...</Text>
-                    </Flex>
-                  )}
-                </Flex>
-                {reservationState.couponCode && (
-                  <>
-                    <Text color="gray.600" fontSize="sm">적용된 쿠폰</Text>
-                    <Text fontSize="sm" color="teal.600">
-                      {reservationState.couponCode} (
-                      {reservationState.couponDiscount > 0
-                        ? `${reservationState.couponDiscount}% 할인`
-                        : `${reservationState.couponTotalFixedDiscount.toLocaleString()}원 할인`}
-                      )
-                    </Text>
-                  </>
-                )}
-              </Grid>
-
-              <Divider borderColor="gray.200" />
-
-              <Flex justify="space-between" align="center">
-                <Text color="gray.600" fontSize="sm">총 결제 금액</Text>
-                <Box textAlign="right">
-                  {(reservationState.discount > 0 ||
-                    reservationState.fixedDiscount > 0 ||
-                    reservationState.couponDiscount > 0 ||
-                    reservationState.couponFixedDiscount > 0) && (
-                    <Text
-                      fontSize="sm"
-                      color="gray.500"
-                      textDecoration="line-through"
-                    >
-                      {reservationState.originalPrice.toLocaleString()}원
-                    </Text>
-                  )}
-                  <Text fontSize="xl" fontWeight="bold" color="teal.600">
-                    {reservationState.price.toLocaleString()}원
-                  </Text>
-                  {reservationState.discountType === 'fixed' && reservationState.fixedDiscount > 0 ? (
-                    <Text fontSize="xs" color="red.500">
-                      이벤트 할인: 총 {reservationState.fixedDiscount.toLocaleString()}원 (
-                      {numNights}박)
-                    </Text>
-                  ) : reservationState.discount > 0 ? (
-                    <Text fontSize="xs" color="red.500">
-                      이벤트 할인: {reservationState.discount}% 할인
-                    </Text>
-                  ) : null}
-                  {reservationState.couponFixedDiscount > 0 ? (
-                    <Text fontSize="xs" color="red.500">
-                      쿠폰 할인: 총 {reservationState.couponTotalFixedDiscount.toLocaleString()}
-                      원 ({numNights}박)
-                    </Text>
-                  ) : reservationState.couponDiscount > 0 ? (
-                    <Text fontSize="xs" color="red.500">
-                      쿠폰 할인: {reservationState.couponDiscount}% 할인
-                    </Text>
-                  ) : null}
-                </Box>
-              </Flex>
-
-              <Box pt={2}>
-                {reservationState.isLoading ? (
-                  <Flex justify="center">
-                    <Spinner size="lg" color="teal.500" />
+                      <Text fontSize="sm" color="gray.500">
+                        적용 가능한 쿠폰 없음
+                      </Text>
+                    )}
                   </Flex>
-                ) : (
-                  <Button
-                    colorScheme="teal"
-                    w="full"
-                    size="lg"
-                    onClick={handleConfirm}
-                    isDisabled={!reservationState.hotelId || !reservationState.price}
-                    bg="teal.500"
-                    _hover={{ bg: 'teal.600' }}
-                    _active={{ bg: 'teal.700' }}
-                  >
-                    예약하기
-                  </Button>
-                )}
-              </Box>
-            </VStack>
-          </Box>
-        </VStack>
+                  {reservationState.couponCode && (
+                    <>
+                      <Text color="gray.600" fontSize="sm">
+                        적용된 쿠폰
+                      </Text>
+                      <Text fontSize="sm" color="teal.600">
+                        {reservationState.couponCode} (
+                        {reservationState.couponDiscount > 0
+                          ? `${reservationState.couponDiscount}% 할인`
+                          : `${(reservationState.couponTotalFixedDiscount ?? 0).toLocaleString()}원 할인`}
+                        )
+                      </Text>
+                    </>
+                  )}
+                </Grid>
+
+                <Divider borderColor="gray.200" />
+
+                <Flex justify="space-between" align="center">
+                  <Text color="gray.600" fontSize={{ base: 'sm', md: 'md' }}>
+                    총 결제 금액
+                  </Text>
+                  <Box textAlign="right">
+                    {(reservationState.discount > 0 ||
+                      reservationState.totalFixedDiscount > 0 ||
+                      reservationState.couponDiscount > 0 ||
+                      reservationState.couponTotalFixedDiscount > 0) && (
+                      <Text
+                        fontSize="sm"
+                        color="gray.500"
+                        textDecoration="line-through"
+                      >
+                        ₩{(reservationState.originalPrice ?? 0).toLocaleString()}원
+                      </Text>
+                    )}
+                    <Text
+                      fontSize={{ base: 'lg', md: 'xl' }}
+                      fontWeight="bold"
+                      color="teal.600"
+                    >
+                      ₩{(reservationState.price ?? 0).toLocaleString()}원
+                    </Text>
+                    {reservationState.discountType === 'fixed' &&
+                    (reservationState.totalFixedDiscount ?? 0) > 0 ? (
+                      <Text fontSize="xs" color="red.500">
+                        이벤트 할인: 총 ₩
+                        {(reservationState.totalFixedDiscount ?? 0).toLocaleString()}원 (
+                        {numNights}박)
+                      </Text>
+                    ) : reservationState.discount > 0 ? (
+                      <Text fontSize="xs" color="red.500">
+                        이벤트 할인: {reservationState.discount}% 할인
+                      </Text>
+                    ) : null}
+                    {(reservationState.couponTotalFixedDiscount ?? 0) > 0 && (
+                      <Text fontSize="xs" color="red.500">
+                        쿠폰 할인: 총 ₩
+                        {(reservationState.couponTotalFixedDiscount ?? 0).toLocaleString()}원 (
+                        {numNights}박)
+                      </Text>
+                    )}
+                    {reservationState.couponDiscount > 0 && (
+                      <Text fontSize="xs" color="red.500">
+                        쿠폰 할인: {reservationState.couponDiscount}% 할인
+                      </Text>
+                    )}
+                  </Box>
+                </Flex>
+
+                <Box pt={3}>
+                  {reservationState.isLoading ? (
+                    <Flex justify="center">
+                      <Spinner size="lg" color="teal.500" />
+                    </Flex>
+                  ) : (
+                    <Button
+                      colorScheme="teal"
+                      w="full"
+                      size="lg"
+                      onClick={handleConfirm}
+                      isDisabled={
+                        !reservationState.hotelId || !reservationState.price
+                      }
+                      bg="teal.500"
+                      _hover={{ bg: 'teal.600' }}
+                      _active={{ bg: 'teal.700' }}
+                    >
+                      예약하기
+                    </Button>
+                  )}
+                </Box>
+              </VStack>
+            </Box>
+          </VStack>
+        )}
       </Box>
 
       <Modal
         isOpen={reservationState.isMapOpen}
         onClose={() => updateReservationState({ isMapOpen: false })}
-        size={{ base: "full", sm: "lg" }}
+        size={{ base: 'full', sm: 'lg' }}
       >
         <ModalOverlay />
-        <ModalContent>
-          <ModalHeader fontSize="md" fontWeight="bold">호텔 위치</ModalHeader>
+        <ModalContent rounded="lg">
+          <ModalHeader fontSize={{ base: 'md', md: 'lg' }} fontWeight="bold">
+            호텔 위치
+          </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            {reservationState.coordinates?.lat && reservationState.coordinates?.lng ? (
+            {reservationState.coordinates?.lat &&
+            reservationState.coordinates?.lng ? (
               <Map
                 address={reservationState.hotelInfo?.address}
                 latitude={reservationState.coordinates.lat}
@@ -943,15 +1062,18 @@ const ReservationConfirmation = () => {
                 isDisabled={!reservationState.coordinates}
                 colorScheme="teal"
                 size="sm"
+                rounded="lg"
               >
                 T맵 길찾기
               </Button>
               <Button
+                variant="outline"
+                leftIcon={<FaCopy />}
                 onClick={handleCopyAddress}
                 isDisabled={!reservationState.hotelInfo?.address}
                 colorScheme="teal"
-                variant="outline"
                 size="sm"
+                rounded="lg"
               >
                 주소 복사
               </Button>
@@ -959,6 +1081,7 @@ const ReservationConfirmation = () => {
                 colorScheme="gray"
                 onClick={() => updateReservationState({ isMapOpen: false })}
                 size="sm"
+                rounded="lg"
               >
                 닫기
               </Button>

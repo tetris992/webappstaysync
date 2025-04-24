@@ -30,8 +30,7 @@ import { format, addDays, startOfDay, addMonths, isValid } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
-import { fetchHotelList, fetchCustomerCoupons } from '../api/api';
-import api from '../api/api';
+import { fetchHotelList } from '../api/api';
 import { useToast } from '@chakra-ui/react';
 import BottomNavigation from '../components/BottomNavigation';
 import io from 'socket.io-client';
@@ -62,8 +61,18 @@ const recommendedHotels = [
 
 const Home = () => {
   const navigate = useNavigate();
-  const { customer } = useAuth();
   const toast = useToast();
+  const {
+    customer,
+    customerCoupons,
+    isCouponsLoading,
+    couponsLoadError,
+    availableCoupons,
+    isAvailableCouponsLoading,
+    availableCouponsError,
+    downloadCoupon,
+  } = useAuth();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState([
     {
@@ -77,8 +86,6 @@ const Home = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [coupons, setCoupons] = useState([]);
-  const [availableCoupons, setAvailableCoupons] = useState([]);
   const [error, setError] = useState(null);
   const [isCouponPanelOpen, setIsCouponPanelOpen] = useState(false);
 
@@ -154,76 +161,21 @@ const Home = () => {
     fetchHotels();
   }, [toast]);
 
-  // 고객 쿠폰 데이터 가져오기
+  // 에러 메시지 표시
   useEffect(() => {
-    const fetchCoupons = async () => {
-      if (!customer) {
-        console.log('[Home] Customer not available, skipping fetchCoupons');
-        return;
-      }
-      try {
-        setError(null);
-        const customerCoupons = await fetchCustomerCoupons();
-        console.log('[Home] Fetched customer coupons:', customerCoupons);
-        setCoupons(customerCoupons || []);
-      } catch (error) {
-        console.error('쿠폰 데이터 가져오기 실패:', error);
-        setError(error.message || '쿠폰을 불러오지 못했습니다.');
-        toast({
-          title: '쿠폰 로드 실패',
-          description: error.message || '쿠폰을 불러오지 못했습니다.',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-    };
-
-    fetchCoupons();
-  }, [customer, toast]);
-
-  // 다운로드 가능한 쿠폰 가져오기
-  useEffect(() => {
-    const fetchAvailableCoupons = async () => {
-      if (!customer) {
-        console.log('[Home] Customer not available, skipping fetchAvailableCoupons');
-        return;
-      }
-      try {
-        setError(null);
-        const response = await api.get('/api/customer/available-coupons');
-        const available = response.data.coupons || [];
-        console.log('[Home] Fetched available coupons:', available);
-        setAvailableCoupons(available);
-      } catch (error) {
-        console.error('사용 가능 쿠폰 데이터 가져오기 실패:', error);
-        setError(error.message || '사용 가능 쿠폰을 불러오지 못했습니다.');
-        toast({
-          title: '사용 가능 쿠폰 로드 실패',
-          description: error.message || '사용 가능 쿠폰을 불러오지 못했습니다.',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-    };
-
-    fetchAvailableCoupons();
-  }, [customer, toast]);
+    if (couponsLoadError) {
+      setError(couponsLoadError);
+    }
+    if (availableCouponsError) {
+      setError(availableCouponsError);
+    }
+  }, [couponsLoadError, availableCouponsError]);
 
   // 쿠폰 다운로드 처리
   const handleDownloadCoupon = async (couponUuid) => {
     try {
       setError(null);
-      const response = await api.post('/api/customer/coupons/download', {
-        couponUuid,
-        customerId: customer._id,
-      });
-      const newCoupon = response.data.coupon;
-      setCoupons((prev) => [...prev, newCoupon]);
-      setAvailableCoupons((prev) =>
-        prev.filter((coupon) => coupon.couponUuid !== couponUuid)
-      );
+      await downloadCoupon(couponUuid);
       toast({
         title: '쿠폰 다운로드 성공',
         description: (
@@ -246,13 +198,6 @@ const Home = () => {
     } catch (error) {
       console.error('쿠폰 다운로드 실패:', error);
       setError(error.message || '쿠폰 다운로드에 실패했습니다.');
-      toast({
-        title: '쿠폰 다운로드 실패',
-        description: error.message || '쿠폰 다운로드에 실패했습니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
     }
   };
 
@@ -780,7 +725,11 @@ const Home = () => {
                 >
                   쿠폰
                 </Text>
-                {availableCoupons.length > 0 ? (
+                {isAvailableCouponsLoading ? (
+                  <Text color="gray.500" textAlign="center">
+                    사용 가능 쿠폰 로드 중...
+                  </Text>
+                ) : availableCoupons.length > 0 ? (
                   <VStack spacing={3}>
                     {availableCoupons.map((coupon) => (
                       <Box
@@ -1111,13 +1060,17 @@ const Home = () => {
               닫기
             </Button>
           </Flex>
-          {coupons.length === 0 ? (
+          {isCouponsLoading ? (
+            <Text color="gray.500" textAlign="center">
+              쿠폰 로드 중...
+            </Text>
+          ) : customerCoupons.length === 0 ? (
             <Text color="gray.500" textAlign="center">
               보유한 쿠폰이 없습니다.
             </Text>
           ) : (
             <VStack spacing={3}>
-              {coupons.map((coupon) => (
+              {customerCoupons.map((coupon) => (
                 <Box
                   key={coupon.couponUuid}
                   bg="gray.50"

@@ -91,7 +91,9 @@ api.interceptors.request.use(
       '/api/customer/verify-phone-otp',
     ];
     const skipCsrf =
-      config.skipCsrf || skipCsrfRoutes.includes(requestBaseUrl) || isGetRequest;
+      config.skipCsrf ||
+      skipCsrfRoutes.includes(requestBaseUrl) ||
+      isGetRequest;
 
     if (!isGetRequest && !isCsrfTokenRequest && !skipCsrf) {
       let csrfToken = getCsrfToken();
@@ -173,7 +175,7 @@ api.interceptors.response.use(
         const response = await api.post(
           '/api/customer/refresh-token',
           { refreshToken, deviceToken },
-          { headers: { Authorization: undefined }, skipCsrf: true } // CSRF 제외
+          { headers: { Authorization: undefined }, skipCsrf: true }
         );
         const { token } = response.data;
         localStorage.setItem('customerToken', token);
@@ -193,7 +195,7 @@ api.interceptors.response.use(
         isRefreshing = false;
       }
     } else if (error.response?.status === 403 && !originalRequest._csrfRetry) {
-      originalRequest._csrfRetry = true; // 최대 1회 재시도
+      originalRequest._csrfRetry = true;
       try {
         logDebug('[api.js] Fetching CSRF token due to 403 error');
         const startTime = Date.now();
@@ -218,6 +220,21 @@ api.interceptors.response.use(
     );
   }
 );
+
+// 리프레시 토큰 API
+export const refreshCustomerToken = async ({ refreshToken, deviceToken }) => {
+  try {
+    const response = await api.post(
+      '/api/customer/refresh-token',
+      { refreshToken, deviceToken },
+      { headers: { Authorization: undefined }, skipCsrf: true }
+    );
+    logDebug('[api.js] refreshCustomerToken response:', response.data);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, '토큰 갱신 실패');
+  }
+};
 
 // 로그인 API
 export const customerLogin = async (data) => {
@@ -510,10 +527,10 @@ export const verifyPhoneOTP = async (phoneNumber, otp) => {
   }
 };
 
-// 고객의 쿠폰 보관함 조회 API (시그니처 단순화)
+// 고객의 쿠폰 보관함 조회 API
 export const fetchCustomerCoupons = async () => {
   try {
-    const response = await api.get('/api/customer/coupons/wallet'); // 경로 수정
+    const response = await api.get('/api/customer/coupons/wallet');
     console.log('[fetchCustomerCoupons] Raw response:', response.data);
     const coupons = response.data.coupons || [];
     console.log('[fetchCustomerCoupons] Processed coupons:', coupons);
@@ -523,7 +540,7 @@ export const fetchCustomerCoupons = async () => {
   }
 };
 
-// 쿠폰 사용 API (옵션 객체로 리팩터링)
+// 쿠폰 사용 API
 export const useCoupon = async ({ customerId, couponUuid, reservationId }) => {
   try {
     const response = await api.post('/api/customer/coupons/use', {
@@ -537,7 +554,7 @@ export const useCoupon = async ({ customerId, couponUuid, reservationId }) => {
   }
 };
 
-// 쿠폰 복원 API 추가
+// 쿠폰 복원 API
 export const restoreCoupon = async ({ customerId, couponUuid }) => {
   try {
     const response = await api.post('/api/customer/coupons/restore', {
@@ -550,7 +567,7 @@ export const restoreCoupon = async ({ customerId, couponUuid }) => {
   }
 };
 
-// 쿠폰 다운로드 API (경로 수정)
+// 쿠폰 다운로드 API
 export const downloadCoupon = async ({ couponUuid, customerId }) => {
   try {
     const response = await api.post('/api/customer/coupons/download', {
@@ -585,6 +602,18 @@ export const decrementVisit = async (customerId) => {
     return response.data;
   } catch (error) {
     handleApiError(error, '방문 횟수 감소 실패');
+  }
+};
+
+
+export const fetchAvailableCoupons = async () => {
+  try {
+    const response = await api.get('/api/customer/available-coupons');
+    logDebug('[api.js] fetchAvailableCoupons response:', response.data);
+    const available = response.data.coupons || [];
+    return available;
+  } catch (error) {
+    handleApiError(error, '사용 가능 쿠폰 조회 실패');
   }
 };
 
