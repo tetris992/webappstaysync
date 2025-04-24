@@ -29,8 +29,22 @@ import {
   IconButton as ChakraIconButton,
   Tooltip,
 } from '@chakra-ui/react';
-import { SearchIcon, ArrowBackIcon, StarIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
-import { FaHeart, FaRegHeart, FaTag, FaMapMarkerAlt, FaWifi, FaParking, FaTv } from 'react-icons/fa';
+import {
+  SearchIcon,
+  ArrowBackIcon,
+  StarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from '@chakra-ui/icons';
+import {
+  FaHeart,
+  FaRegHeart,
+  FaTag,
+  FaMapMarkerAlt,
+  FaWifi,
+  FaParking,
+  FaTv,
+} from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import {
   fetchHotelList,
@@ -49,7 +63,8 @@ import 'leaflet/dist/leaflet.css';
 // Leaflet 아이콘 설정
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconRetinaUrl:
+    'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
@@ -62,7 +77,12 @@ const MapUpdater = ({ position }) => {
   return null;
 };
 
-const Map = ({ address, latitude, longitude, onCoordinatesChange = () => {} }) => {
+const Map = ({
+  address,
+  latitude,
+  longitude,
+  onCoordinatesChange = () => {},
+}) => {
   const [position, setPosition] = useState([37.5665, 126.978]); // Default: Seoul
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -87,7 +107,9 @@ const Map = ({ address, latitude, longitude, onCoordinatesChange = () => {} }) =
       세종: '세종특별자치시',
     };
 
-    const cityMatch = Object.keys(provinceMap).find((city) => normalized.includes(city));
+    const cityMatch = Object.keys(provinceMap).find((city) =>
+      normalized.includes(city)
+    );
     if (cityMatch && !normalized.includes(provinceMap[cityMatch])) {
       normalized = `${provinceMap[cityMatch]} ${normalized}`;
     }
@@ -110,7 +132,9 @@ const Map = ({ address, latitude, longitude, onCoordinatesChange = () => {} }) =
       normalized = normalized.replace(key, cityMap[key]);
     });
 
-    normalized = normalized.replace(/로\s/g, ' Road ').replace(/길\s/g, ' Street ');
+    normalized = normalized
+      .replace(/로\s/g, ' Road ')
+      .replace(/길\s/g, ' Street ');
     normalized = normalized.replace(/\s\d+번지/g, '');
     normalized = normalized.replace(/,\s*/g, ' ');
 
@@ -118,43 +142,55 @@ const Map = ({ address, latitude, longitude, onCoordinatesChange = () => {} }) =
   };
 
   // openTMap 함수를 useCallback으로 감싸기
-  const openTMap = useCallback((latitude, longitude, name) => {
-    if (!latitude || !longitude) {
-      toast({
-        title: '좌표 정보 없음',
-        description: '호텔 좌표를 찾을 수 없습니다.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    const tmapUrl = `tmap://route?goalx=${longitude}&goaly=${latitude}&name=${encodeURIComponent(name || '호텔')}`;
-    window.location.href = tmapUrl;
-
-    setTimeout(() => {
-      const isAndroid = /android/i.test(navigator.userAgent);
-      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isAndroid) {
-        window.location.href = 'https://play.google.com/store/apps/details?id=com.skt.tmap.ku';
-      } else if (isIOS) {
-        window.location.href = 'https://apps.apple.com/kr/app/tmap/id431589174';
-      } else {
+  const openTMap = useCallback(
+    (latitude, longitude, name) => {
+      if (!latitude || !longitude) {
         toast({
-          title: 'T맵 설치 필요',
-          description: 'T맵 앱이 설치되어 있지 않습니다. 설치 페이지로 이동합니다.',
-          status: 'info',
+          title: '좌표 정보 없음',
+          description: '호텔 좌표를 찾을 수 없습니다.',
+          status: 'warning',
           duration: 3000,
           isClosable: true,
         });
+        return;
       }
-    }, 2000);
-  }, [toast]);
+
+      const tmapUrl = `tmap://route?goalx=${longitude}&goaly=${latitude}&name=${encodeURIComponent(
+        name || '호텔'
+      )}`;
+      window.location.href = tmapUrl;
+
+      setTimeout(() => {
+        const isAndroid = /android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isAndroid) {
+          window.location.href =
+            'https://play.google.com/store/apps/details?id=com.skt.tmap.ku';
+        } else if (isIOS) {
+          window.location.href =
+            'https://apps.apple.com/kr/app/tmap/id431589174';
+        } else {
+          toast({
+            title: 'T맵 설치 필요',
+            description:
+              'T맵 앱이 설치되어 있지 않습니다. 설치 페이지로 이동합니다.',
+            status: 'info',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      }, 2000);
+    },
+    [toast]
+  );
 
   useEffect(() => {
     const fetchCoordinates = async () => {
-      console.log('[Map] Starting fetchCoordinates with:', { latitude, longitude, address });
+      console.log('[Map] Starting fetchCoordinates with:', {
+        latitude,
+        longitude,
+        address,
+      });
 
       // 좌표가 제공된 경우 우선 사용
       if (latitude && longitude) {
@@ -187,7 +223,9 @@ const Map = ({ address, latitude, longitude, onCoordinatesChange = () => {} }) =
         let data = [];
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(normalizedAddress)}`,
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+              normalizedAddress
+            )}`,
             {
               headers: {
                 'User-Agent': 'DanjamApp/0.1.0 (nomac74@example.com)',
@@ -201,11 +239,17 @@ const Map = ({ address, latitude, longitude, onCoordinatesChange = () => {} }) =
         }
 
         if (data && data.length > 0) {
-          const newPosition = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+          const newPosition = [
+            parseFloat(data[0].lat),
+            parseFloat(data[0].lon),
+          ];
           console.log('[Map] Using Nominatim coordinates:', newPosition);
           setPosition(newPosition);
           if (typeof onCoordinatesChange === 'function') {
-            onCoordinatesChange({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+            onCoordinatesChange({
+              lat: parseFloat(data[0].lat),
+              lng: parseFloat(data[0].lon),
+            });
           }
           setError(null);
         } else {
@@ -235,15 +279,27 @@ const Map = ({ address, latitude, longitude, onCoordinatesChange = () => {} }) =
 
   if (error) {
     return (
-      <Flex direction="column" align="center" justify="center" h="200px" w="100%">
+      <Flex
+        direction="column"
+        align="center"
+        justify="center"
+        h="200px"
+        w="100%"
+      >
         <Text color="red.500">{error}</Text>
-        <Text mt={2} color="gray.500">T맵 내비게이션이 실행되었습니다.</Text>
+        <Text mt={2} color="gray.500">
+          T맵 내비게이션이 실행되었습니다.
+        </Text>
       </Flex>
     );
   }
 
   return (
-    <MapContainer center={position} zoom={15} style={{ height: '200px', width: '100%' }}>
+    <MapContainer
+      center={position}
+      zoom={15}
+      style={{ height: '200px', width: '100%' }}
+    >
       <MapUpdater position={position} />
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -351,7 +407,11 @@ const HotelList = ({ loadHotelSettings }) => {
         setHotels(enriched);
         setFilteredHotels(enriched);
 
-        if (isAuthenticated && customer && localStorage.getItem('customerToken')) {
+        if (
+          isAuthenticated &&
+          customer &&
+          localStorage.getItem('customerToken')
+        ) {
           const limit = pLimit(3);
           // photos
           const photoPromises = enriched.map((h) =>
@@ -445,7 +505,9 @@ const HotelList = ({ loadHotelSettings }) => {
     // price
     if (priceFilter !== 'all') {
       const [min, max] = priceFilter.split('-').map(Number);
-      list = list.filter((h) => h.price >= min && (max ? h.price <= max : true));
+      list = list.filter(
+        (h) => h.price >= min && (max ? h.price <= max : true)
+      );
     }
 
     // rating
@@ -520,7 +582,8 @@ const HotelList = ({ loadHotelSettings }) => {
     setCurrentPhotoIndices((prev) => {
       const photos = photosMap[hotelId] || [];
       const currentIndex = prev[hotelId] || 0;
-      const newIndex = currentIndex === 0 ? photos.length - 1 : currentIndex - 1;
+      const newIndex =
+        currentIndex === 0 ? photos.length - 1 : currentIndex - 1;
       return { ...prev, [hotelId]: newIndex };
     });
   };
@@ -529,7 +592,8 @@ const HotelList = ({ loadHotelSettings }) => {
     setCurrentPhotoIndices((prev) => {
       const photos = photosMap[hotelId] || [];
       const currentIndex = prev[hotelId] || 0;
-      const newIndex = currentIndex === photos.length - 1 ? 0 : currentIndex + 1;
+      const newIndex =
+        currentIndex === photos.length - 1 ? 0 : currentIndex + 1;
       return { ...prev, [hotelId]: newIndex };
     });
   };
@@ -572,7 +636,7 @@ const HotelList = ({ loadHotelSettings }) => {
       left={0}
       right={0}
       bottom={0}
-      overflowX="hidden"
+      // overflowX="auto"
     >
       {/* Fixed Header */}
       <Box
@@ -596,7 +660,7 @@ const HotelList = ({ loadHotelSettings }) => {
               _hover={{ bg: 'gray.100' }}
             />
             <Text fontSize="xl" fontWeight="bold" color="gray.800">
-              호텔 탐색
+              찜한 호텔
             </Text>
             <IconButton
               icon={<SearchIcon />}
@@ -608,7 +672,14 @@ const HotelList = ({ loadHotelSettings }) => {
             />
           </Flex>
           <Collapse in={isOpen}>
-            <VStack mt={3} spacing={3} bg="white" p={4} borderRadius="md" boxShadow="md">
+            <VStack
+              mt={3}
+              spacing={3}
+              bg="white"
+              p={4}
+              borderRadius="md"
+              boxShadow="md"
+            >
               <InputGroup>
                 <InputLeftElement pointerEvents="none">
                   <SearchIcon color="gray.400" />
@@ -619,7 +690,10 @@ const HotelList = ({ loadHotelSettings }) => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   borderRadius="md"
                   bg="gray.50"
-                  _focus={{ borderColor: 'teal.400', boxShadow: '0 0 0 1px teal.400' }}
+                  _focus={{
+                    borderColor: 'teal.400',
+                    boxShadow: '0 0 0 1px teal.400',
+                  }}
                 />
               </InputGroup>
               <HStack spacing={2} w="100%">
@@ -629,7 +703,10 @@ const HotelList = ({ loadHotelSettings }) => {
                   flex={1}
                   borderRadius="md"
                   bg="gray.50"
-                  _focus={{ borderColor: 'teal.400', boxShadow: '0 0 0 1px teal.400' }}
+                  _focus={{
+                    borderColor: 'teal.400',
+                    boxShadow: '0 0 0 1px teal.400',
+                  }}
                 >
                   <option value="name">이름순</option>
                   <option value="priceAsc">가격 낮은순</option>
@@ -642,7 +719,10 @@ const HotelList = ({ loadHotelSettings }) => {
                   flex={1}
                   borderRadius="md"
                   bg="gray.50"
-                  _focus={{ borderColor: 'teal.400', boxShadow: '0 0 0 1px teal.400' }}
+                  _focus={{
+                    borderColor: 'teal.400',
+                    boxShadow: '0 0 0 1px teal.400',
+                  }}
                 >
                   <option value="all">모든 가격</option>
                   <option value="0-50000">5만원 이하</option>
@@ -656,7 +736,10 @@ const HotelList = ({ loadHotelSettings }) => {
                   flex={1}
                   borderRadius="md"
                   bg="gray.50"
-                  _focus={{ borderColor: 'teal.400', boxShadow: '0 0 0 1px teal.400' }}
+                  _focus={{
+                    borderColor: 'teal.400',
+                    boxShadow: '0 0 0 1px teal.400',
+                  }}
                 >
                   <option value="all">모든 평점</option>
                   <option value="4.5">4.5점 이상</option>
@@ -673,9 +756,11 @@ const HotelList = ({ loadHotelSettings }) => {
       <Box
         flex="1"
         overflowY="auto"
-        px={4}
-        pt={isOpen ? '180px' : '80px'} // 헤더 높이
-        pb={{ base: '58px', md: '50px' }} // BottomNavigation 높이(58px)에 맞춰 조정
+        px={{ base: 2, sm: 4 }} // 수정: 반응형 패딩
+        pt={
+          isOpen ? { base: '160px', sm: '180px' } : { base: '70px', sm: '80px' }
+        } // 수정: 반응형 상단 패딩
+        pb="60px"
         overflowX="hidden"
         css={{
           '&::-webkit-scrollbar': {
@@ -685,7 +770,10 @@ const HotelList = ({ loadHotelSettings }) => {
           scrollbarWidth: 'none',
         }}
       >
-        <Container maxW="container.sm" py={4}>
+        <Container
+          maxW={{ base: '100%', sm: 'container.sm' }}
+          py={{ base: 2, sm: 4 }}
+        >
           {isLoading ? (
             <Flex justify="center" align="center" h="200px">
               <Spinner size="xl" color="teal.500" />
@@ -725,7 +813,10 @@ const HotelList = ({ loadHotelSettings }) => {
                       ) : (
                         <>
                           <Image
-                            src={photos[currentIndex]?.photoUrl || '/assets/default-hotel.jpg'}
+                            src={
+                              photos[currentIndex]?.photoUrl ||
+                              '/assets/default-hotel.jpg'
+                            }
                             alt={`${h.hotelName} 이미지`}
                             h="250px"
                             w="100%"
@@ -789,7 +880,13 @@ const HotelList = ({ loadHotelSettings }) => {
                             </>
                           )}
                           <ChakraIconButton
-                            icon={favorites[h.hotelId] ? <FaHeart /> : <FaRegHeart />}
+                            icon={
+                              favorites[h.hotelId] ? (
+                                <FaHeart />
+                              ) : (
+                                <FaRegHeart />
+                              )
+                            }
                             position="absolute"
                             top="2"
                             right="2"
@@ -814,12 +911,20 @@ const HotelList = ({ loadHotelSettings }) => {
                     <Box p={4}>
                       <Flex direction="column" gap={2}>
                         <Flex justify="space-between" align="center">
-                          <Text fontSize="lg" fontWeight="bold" color="gray.800">
+                          <Text
+                            fontSize="lg"
+                            fontWeight="bold"
+                            color="gray.800"
+                          >
                             {h.hotelName}
                           </Text>
                           <Flex align="center" gap={1}>
                             <StarIcon color="teal.500" boxSize={4} />
-                            <Text fontSize="sm" fontWeight="bold" color="gray.700">
+                            <Text
+                              fontSize="sm"
+                              fontWeight="bold"
+                              color="gray.700"
+                            >
                               {h.rating.toFixed(1)}
                             </Text>
                             <Text fontSize="xs" color="gray.500">
@@ -828,14 +933,21 @@ const HotelList = ({ loadHotelSettings }) => {
                           </Flex>
                         </Flex>
                         <Flex align="center" gap={1}>
-                          <Icon as={FaMapMarkerAlt} color="teal.500" boxSize={4} />
+                          <Icon
+                            as={FaMapMarkerAlt}
+                            color="teal.500"
+                            boxSize={4}
+                          />
                           <Text
                             fontSize="sm"
                             color="gray.600"
                             noOfLines={1}
                             cursor="pointer"
                             onClick={() => toggleMap(h.hotelId)}
-                            _hover={{ color: 'teal.500', textDecoration: 'underline' }}
+                            _hover={{
+                              color: 'teal.500',
+                              textDecoration: 'underline',
+                            }}
                           >
                             {h.address}
                           </Text>
@@ -863,7 +975,12 @@ const HotelList = ({ loadHotelSettings }) => {
                               color = 'red.500'; // 넷플릭스 붉은색
                             } else {
                               return (
-                                <Badge key={idx} colorScheme="teal" variant="outline" fontSize="xs">
+                                <Badge
+                                  key={idx}
+                                  colorScheme="teal"
+                                  variant="outline"
+                                  fontSize="xs"
+                                >
                                   {amenity}
                                 </Badge>
                               );
@@ -883,7 +1000,11 @@ const HotelList = ({ loadHotelSettings }) => {
                           )}
                         </HStack>
                         <Flex justify="space-between" align="center" mt={2}>
-                          <Text fontSize="md" fontWeight="bold" color="teal.600">
+                          <Text
+                            fontSize="md"
+                            fontWeight="bold"
+                            color="teal.600"
+                          >
                             ₩{h.price.toLocaleString()} / 박
                           </Text>
                           {hotelCoupons[h.hotelId]?.length > 0 && (
@@ -970,7 +1091,9 @@ const HotelList = ({ loadHotelSettings }) => {
                         ? `${c.discountValue}%`
                         : `${c.discountValue.toLocaleString()}원`}
                     </Text>
-                    <Text>유효: {c.startDate} ~ {c.endDate}</Text>
+                    <Text>
+                      유효: {c.startDate} ~ {c.endDate}
+                    </Text>
                   </Box>
                 ))}
               </VStack>

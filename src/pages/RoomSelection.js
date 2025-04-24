@@ -100,7 +100,9 @@ const RoomSelection = () => {
   const [selectedCoupons, setSelectedCoupons] = useState({});
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [currentRoomInfo, setCurrentRoomInfo] = useState(null);
-  const [applicableCouponsForModal, setApplicableCouponsForModal] = useState([]);
+  const [applicableCouponsForModal, setApplicableCouponsForModal] = useState(
+    []
+  );
   const [hotelCoupons, setHotelCoupons] = useState([]);
   const [selectedCouponIndex, setSelectedCouponIndex] = useState(null);
 
@@ -133,7 +135,10 @@ const RoomSelection = () => {
         console.log('[RoomSelection] Loaded customer coupons:', coupons);
         setCustomerCoupons(coupons || []);
       } catch (error) {
-        console.error('[RoomSelection] Failed to load customer coupons:', error);
+        console.error(
+          '[RoomSelection] Failed to load customer coupons:',
+          error
+        );
         setError(error.message || '쿠폰을 불러오지 못했습니다.');
         toast({
           title: '쿠폰 로드 실패',
@@ -540,30 +545,34 @@ const RoomSelection = () => {
           } = calculateDiscount(room.roomInfo, checkIn, checkOut);
           const dayStayPrice = room.price || 0;
           const dayUsePrice = Math.round(dayStayPrice * 0.5);
-          const applicableHotelCoupons = (hotelCoupons || []).filter((coupon) => {
-            const typeKey = normalizeKey(coupon.applicableRoomType);
-            const roomKey = normalizeKey(room.roomInfo);
-            const isRoomMatch = typeKey === 'all' || typeKey === roomKey;
-            return (
-              coupon.isActive &&
-              coupon.maxUses - coupon.usedCount > 0 &&
-              coupon.startDate <= todayStr &&
-              coupon.endDate >= todayStr &&
-              isRoomMatch
-            );
-          });
-          const applicableCustomerCoupons = (customerCoupons || []).filter((coupon) => {
-            const typeKey = normalizeKey(coupon.applicableRoomType);
-            const roomKey = normalizeKey(room.roomInfo);
-            return (
-              coupon.isActive &&
-              (typeKey === 'all' || typeKey === roomKey) &&
-              coupon.hotelId === hotelId &&
-              !coupon.used &&
-              coupon.endDate >= todayStr &&
-              coupon.startDate <= todayStr
-            );
-          });
+          const applicableHotelCoupons = (hotelCoupons || []).filter(
+            (coupon) => {
+              const typeKey = normalizeKey(coupon.applicableRoomType);
+              const roomKey = normalizeKey(room.roomInfo);
+              const isRoomMatch = typeKey === 'all' || typeKey === roomKey;
+              return (
+                coupon.isActive &&
+                coupon.maxUses - coupon.usedCount > 0 &&
+                coupon.startDate <= todayStr &&
+                coupon.endDate >= todayStr &&
+                isRoomMatch
+              );
+            }
+          );
+          const applicableCustomerCoupons = (customerCoupons || []).filter(
+            (coupon) => {
+              const typeKey = normalizeKey(coupon.applicableRoomType);
+              const roomKey = normalizeKey(room.roomInfo);
+              return (
+                coupon.isActive &&
+                (typeKey === 'all' || typeKey === roomKey) &&
+                coupon.hotelId === hotelId &&
+                !coupon.used &&
+                coupon.endDate >= todayStr &&
+                coupon.startDate <= todayStr
+              );
+            }
+          );
 
           const applicableCoupons = [
             ...applicableCustomerCoupons,
@@ -684,7 +693,9 @@ const RoomSelection = () => {
       eventEndDate = null,
       totalFixedDiscount = 0,
       couponDiscount = 0,
-      couponTotalFixedDiscount = 0
+      couponTotalFixedDiscount = 0,
+      couponCode = null,
+      couponUuid = null
     ) => {
       const nights = differenceInCalendarDays(
         dateRange[0].endDate,
@@ -725,8 +736,8 @@ const RoomSelection = () => {
           specialRequests: null,
           couponDiscount,
           couponTotalFixedDiscount,
-          couponCode: null,
-          couponUuid: null,
+          couponCode,
+          couponUuid,
         },
       });
     },
@@ -748,6 +759,8 @@ const RoomSelection = () => {
 
     let couponDiscount = 0;
     let couponTotalFixedDiscount = 0;
+    let couponCode = null;
+    let couponUuid = null;
 
     if (coupon) {
       if (room.discount > 0 || room.fixedDiscount > 0) {
@@ -767,8 +780,12 @@ const RoomSelection = () => {
       }
       if (coupon.discountType === 'percentage') {
         couponDiscount = coupon.discountValue;
+        couponCode = coupon.code;
+        couponUuid = coupon.couponUuid;
       } else if (coupon.discountType === 'fixed') {
         couponTotalFixedDiscount = coupon.discountValue * numDays;
+        couponCode = coupon.code;
+        couponUuid = coupon.couponUuid;
       }
     }
 
@@ -786,7 +803,9 @@ const RoomSelection = () => {
       room.eventEndDate,
       room.totalFixedDiscount,
       couponDiscount,
-      couponTotalFixedDiscount
+      couponTotalFixedDiscount,
+      couponCode,
+      couponUuid
     );
   };
 
@@ -802,7 +821,11 @@ const RoomSelection = () => {
 
   const openCouponModal = (roomInfo) => {
     const room = availableRooms.find((r) => r.roomInfo === roomInfo);
-    if (!room || !room.applicableCoupons || room.applicableCoupons.length === 0) {
+    if (
+      !room ||
+      !room.applicableCoupons ||
+      room.applicableCoupons.length === 0
+    ) {
       toast({
         title: '쿠폰 없음',
         description: '이 객실에 적용 가능한 쿠폰이 없습니다.',
@@ -926,7 +949,8 @@ const RoomSelection = () => {
           const couponDiscount = selectedCoupon.discountValue;
           totalPrice = Math.round(totalPrice * (1 - couponDiscount / 100));
         } else if (selectedCoupon.discountType === 'fixed') {
-          const couponTotalFixedDiscount = selectedCoupon.discountValue * numDays;
+          const couponTotalFixedDiscount =
+            selectedCoupon.discountValue * numDays;
           totalPrice = Math.max(0, totalPrice - couponTotalFixedDiscount);
         }
       } else if (room.discountType === 'fixed' && room.totalFixedDiscount > 0) {
@@ -994,7 +1018,7 @@ const RoomSelection = () => {
       <Box
         w="100%"
         py={3}
-        px={3}
+        px={{ base: 2, sm: 3 }} // 수정: 반응형 패딩
         bg="white"
         position="sticky"
         top={0}
@@ -1106,7 +1130,7 @@ const RoomSelection = () => {
         borderBottom="1px solid"
         borderColor="gray.200"
         boxShadow="sm"
-        p={3}
+        p={{ base: 2, sm: 3 }} // 수정: 반응형 패딩
       >
         <VStack spacing={2}>
           <Box w="100%">
@@ -1219,8 +1243,8 @@ const RoomSelection = () => {
       <Box
         flex="1"
         overflowY="auto"
-        px={0}
-        pb={{ base: '58px', md: '50px' }}
+        px={{ base: 2, sm: 0 }} // 수정: 반응형 패딩
+        pb="60px"
         overflowX="hidden"
         css={{
           '&::-webkit-scrollbar': {
@@ -1295,21 +1319,20 @@ const RoomSelection = () => {
                   );
                 }
 
-                const displayedAmenities = (room.activeAmenities || []).slice(0, 2);
-                const remainingAmenities = (room.activeAmenities || []).length - 2;
+                const displayedAmenities = (room.activeAmenities || []).slice(
+                  0,
+                  2
+                );
+                const remainingAmenities =
+                  (room.activeAmenities || []).length - 2;
                 const photos = room.photos || [];
-                const currentIndex = currentPhotoIndices[room.roomInfo.toLowerCase()] || 0;
+                const currentIndex =
+                  currentPhotoIndices[room.roomInfo.toLowerCase()] || 0;
                 const photoCount = photos.length;
 
                 return (
                   <Box key={room.uniqueKey} w="100%">
-                    <Flex
-                      align="center"
-                      px={4}
-                      py={4}
-                      bg="white"
-                      minH="120px"
-                    >
+                    <Flex align="center" px={4} py={4} bg="white" minH="120px">
                       <Box position="relative">
                         <Image
                           src={
@@ -1345,7 +1368,11 @@ const RoomSelection = () => {
                                 w="8px"
                                 h="8px"
                                 borderRadius="full"
-                                bg={idx === currentIndex ? 'white' : 'whiteAlpha.600'}
+                                bg={
+                                  idx === currentIndex
+                                    ? 'white'
+                                    : 'whiteAlpha.600'
+                                }
                                 boxShadow="0 0 2px rgba(0,0,0,0.5)"
                               />
                             ))}
@@ -1394,7 +1421,10 @@ const RoomSelection = () => {
                         </Text>
                         <Flex justify="space-between" w="100%" align="center">
                           <Flex align="center" gap={1}>
-                            {((room.discount > 0 || room.fixedDiscount > 0 || room.couponDiscount > 0 || room.couponTotalFixedDiscount > 0)) && (
+                            {(room.discount > 0 ||
+                              room.fixedDiscount > 0 ||
+                              room.couponDiscount > 0 ||
+                              room.couponTotalFixedDiscount > 0) && (
                               <Text
                                 fontSize={{ base: 'xs', md: 'sm' }}
                                 color="gray.500"
@@ -1425,7 +1455,8 @@ const RoomSelection = () => {
                               : null}
                           </Text>
                         )}
-                        {((room.couponDiscount > 0 || room.couponTotalFixedDiscount > 0)) && (
+                        {(room.couponDiscount > 0 ||
+                          room.couponTotalFixedDiscount > 0) && (
                           <Text fontSize="xs" color="red.500">
                             {room.couponDiscount > 0
                               ? `쿠폰 적용가: ${room.couponDiscount}% 할인`
@@ -1490,8 +1521,12 @@ const RoomSelection = () => {
                   <Box
                     key={coupon.couponUuid}
                     w="100%"
-                    border={selectedCouponIndex === index ? '2px solid' : '1px solid'}
-                    borderColor={selectedCouponIndex === index ? 'blue.500' : 'gray.200'}
+                    border={
+                      selectedCouponIndex === index ? '2px solid' : '1px solid'
+                    }
+                    borderColor={
+                      selectedCouponIndex === index ? 'blue.500' : 'gray.200'
+                    }
                     borderRadius="lg"
                     onClick={() => setSelectedCouponIndex(index)}
                     cursor="pointer"

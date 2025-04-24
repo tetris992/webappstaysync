@@ -14,7 +14,6 @@ import {
 import { SiKakao } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
 import { initKakao } from '../utils/kakao';
-import { fetchHotelList, fetchCustomerCoupons } from '../api/api';
 
 const Login = () => {
   const { customer, setHotelList, setCustomerCoupons } = useAuth();
@@ -22,9 +21,31 @@ const Login = () => {
   const toast = useToast();
   const [isKakaoLoading, setIsKakaoLoading] = useState(false);
   const [isKakaoEnabled, setIsKakaoEnabled] = useState(true);
+  const [api, setApi] = useState(null);
+
+  // API 모듈 동적 로드
+  useEffect(() => {
+    const loadApi = async () => {
+      try {
+        const apiModule = await import('../api/api');
+        setApi(apiModule);
+      } catch (error) {
+        console.error('Failed to load API module:', error);
+        toast({
+          title: 'API 로드 실패',
+          description: 'API 모듈을 로드하지 못했습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    };
+    loadApi();
+  }, [toast]);
 
   useEffect(() => {
-    if (customer) {
+    if (customer && api) {
+      const { fetchHotelList, fetchCustomerCoupons } = api;
       // 로그인 성공 후 호텔 목록과 쿠폰 로드
       const loadInitialData = async () => {
         try {
@@ -47,7 +68,7 @@ const Login = () => {
       loadInitialData();
       navigate('/');
     }
-  }, [customer, navigate, setHotelList, setCustomerCoupons, toast]);
+  }, [customer, api, navigate, setHotelList, setCustomerCoupons, toast]);
 
   useEffect(() => {
     try {
@@ -105,7 +126,7 @@ const Login = () => {
       justifyContent="center"
       p={4}
       position="relative"
-      overflow="hidden"
+      overflow="auto"
     >
       <Box
         position="absolute"
@@ -135,6 +156,7 @@ const Login = () => {
         w="100%"
         position="relative"
         zIndex="1"
+        pb="60px" // 하단 여백 추가 (네비게이션 바 높이만큼)
       >
         <VStack spacing={8} align="stretch">
           <VStack spacing={2}>

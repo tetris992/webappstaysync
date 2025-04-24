@@ -70,6 +70,7 @@ const ReservationConfirmation = () => {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [customerCoupons, setCustomerCoupons] = useState([]);
   const [applicableCoupons, setApplicableCoupons] = useState([]);
+  const [isCouponsLoaded, setIsCouponsLoaded] = useState(false);
 
   const {
     roomInfo = '',
@@ -103,10 +104,82 @@ const ReservationConfirmation = () => {
         )
       : 1;
 
-  // 고객 쿠폰 가져오기
+  const handleCouponChange = useCallback(
+    (couponUuid) => {
+      const selectedCoupon = customerCoupons.find(
+        (coupon) => coupon.couponUuid === couponUuid
+      );
+      let newPrice = originalPrice;
+      let newCouponDiscount = 0;
+      let newCouponFixedDiscount = 0;
+      let newCouponTotalFixedDiscount = 0;
+      let newCouponCode = null;
+      let newCouponUuid = null;
+
+      // 이벤트 할인과 쿠폰 할인은 중복 적용 불가
+      if (discountType === 'fixed' && totalFixedDiscount > 0) {
+        toast({
+          title: '할인 중복 적용 불가',
+          description: '이벤트 할인과 쿠폰 할인은 중복 적용할 수 없습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        newPrice = Math.max(0, newPrice - totalFixedDiscount);
+      } else if (discountType === 'percentage' && discount > 0) {
+        toast({
+          title: '할인 중복 적용 불가',
+          description: '이벤트 할인과 쿠폰 할인은 중복 적용할 수 없습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        newPrice = Math.round(newPrice * (1 - discount / 100));
+      } else if (selectedCoupon) {
+        // 쿠폰 적용
+        if (selectedCoupon.discountType === 'percentage') {
+          newCouponDiscount = selectedCoupon.discountValue;
+          newPrice = Math.round(newPrice * (1 - newCouponDiscount / 100));
+        } else if (selectedCoupon.discountType === 'fixed') {
+          newCouponFixedDiscount = selectedCoupon.discountValue;
+          newCouponTotalFixedDiscount = newCouponFixedDiscount * numNights;
+          newPrice = Math.max(0, newPrice - newCouponTotalFixedDiscount);
+        }
+        newCouponCode = selectedCoupon.code;
+        newCouponUuid = selectedCoupon.couponUuid;
+      }
+
+      setPrice(newPrice);
+      setCouponDiscount(newCouponDiscount);
+      setCouponFixedDiscount(newCouponFixedDiscount);
+      setCouponTotalFixedDiscount(newCouponTotalFixedDiscount);
+      setCouponCode(newCouponCode);
+      setCouponUuid(newCouponUuid);
+
+      console.log('[ReservationConfirmation] Coupon changed:', {
+        newPrice,
+        newCouponDiscount,
+        newCouponFixedDiscount,
+        newCouponTotalFixedDiscount,
+        newCouponCode,
+        newCouponUuid,
+      });
+    },
+    [
+      customerCoupons,
+      originalPrice,
+      numNights,
+      discountType,
+      totalFixedDiscount,
+      discount,
+      toast,
+    ]
+  );
+
+  // 고객 쿠폰 가져오기 및 적용 가능한 쿠폰 필터링
   useEffect(() => {
     const loadCoupons = async () => {
-      if (!customer?._id) return;
+      if (!customer?._id || !hotelId || !roomInfo) return;
       try {
         const coupons = await fetchCustomerCoupons(customer._id);
         console.log(
@@ -126,10 +199,20 @@ const ReservationConfirmation = () => {
         );
         setCustomerCoupons(coupons);
         setApplicableCoupons(applicable);
+        setIsCouponsLoaded(true);
         console.log(
           '[ReservationConfirmation] Applicable coupons:',
           applicable
         );
+
+        // 이미 적용된 쿠폰이 있다면 해당 쿠폰을 기본 선택 상태로 설정
+        if (
+          initCouponUuid &&
+          applicable.some((coupon) => coupon.couponUuid === initCouponUuid)
+        ) {
+          setCouponUuid(initCouponUuid);
+          setCouponCode(initCouponCode);
+        }
       } catch (error) {
         console.error(
           '[ReservationConfirmation] Failed to load customer coupons:',
@@ -142,10 +225,11 @@ const ReservationConfirmation = () => {
           duration: 3000,
           isClosable: true,
         });
+        setIsCouponsLoaded(true);
       }
     };
     loadCoupons();
-  }, [customer, hotelId, roomInfo, toast]);
+  }, [customer, hotelId, roomInfo, initCouponUuid, initCouponCode, toast]);
 
   const loadHotelInfoAndPhotos = useCallback(
     async (hotelId) => {
@@ -270,55 +354,6 @@ const ReservationConfirmation = () => {
     toast,
     navigate,
   ]);
-
-  const handleCouponChange = (couponUuid) => {
-    const selectedCoupon = customerCoupons.find(
-      (coupon) => coupon.couponUuid === couponUuid
-    );
-    let newPrice = originalPrice;
-    let newCouponDiscount = 0;
-    let newCouponFixedDiscount = 0;
-    let newCouponTotalFixedDiscount = 0;
-    let newCouponCode = null;
-    let newCouponUuid = null;
-
-    // 이벤트 할인 먼저 적용
-    if (discountType === 'fixed' && totalFixedDiscount > 0) {
-      newPrice = Math.max(0, newPrice - totalFixedDiscount);
-    } else if (discountType === 'percentage' && discount > 0) {
-      newPrice = Math.round(newPrice * (1 - discount / 100));
-    }
-
-    // 선택된 쿠폰 적용
-    if (selectedCoupon) {
-      if (selectedCoupon.discountType === 'percentage') {
-        newCouponDiscount = selectedCoupon.discountValue;
-        newPrice = Math.round(newPrice * (1 - newCouponDiscount / 100));
-      } else if (selectedCoupon.discountType === 'fixed') {
-        newCouponFixedDiscount = selectedCoupon.discountValue;
-        newCouponTotalFixedDiscount = newCouponFixedDiscount * numNights;
-        newPrice = Math.max(0, newPrice - newCouponTotalFixedDiscount);
-      }
-      newCouponCode = selectedCoupon.code;
-      newCouponUuid = selectedCoupon.couponUuid;
-    }
-
-    setPrice(newPrice);
-    setCouponDiscount(newCouponDiscount);
-    setCouponFixedDiscount(newCouponFixedDiscount);
-    setCouponTotalFixedDiscount(newCouponTotalFixedDiscount);
-    setCouponCode(newCouponCode);
-    setCouponUuid(newCouponUuid);
-
-    console.log('[ReservationConfirmation] Coupon changed:', {
-      newPrice,
-      newCouponDiscount,
-      newCouponFixedDiscount,
-      newCouponTotalFixedDiscount,
-      newCouponCode,
-      newCouponUuid,
-    });
-  };
 
   const handleConfirm = async () => {
     if (!customer) {
@@ -534,13 +569,13 @@ const ReservationConfirmation = () => {
 
   return (
     <Container
-      maxW="container.sm"
+      maxW={{ base: '100%', sm: 'container.sm' }} // 수정: 반응형 최대 너비
       p={0}
       minH="100vh"
       display="flex"
       flexDirection="column"
       w="100%"
-      overflow="hidden"
+      overflowY="auto"
       position="fixed"
       top={0}
       left={0}
@@ -559,7 +594,7 @@ const ReservationConfirmation = () => {
         py={4}
         zIndex={1000}
       >
-        <Container maxW="container.sm">
+        <Container maxW={{ base: '100%', sm: 'container.sm' }}>
           <Flex align="center" justify="center" pos="relative">
             <IconButton
               icon={<ArrowBackIcon />}
@@ -579,9 +614,9 @@ const ReservationConfirmation = () => {
       <Box
         flex="1"
         overflowY="auto"
-        px={2}
+        px={{ base: 4, sm: 2 }} // 수정: 반응형 패딩
         pt="64px"
-        pb={{ base: '58px', md: '50px' }}
+        pb="60px"
         overflowX="hidden"
         css={{
           '&::-webkit-scrollbar': {
@@ -696,23 +731,33 @@ const ReservationConfirmation = () => {
                 )}
                 <Text color="gray.600">적용된 쿠폰</Text>
                 <Flex align="center">
-                  <Select
-                    value={couponUuid || ''}
-                    onChange={(e) => handleCouponChange(e.target.value)}
-                    placeholder="쿠폰을 선택하세요"
-                    flex="1"
-                  >
-                    <option value="">쿠폰 사용 안함</option>
-                    {applicableCoupons.map((coupon) => (
-                      <option key={coupon.couponUuid} value={coupon.couponUuid}>
-                        {coupon.name} (
-                        {coupon.discountType === 'percentage'
-                          ? `${coupon.discountValue}%`
-                          : `${coupon.discountValue.toLocaleString()}원`}
-                        )
-                      </option>
-                    ))}
-                  </Select>
+                  {isCouponsLoaded ? (
+                    applicableCoupons.length > 0 ? (
+                      <Select
+                        value={couponUuid || ''}
+                        onChange={(e) => handleCouponChange(e.target.value)}
+                        placeholder="쿠폰 사용 안함"
+                        flex="1"
+                      >
+                        {applicableCoupons.map((coupon) => (
+                          <option
+                            key={coupon.couponUuid}
+                            value={coupon.couponUuid}
+                          >
+                            {coupon.name} (
+                            {coupon.discountType === 'percentage'
+                              ? `${coupon.discountValue}% 할인`
+                              : `${coupon.discountValue.toLocaleString()}원 할인`}
+                            )
+                          </option>
+                        ))}
+                      </Select>
+                    ) : (
+                      <Text color="gray.500">적용 가능한 쿠폰 없음</Text>
+                    )
+                  ) : (
+                    <Text color="gray.500">쿠폰 로드 중...</Text>
+                  )}
                 </Flex>
               </Grid>
 

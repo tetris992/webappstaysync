@@ -32,7 +32,7 @@ import 'react-date-range/dist/theme/default.css';
 import { fetchHotelList, fetchCustomerCoupons } from '../api/api';
 import api from '../api/api';
 import { useToast } from '@chakra-ui/react';
-import BottomNavigation from '../components/BottomNavigation';
+import BottomNavigation from '../components/BottomNavigation'; // 하단 네비게이션 바 추가
 
 // 기본 호텔 데이터 (API 호출 실패 시 사용)
 const recommendedHotels = [
@@ -319,21 +319,14 @@ const Home = () => {
   };
 
   return (
-    <Container
-      maxW="container.lg"
-      p={0}
+    <Box
       minH="100vh"
+      bg="gray.50"
       display="flex"
       flexDirection="column"
       w="100%"
-      overflow="hidden"
-      position="fixed"
-      top={0}
-      left={0}
-      right={0}
-      bottom={0}
       overflowX="hidden"
-      bg="gray.50"
+      position="relative"
     >
       {/* 상단 헤더 - 고정 위치 */}
       <Box
@@ -549,15 +542,19 @@ const Home = () => {
         flex="1"
         overflowY="auto"
         overflowX="hidden"
-        position="relative"
-        pt="64px" // 헤더 높이
-        pb={{ base: '58px', md: '50px' }} // BottomNavigation 높이(58px)에 맞춰 조정
+        pb="60px" // 하단 네비게이션 바 높이만큼 여백 추가
         css={{
           '&::-webkit-scrollbar': {
-            display: 'none',
+            width: '4px',
           },
-          msOverflowStyle: 'none',
-          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar-track': {
+            width: '6px',
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#CBD5E0',
+            borderRadius: '24px',
+          },
         }}
       >
         <Container maxW="container.md" py={6}>
@@ -1024,8 +1021,9 @@ const Home = () => {
         </Container>
       </Box>
 
+      {/* 하단 네비게이션 바 */}
       <BottomNavigation />
-    </Container>
+    </Box>
   );
 };
 

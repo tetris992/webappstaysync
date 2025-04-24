@@ -419,13 +419,28 @@ export const fetchHotelAvailability = async (hotelId, checkIn, checkOut) => {
   }
 };
 
-// 예약 생성 API
 export const createReservation = async (finalReservationData) => {
   try {
-    const response = await api.post(
-      '/api/customer/reservation',
-      finalReservationData
-    );
+    const response = await api.post('/api/customer/reservation', {
+      hotelId: finalReservationData.hotelId,
+      roomInfo: finalReservationData.roomInfo,
+      checkIn: finalReservationData.checkIn,
+      checkOut: finalReservationData.checkOut,
+      price: finalReservationData.price,
+      originalPrice: finalReservationData.originalPrice,
+     // ↓↓↓ 이벤트 할인 정보 추가 ↓↓↓
+     discount: finalReservationData.discount,
+     fixedDiscount: finalReservationData.fixedDiscount,
+     discountType: finalReservationData.discountType,
+      eventName: finalReservationData.eventName,
+      eventUuid: finalReservationData.eventUuid,
+      specialRequests: finalReservationData.specialRequests,
+      // 쿠폰 정보
+      couponUuid: finalReservationData.couponUuid,
+      couponDiscount: finalReservationData.couponDiscount,
+      couponFixedDiscount: finalReservationData.couponFixedDiscount,
+      couponTotalFixedDiscount: finalReservationData.couponTotalFixedDiscount,
+    });
     return response.data;
   } catch (error) {
     handleApiError(error, '예약 저장 실패');
@@ -550,7 +565,12 @@ export const fetchCustomerCoupons = async (customerId) => {
 };
 
 // 쿠폰 사용 API
-export const useCoupon = async (hotelId, couponCode, reservationId, customerId) => {
+export const useCoupon = async (
+  hotelId,
+  couponCode,
+  reservationId,
+  customerId
+) => {
   try {
     const response = await api.post('/api/hotel-settings/use-coupon', {
       hotelId,
