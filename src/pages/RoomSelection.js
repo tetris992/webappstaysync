@@ -1283,224 +1283,178 @@ const RoomSelection = () => {
           </Box>
         ) : (
           isAvailabilityChecked && (
-            <VStack spacing={0} align="stretch" w="100%">
-              {memoizedRooms.map((room, index) => {
-                const repCoupons = getRepresentativeCoupons(
-                  room.applicableCoupons
-                );
-                const originalTotalPrice = room.dayStayPrice * numDays;
-                let discountedTotalPrice = originalTotalPrice;
+<VStack spacing={0} align="stretch" w="100%">
+  {memoizedRooms.map((room, index) => {
+    const repCoupons = getRepresentativeCoupons(room.applicableCoupons);
+    const originalTotalPrice = room.dayStayPrice * numDays;
+    let discountedTotalPrice = originalTotalPrice;
 
-                if (
-                  room.discountType === 'fixed' &&
-                  room.totalFixedDiscount > 0
-                ) {
-                  discountedTotalPrice = Math.max(
-                    0,
-                    discountedTotalPrice - room.totalFixedDiscount
-                  );
-                } else if (
-                  room.discountType === 'percentage' &&
-                  room.discount > 0
-                ) {
-                  discountedTotalPrice = Math.round(
-                    discountedTotalPrice * (1 - room.discount / 100)
-                  );
-                }
+    if (room.discountType === 'fixed' && room.totalFixedDiscount > 0) {
+      discountedTotalPrice = Math.max(0, discountedTotalPrice - room.totalFixedDiscount);
+    } else if (room.discountType === 'percentage' && room.discount > 0) {
+      discountedTotalPrice = Math.round(discountedTotalPrice * (1 - room.discount / 100));
+    }
 
-                if (room.couponDiscount > 0) {
-                  discountedTotalPrice = Math.round(
-                    discountedTotalPrice * (1 - room.couponDiscount / 100)
-                  );
-                } else if (room.couponTotalFixedDiscount > 0) {
-                  discountedTotalPrice = Math.max(
-                    0,
-                    discountedTotalPrice - room.couponTotalFixedDiscount
-                  );
-                }
+    if (room.couponDiscount > 0) {
+      discountedTotalPrice = Math.round(discountedTotalPrice * (1 - room.couponDiscount / 100));
+    } else if (room.couponTotalFixedDiscount > 0) {
+      discountedTotalPrice = Math.max(0, discountedTotalPrice - room.couponTotalFixedDiscount);
+    }
 
-                const displayedAmenities = (room.activeAmenities || []).slice(
-                  0,
-                  2
-                );
-                const remainingAmenities =
-                  (room.activeAmenities || []).length - 2;
-                const photos = room.photos || [];
-                const currentIndex =
-                  currentPhotoIndices[room.roomInfo.toLowerCase()] || 0;
-                const photoCount = photos.length;
+    const displayedAmenities = (room.activeAmenities || []).slice(0, 2);
+    const remainingAmenities = (room.activeAmenities || []).length - 2;
+    const photos = room.photos || [];
+    const currentIndex = currentPhotoIndices[room.roomInfo.toLowerCase()] || 0;
+    const photoCount = photos.length;
 
-                return (
-                  <Box key={room.uniqueKey} w="100%">
-                    <Flex align="center" px={4} py={4} bg="white" minH="120px">
-                      <Box position="relative">
-                        <Image
-                          src={
-                            photos[currentIndex]?.photoUrl ||
-                            '/assets/default-room.jpg'
-                          }
-                          alt={room.roomInfo}
-                          w="100px"
-                          h="130px"
-                          objectFit="cover"
-                          borderRadius="md"
-                          mr={4}
-                          onError={(e) =>
-                            (e.target.src = '/assets/default-room.jpg')
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            room.onSelect();
-                          }}
-                          cursor="pointer"
-                        />
-                        {photoCount > 1 && (
-                          <Flex
-                            position="absolute"
-                            bottom="2"
-                            left="50%"
-                            transform="translateX(-50%)"
-                            gap="2"
-                          >
-                            {photos.map((_, idx) => (
-                              <Box
-                                key={idx}
-                                w="8px"
-                                h="8px"
-                                borderRadius="full"
-                                bg={
-                                  idx === currentIndex
-                                    ? 'white'
-                                    : 'whiteAlpha.600'
-                                }
-                                boxShadow="0 0 2px rgba(0,0,0,0.5)"
-                              />
-                            ))}
-                          </Flex>
-                        )}
-                      </Box>
-                      <VStack align="start" flex="1" spacing={1}>
-                        <Flex
-                          justify="space-between"
-                          w="100%"
-                          align="center"
-                          px={0}
-                        >
-                          <Flex align="center" gap={2}>
-                            <Text fontSize="lg" fontWeight="700">
-                              {room.roomInfo}
-                            </Text>
-                            {room.eventName && (
-                              <Badge colorScheme="teal" fontSize="xs">
-                                {room.eventName}
-                              </Badge>
-                            )}
-                          </Flex>
-                          {repCoupons.length > 0 && (
-                            <Button
-                              variant="outline"
-                              colorScheme="teal"
-                              size="xs"
-                              px={2}
-                              py={1}
-                              fontSize="xs"
-                              mr={0}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openCouponModal(room.roomInfo);
-                              }}
-                              leftIcon={<FaTag />}
-                            >
-                              {repCoupons.length}개 쿠폰
-                            </Button>
-                          )}
-                        </Flex>
-                        <Text fontSize="sm" color="gray.600">
-                          대실 3시간 | 숙박{' '}
-                          {hotelSettings?.checkInTime || '17:00'} 체크인
-                        </Text>
-                        <Flex justify="space-between" w="100%" align="center">
-                          <Flex align="center" gap={1}>
-                            {(room.discount > 0 ||
-                              room.fixedDiscount > 0 ||
-                              room.couponDiscount > 0 ||
-                              room.couponTotalFixedDiscount > 0) && (
-                              <Text
-                                fontSize={{ base: 'xs', md: 'sm' }}
-                                color="gray.500"
-                                textDecoration="line-through"
-                              >
-                                ₩{originalTotalPrice.toLocaleString()}
-                              </Text>
-                            )}
-                            <Text
-                              fontSize="md"
-                              fontWeight="600"
-                              color="blue.500"
-                            >
-                              ₩{discountedTotalPrice.toLocaleString()}
-                            </Text>
-                          </Flex>
-                          <Text fontSize="xs" color="red.500">
-                            남은 객실 {room.availableRooms || room.stock || 0}개
-                          </Text>
-                        </Flex>
-                        {(room.discount > 0 || room.fixedDiscount > 0) && (
-                          <Text fontSize="xs" color="red.500">
-                            {room.discountType === 'fixed' &&
-                            room.fixedDiscount > 0
-                              ? `${room.fixedDiscount.toLocaleString()}원/박 할인`
-                              : room.discount > 0
-                              ? `${room.discount}% 할인`
-                              : null}
-                          </Text>
-                        )}
-                        {(room.couponDiscount > 0 ||
-                          room.couponTotalFixedDiscount > 0) && (
-                          <Text fontSize="xs" color="red.500">
-                            {room.couponDiscount > 0
-                              ? `쿠폰 적용가: ${room.couponDiscount}% 할인`
-                              : room.couponTotalFixedDiscount > 0
-                              ? `쿠폰 적용가: ₩${discountedTotalPrice.toLocaleString()}`
-                              : null}
-                          </Text>
-                        )}
-                        <Flex justify="space-between" w="100%" align="center">
-                          <Flex display="inline-flex" align="center" gap={1}>
-                            {displayedAmenities.map((amenity, idx) => (
-                              <Box key={idx} color="gray.500">
-                                {mapIconNameToComponent(amenity.icon)}
-                              </Box>
-                            ))}
-                            {remainingAmenities > 0 && (
-                              <Text fontSize="xs" color="gray.500">
-                                +{remainingAmenities}
-                              </Text>
-                            )}
-                          </Flex>
-                          <Button
-                            colorScheme="blue"
-                            size="xs"
-                            px={2}
-                            py={1}
-                            fontSize="xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              room.onSelect();
-                            }}
-                          >
-                            선택하기
-                          </Button>
-                        </Flex>
-                      </VStack>
-                    </Flex>
-                    {index < memoizedRooms.length - 1 && (
-                      <Divider borderColor="gray.300" borderWidth="1.5px" />
-                    )}
+    return (
+      <Box key={room.uniqueKey} w="100%">
+        <Flex align="center" px={4} py={4} bg="white" minH="120px">
+          <Box position="relative">
+            <Image
+              src={photos[currentIndex]?.photoUrl || '/assets/default-room.jpg'}
+              alt={room.roomInfo}
+              w="100px"
+              h="130px"
+              objectFit="cover"
+              borderRadius="md"
+              mr={4}
+              onError={(e) => (e.target.src = '/assets/default-room.jpg')}
+              onClick={(e) => {
+                e.stopPropagation();
+                room.onSelect();
+              }}
+              cursor="pointer"
+            />
+            {photoCount > 1 && (
+              <Flex
+                position="absolute"
+                bottom="2"
+                left="50%"
+                transform="translateX(-50%)"
+                gap="2"
+              >
+                {photos.map((_, idx) => (
+                  <Box
+                    key={idx}
+                    w="8px"
+                    h="8px"
+                    borderRadius="full"
+                    bg={idx === currentIndex ? 'white' : 'whiteAlpha.600'}
+                    boxShadow="0 0 2px rgba(0,0,0,0.5)"
+                  />
+                ))}
+              </Flex>
+            )}
+          </Box>
+          <VStack align="start" flex="1" spacing={1}>
+            <Flex justify="space-between" w="100%" align="center" px={0}>
+              <Flex align="center" gap={2}>
+                <Text fontSize="lg" fontWeight="700">{room.roomInfo}</Text>
+                {room.eventName && (
+                  <Badge colorScheme="teal" fontSize="xs">{room.eventName}</Badge>
+                )}
+              </Flex>
+              {repCoupons.length > 0 && (
+                <Button
+                  variant="outline"
+                  colorScheme="teal"
+                  size="xs"
+                  px={2}
+                  py={1}
+                  fontSize="xs"
+                  mr={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCouponModal(room.roomInfo);
+                  }}
+                  leftIcon={<FaTag />}
+                >
+                  {repCoupons.length}개 쿠폰
+                </Button>
+              )}
+            </Flex>
+            <Text fontSize="sm" color="gray.600">
+              대실 3시간 | 숙박 {hotelSettings?.checkInTime || '17:00'} 체크인
+            </Text>
+            <Flex justify="space-between" w="100%" align="center">
+              <Flex align="center" gap={1}>
+                {(room.discount > 0 ||
+                  room.fixedDiscount > 0 ||
+                  room.couponDiscount > 0 ||
+                  room.couponTotalFixedDiscount > 0) && (
+                  <Text
+                    fontSize={{ base: 'xs', md: 'sm' }}
+                    color="gray.500"
+                    textDecoration="line-through"
+                  >
+                    ₩{originalTotalPrice.toLocaleString()}
+                  </Text>
+                )}
+                <Text fontSize="md" fontWeight="600" color="blue.500">
+                  ₩{discountedTotalPrice.toLocaleString()}
+                </Text>
+              </Flex>
+              <Text fontSize="xs" color="red.500">
+                {(room.availableRooms || room.stock || 0) === 0
+                  ? '객실 마감'
+                  : `남은 객실 ${room.availableRooms || room.stock || 0}개`}
+              </Text>
+            </Flex>
+            {(room.discount > 0 || room.fixedDiscount > 0) && (
+              <Text fontSize="xs" color="red.500">
+                {room.discountType === 'fixed' && room.fixedDiscount > 0
+                  ? `${room.fixedDiscount.toLocaleString()}원/박 할인`
+                  : room.discount > 0
+                  ? `${room.discount}% 할인`
+                  : null}
+              </Text>
+            )}
+            {(room.couponDiscount > 0 || room.couponTotalFixedDiscount > 0) && (
+              <Text fontSize="xs" color="red.500">
+                {room.couponDiscount > 0
+                  ? `쿠폰 적용가: ${room.couponDiscount}% 할인`
+                  : room.couponTotalFixedDiscount > 0
+                  ? `쿠폰 적용가: ₩${discountedTotalPrice.toLocaleString()}`
+                  : null}
+              </Text>
+            )}
+            <Flex justify="space-between" w="100%" align="center">
+              <Flex display="inline-flex" align="center" gap={1}>
+                {displayedAmenities.map((amenity, idx) => (
+                  <Box key={idx} color="gray.500">
+                    {mapIconNameToComponent(amenity.icon)}
                   </Box>
-                );
-              })}
-            </VStack>
+                ))}
+                {remainingAmenities > 0 && (
+                  <Text fontSize="xs" color="gray.500">
+                    +{remainingAmenities}
+                  </Text>
+                )}
+              </Flex>
+              <Button
+                colorScheme="blue"
+                size="xs"
+                px={2}
+                py={1}
+                fontSize="xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  room.onSelect();
+                }}
+              >
+                선택하기
+              </Button>
+            </Flex>
+          </VStack>
+        </Flex>
+        {index < memoizedRooms.length - 1 && (
+          <Divider borderColor="gray.300" borderWidth="1.5px" />
+        )}
+      </Box>
+    );
+  })}
+</VStack>
           )
         )}
       </Box>
