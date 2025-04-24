@@ -486,6 +486,7 @@ const ReservationConfirmation = () => {
     const finalReservationData = {
       hotelId: reservationState.hotelId,
       siteName: '단잠',
+      customerId: customer._id,
       customerName: customer.name,
       phoneNumber: customer.phoneNumber,
       hotelPhoneNumber: reservationState.hotelPhoneNumber,
@@ -922,7 +923,9 @@ const ReservationConfirmation = () => {
                             {coupon.code} (
                             {coupon.discountType === 'percentage'
                               ? `${coupon.discountValue}% 할인`
-                              : `${(coupon.discountValue ?? 0).toLocaleString()}원 할인`}
+                              : `${(
+                                  coupon.discountValue ?? 0
+                                ).toLocaleString()}원 할인`}
                             )
                           </option>
                         ))}
@@ -942,7 +945,9 @@ const ReservationConfirmation = () => {
                         {reservationState.couponCode} (
                         {reservationState.couponDiscount > 0
                           ? `${reservationState.couponDiscount}% 할인`
-                          : `${(reservationState.couponTotalFixedDiscount ?? 0).toLocaleString()}원 할인`}
+                          : `${(
+                              reservationState.couponTotalFixedDiscount ?? 0
+                            ).toLocaleString()}원 할인`}
                         )
                       </Text>
                     </>
@@ -965,7 +970,9 @@ const ReservationConfirmation = () => {
                         color="gray.500"
                         textDecoration="line-through"
                       >
-                        ₩{(reservationState.originalPrice ?? 0).toLocaleString()}원
+                        ₩
+                        {(reservationState.originalPrice ?? 0).toLocaleString()}
+                        원
                       </Text>
                     )}
                     <Text
@@ -979,8 +986,10 @@ const ReservationConfirmation = () => {
                     (reservationState.totalFixedDiscount ?? 0) > 0 ? (
                       <Text fontSize="xs" color="red.500">
                         이벤트 할인: 총 ₩
-                        {(reservationState.totalFixedDiscount ?? 0).toLocaleString()}원 (
-                        {numNights}박)
+                        {(
+                          reservationState.totalFixedDiscount ?? 0
+                        ).toLocaleString()}
+                        원 ({numNights}박)
                       </Text>
                     ) : reservationState.discount > 0 ? (
                       <Text fontSize="xs" color="red.500">
@@ -990,8 +999,10 @@ const ReservationConfirmation = () => {
                     {(reservationState.couponTotalFixedDiscount ?? 0) > 0 && (
                       <Text fontSize="xs" color="red.500">
                         쿠폰 할인: 총 ₩
-                        {(reservationState.couponTotalFixedDiscount ?? 0).toLocaleString()}원 (
-                        {numNights}박)
+                        {(
+                          reservationState.couponTotalFixedDiscount ?? 0
+                        ).toLocaleString()}
+                        원 ({numNights}박)
                       </Text>
                     )}
                     {reservationState.couponDiscount > 0 && (

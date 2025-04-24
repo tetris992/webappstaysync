@@ -1,3 +1,4 @@
+// api.js
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
@@ -76,7 +77,7 @@ api.interceptors.request.use(
     }
 
     // CSRF 토큰 처리
-    const isGetRequest = config.method === 'get';
+    const isSafeMethod = ['get', 'head', 'options'].includes(config.method); // GET, HEAD, OPTIONS는 CSRF 토큰 불필요
     const isCsrfTokenRequest = config.url === '/api/csrf-token';
     const skipCsrfRoutes = [
       '/api/customer/register',
@@ -93,9 +94,9 @@ api.interceptors.request.use(
     const skipCsrf =
       config.skipCsrf ||
       skipCsrfRoutes.includes(requestBaseUrl) ||
-      isGetRequest;
+      isSafeMethod;
 
-    if (!isGetRequest && !isCsrfTokenRequest && !skipCsrf) {
+    if (!isSafeMethod && !isCsrfTokenRequest && !skipCsrf) {
       let csrfToken = getCsrfToken();
       let csrfTokenId = getCsrfTokenId();
       if (!csrfToken || !csrfTokenId) {
@@ -464,12 +465,23 @@ export const getReservationHistory = async () => {
 // 예약 취소 API
 export const cancelReservation = async (reservationId) => {
   try {
+    logDebug(`[api.js] Cancelling reservation: ${reservationId}`);
     const response = await api.delete(
       `/api/customer/reservation/${reservationId}`
     );
-    return response.data;
+    logDebug('[api.js] Cancel reservation response:', response.data);
+
+    // 취소 후 쿠폰 목록 갱신
+    const updatedCoupons = await fetchCustomerCoupons();
+    logDebug('[api.js] Updated coupons after cancellation:', updatedCoupons);
+
+    return {
+      ...response.data,
+      updatedCoupons, // 갱신된 쿠폰 목록 반환
+    };
   } catch (error) {
-    handleApiError(error, '예약 취소 실패');
+    logDebug('[api.js] Cancel reservation error:', error);
+    handleApiError(error, '예약 취소에 실패했습니다. 다시 시도해 주세요.');
   }
 };
 
@@ -541,52 +553,56 @@ export const fetchCustomerCoupons = async () => {
 };
 
 // 쿠폰 사용 API
-export const useCoupon = async ({ customerId, couponUuid, reservationId }) => {
+export const useCoupon = async ({ couponUuid, reservationId }) => {
   try {
+    logDebug(`[api.js] Using coupon: ${couponUuid} for reservation: ${reservationId}`);
     const response = await api.post('/api/customer/coupons/use', {
-      customerId,
       couponUuid,
       reservationId,
     });
-    return response.data;
+    logDebug('[api.js] Use coupon response:', response.data);
+
+    // 쿠폰 사용 후 쿠폰 목록 갱신
+    const updatedCoupons = await fetchCustomerCoupons();
+    logDebug('[api.js] Updated coupons after use:', updatedCoupons);
+
+    return {
+      ...response.data,
+      updatedCoupons, // 갱신된 쿠폰 목록 반환
+    };
   } catch (error) {
+    logDebug('[api.js] Use coupon error:', error);
     handleApiError(error, '쿠폰 사용 실패');
   }
 };
 
 // 쿠폰 복원 API
-export const restoreCoupon = async ({ customerId, couponUuid }) => {
+export const restoreCoupon = async ({ couponUuid }) => {
   try {
+    logDebug(`[api.js] Restoring coupon: ${couponUuid}`);
     const response = await api.post('/api/customer/coupons/restore', {
-      customerId,
       couponUuid,
     });
-    return response.data;
+    logDebug('[api.js] Restore coupon response:', response.data);
+
+    // 쿠폰 복원 후 쿠폰 목록 갱신
+    const updatedCoupons = await fetchCustomerCoupons();
+    logDebug('[api.js] Updated coupons after restore:', updatedCoupons);
+
+    return {
+      ...response.data,
+      updatedCoupons, // 갱신된 쿠폰 목록 반환
+    };
   } catch (error) {
+    logDebug('[api.js] Restore coupon error:', error);
     handleApiError(error, '쿠폰 복원 실패');
   }
 };
 
-// 쿠폰 다운로드 API
-export const downloadCoupon = async ({ couponUuid, customerId }) => {
-  try {
-    const response = await api.post('/api/customer/coupons/download', {
-      couponUuid,
-      customerId,
-    });
-    logDebug('[api.js] Coupon downloaded:', response.data);
-    return response.data;
-  } catch (error) {
-    handleApiError(error, '쿠폰 다운로드 실패');
-  }
-};
-
 // 방문 횟수 증가 API
-export const incrementVisit = async (customerId) => {
+export const incrementVisit = async () => {
   try {
-    const response = await api.post('/api/customer/visits/increment', {
-      customerId,
-    });
+    const response = await api.post('/api/customer/visits/increment', {});
     return response.data;
   } catch (error) {
     handleApiError(error, '방문 횟수 증가 실패');
@@ -594,17 +610,14 @@ export const incrementVisit = async (customerId) => {
 };
 
 // 방문 횟수 감소 API
-export const decrementVisit = async (customerId) => {
+export const decrementVisit = async () => {
   try {
-    const response = await api.post('/api/customer/visits/decrement', {
-      customerId,
-    });
+    const response = await api.post('/api/customer/visits/decrement', {});
     return response.data;
   } catch (error) {
     handleApiError(error, '방문 횟수 감소 실패');
   }
 };
-
 
 export const fetchAvailableCoupons = async () => {
   try {
