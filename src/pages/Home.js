@@ -336,19 +336,17 @@ const Home = () => {
       pt="env(safe-area-inset-top)"
       pb="env(safe-area-inset-bottom)"
     >
-      {/* 상단바 - 고정 위치 */}
       <Box
-            mt="10px"
         bg="white"
         borderBottom="1px solid"
         borderColor="gray.200"
         width="100%"
-        py={3}
+        pt={5} // 상단 여백 (Safe Area와 별개로 타이틀 위 여백 확보)
+        pb={3}
         position="fixed"
         top={0}
         zIndex={100}
         boxShadow="sm"
-        pt="env(safe-area-inset-top)"
       >
         <Flex align="center" justify="space-between" px={4}>
           <Box flex="1" /> {/* 왼쪽 여백을 위한 빈 공간 */}
@@ -377,8 +375,7 @@ const Home = () => {
                 right: 0,
                 bottom: 0,
                 borderRadius: 'lg',
-                background:
-                  'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+                background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
                 opacity: 0.8,
               }}
             >
@@ -467,10 +464,7 @@ const Home = () => {
                       value={`${format(
                         dateRange[0].startDate,
                         'yyyy년 MM월 dd일'
-                      )} - ${format(
-                        dateRange[0].endDate,
-                        'yyyy년 MM월 dd일'
-                      )}`}
+                      )} - ${format(dateRange[0].endDate, 'yyyy년 MM월 dd일')}`}
                       onClick={() => setIsCalendarOpen(!isCalendarOpen)}
                       readOnly
                       cursor="pointer"
@@ -528,7 +522,6 @@ const Home = () => {
           maxW="400px"
         >
           <Flex justify="space-between" align="center" mb={4}>
-            
             <Text fontWeight="bold">날짜 선택</Text>
             <Button size="sm" onClick={() => setIsCalendarOpen(false)}>
               닫기
@@ -555,7 +548,7 @@ const Home = () => {
         overflowY="auto"
         overflowX="hidden"
         mt="80px"
-        pb="140px" // 하단 네비게이션 바 높이 + 여유분
+        pb="160px" // 하단 네비게이션 바 높이 + 여유분
         css={{
           '-webkit-overflow-scrolling': 'touch', // iOS 부드러운 스크롤
           '&::-webkit-scrollbar': {
@@ -612,12 +605,7 @@ const Home = () => {
           </Box>
 
           <Box w="100%" mb={4}>
-            <Text
-              fontSize="md"
-              fontWeight="bold"
-              mb={3}
-              color="gray.800"
-            >
+            <Text fontSize="md" fontWeight="bold" mb={3} color="gray.800">
               추천 호텔
             </Text>
             <Box>
@@ -723,12 +711,7 @@ const Home = () => {
 
           {customer && (
             <Box w="100%" mb={4}>
-              <Text
-                fontSize="md"
-                fontWeight="bold"
-                mb={3}
-                color="gray.800"
-              >
+              <Text fontSize="md" fontWeight="bold" mb={3} color="gray.800">
                 쿠폰
               </Text>
               {isAvailableCouponsLoading ? (
@@ -973,11 +956,9 @@ const Home = () => {
                           opacity: Math.random() * 0.5 + 0.3,
                         },
                         '50%': {
-                          transform: `scale(${
-                            Math.random() + 0.5
-                          }) translate(${Math.random() * 200 - 100}px, ${
+                          transform: `scale(${Math.random() + 0.5}) translate(${
                             Math.random() * 200 - 100
-                          }px)`,
+                          }px, ${Math.random() * 200 - 100}px)`,
                           opacity: Math.random() * 0.8 + 0.2,
                         },
                         '100%': {
