@@ -579,7 +579,7 @@ const HotelList = ({ loadHotelSettings }) => {
                   totalHotels={filteredHotels.length}
                 />
                 {index < filteredHotels.length - 1 && (
-                  <Divider borderColor="gray.300" borderWidth="1.5px" mb={2} />
+                  <Divider borderColor="gray.200" borderWidth="0.3px" mb={2} />
                 )}
               </Box>
             ))}
