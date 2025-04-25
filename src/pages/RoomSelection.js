@@ -1320,7 +1320,7 @@ const RoomSelection = () => {
         flex="1"
         overflowY="auto"
         px={{ base: 2, sm: 0 }}
-        pb="120px"
+        pb="140px"
         overflowX="hidden"
         css={{
           '&::-webkit-scrollbar': {

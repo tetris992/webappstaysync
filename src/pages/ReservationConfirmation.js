@@ -702,7 +702,7 @@ const ReservationConfirmation = () => {
         overflowY="auto"
         px={{ base: 4, sm: 0 }}
         pt="64px"
-        pb="60px"
+        pb="140px"
         overflowX="hidden"
         css={{
           '&::-webkit-scrollbar': {

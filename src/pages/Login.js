@@ -156,7 +156,7 @@ const Login = () => {
         w="100%"
         position="relative"
         zIndex="1"
-        pb="60px" // 하단 여백 추가 (네비게이션 바 높이만큼)
+        pb="140px" // 하단 여백 추가 (네비게이션 바 높이만큼)
       >
         <VStack spacing={8} align="stretch">
           <VStack spacing={2}>
