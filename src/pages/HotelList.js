@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import {
-  Container,
   VStack,
   Text,
   useToast,
@@ -23,6 +22,7 @@ import {
   ModalBody,
   ModalCloseButton,
   Image,
+  Divider,
 } from '@chakra-ui/react';
 import {
   SearchIcon,
@@ -80,7 +80,7 @@ const HotelList = ({ loadHotelSettings }) => {
   const [selectedCoupons, setSelectedCoupons] = useState([]);
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [currentPhotoIndices, setCurrentPhotoIndices] = useState({});
-  const [mapVisible, setMapVisible] = useState({}); // 호텔별 지도 표시 상태
+  const [mapVisible, setMapVisible] = useState({});
   const mainRef = React.useRef(null);
 
   // Load favorites from localStorage
@@ -116,7 +116,7 @@ const HotelList = ({ loadHotelSettings }) => {
                 ...h,
                 rating: Math.random() * 2 + 3,
                 reviewCount: Math.floor(Math.random() * 100) + 10,
-                price: Math.floor(Math.random() * 100000) + 50000,
+                price: Math.floor(Math.random() * 100000) + 50_000,
                 address: normalizeAddress(h.address),
                 checkInTime: '15:00',
                 checkOutTime: '11:00',
@@ -388,25 +388,25 @@ const HotelList = ({ loadHotelSettings }) => {
   }
 
   return (
-    <Container
-      maxW="100%"
-      w="100%"
-      p={0}
-      bg="gray.50"
+    <Box
       minH="100vh"
-      ref={mainRef}
+      bg="gray.50"
       display="flex"
       flexDirection="column"
+      w="100vw"
+      maxW="100%"
       overflow="hidden"
       position="fixed"
       top={0}
       left={0}
       right={0}
       bottom={0}
+      pt="env(safe-area-inset-top)"
+      pb="env(safe-area-inset-bottom)"
     >
-      {/* Fixed Header */}
+      {/* 상단바 - 고정 위치 */}
       <Box
-        pos="fixed"
+        position="fixed"
         top={0}
         w="100%"
         bg="white"
@@ -414,122 +414,124 @@ const HotelList = ({ loadHotelSettings }) => {
         borderColor="gray.200"
         zIndex={1000}
         boxShadow={isOpen ? 'lg' : 'none'}
+        pt="env(safe-area-inset-top)"
       >
-        <Container maxW="container.sm" py={4} px={4}>
-          <Flex align="center" justify="space-between">
-            <IconButton
-              icon={<ArrowBackIcon />}
-              variant="ghost"
-              onClick={() => navigate(-1)}
-              aria-label="뒤로"
-              color="gray.700"
-              _hover={{ bg: 'gray.100' }}
-              size="lg"
-            />
-            <Text fontSize="lg" fontWeight="semibold" color="gray.800">
-              찜한 호텔
-            </Text>
-            <IconButton
-              icon={<SearchIcon />}
-              variant="ghost"
-              onClick={onToggle}
-              aria-label="검색"
-              color={isOpen ? 'blue.600' : 'gray.600'}
-              _hover={{ bg: 'gray.100' }}
-              size="lg"
-            />
-          </Flex>
-          <Collapse in={isOpen}>
-            <VStack
-              mt={3}
-              spacing={3}
-              bg="white"
-              p={4}
-              borderRadius="xl"
-              boxShadow="md"
-            >
-              <InputGroup>
-                <InputLeftElement pointerEvents="none">
-                  <SearchIcon color="gray.400" />
-                </InputLeftElement>
-                <Input
-                  placeholder="호텔 이름 또는 주소 검색"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  borderRadius="lg"
-                  bg="gray.50"
-                  _focus={{
-                    borderColor: 'blue.400',
-                    boxShadow: '0 0 0 1px blue.400',
-                  }}
-                />
-              </InputGroup>
-              <HStack spacing={2} w="100%">
-                <Select
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value)}
-                  flex={1}
-                  borderRadius="lg"
-                  bg="gray.50"
-                  icon={<ChevronDownIcon />}
-                  _focus={{
-                    borderColor: 'blue.400',
-                    boxShadow: '0 0 0 1px blue.400',
-                  }}
-                >
-                  <option value="name">이름순</option>
-                  <option value="priceAsc">가격 낮은순</option>
-                  <option value="priceDesc">가격 높은순</option>
-                  <option value="ratingDesc">평점 높은순</option>
-                </Select>
-                <Select
-                  value={priceFilter}
-                  onChange={(e) => setPriceFilter(e.target.value)}
-                  flex={1}
-                  borderRadius="lg"
-                  bg="gray.50"
-                  icon={<ChevronDownIcon />}
-                  _focus={{
-                    borderColor: 'blue.400',
-                    boxShadow: '0 0 0 1px blue.400',
-                  }}
-                >
-                  <option value="all">모든 가격</option>
-                  <option value="0-50000">5만원 이하</option>
-                  <option value="50000-100000">5-10만원</option>
-                  <option value="100000-150000">10-15만원</option>
-                  <option value="150000-">15만원 이상</option>
-                </Select>
-                <Select
-                  value={ratingFilter}
-                  onChange={(e) => setRatingFilter(e.target.value)}
-                  flex={1}
-                  borderRadius="lg"
-                  bg="gray.50"
-                  icon={<ChevronDownIcon />}
-                  _focus={{
-                    borderColor: 'blue.400',
-                    boxShadow: '0 0 0 1px blue.400',
-                  }}
-                >
-                  <option value="all">모든 평점</option>
-                  <option value="4.5">4.5점 이상</option>
-                  <option value="4">4점 이상</option>
-                  <option value="3.5">3.5점 이상</option>
-                </Select>
-              </HStack>
-            </VStack>
-          </Collapse>
-        </Container>
+        <Flex align="center" justify="space-between" py={4} px={4.5}>
+          <IconButton
+            icon={<ArrowBackIcon />}
+            variant="ghost"
+            onClick={() => navigate(-1)}
+            aria-label="뒤로"
+            color="gray.700"
+            _hover={{ bg: 'gray.100' }}
+            size="lg"
+          />
+          <Text fontSize="lg" fontWeight="semibold" color="gray.800">
+            찜한 호텔
+          </Text>
+          <IconButton
+            icon={<SearchIcon />}
+            variant="ghost"
+            onClick={onToggle}
+            aria-label="검색"
+            color={isOpen ? 'blue.600' : 'gray.600'}
+            _hover={{ bg: 'gray.100' }}
+            size="lg"
+          />
+        </Flex>
+        <Collapse in={isOpen}>
+          <VStack
+            mt={3}
+            spacing={3}
+            bg="white"
+            p={4}
+            borderRadius="xl"
+            boxShadow="md"
+            mx={4.5}
+          >
+            <InputGroup>
+              <InputLeftElement pointerEvents="none">
+                <SearchIcon color="gray.400" />
+              </InputLeftElement>
+              <Input
+                placeholder="호텔 이름 또는 주소 검색"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                borderRadius="lg"
+                bg="gray.50"
+                _focus={{
+                  borderColor: 'blue.400',
+                  boxShadow: '0 0 0 1px blue.400',
+                }}
+              />
+            </InputGroup>
+            <HStack spacing={2} w="100%">
+              <Select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                flex={1}
+                borderRadius="lg"
+                bg="gray.50"
+                icon={<ChevronDownIcon />}
+                _focus={{
+                  borderColor: 'blue.400',
+                  boxShadow: '0 0 0 1px blue.400',
+                }}
+              >
+                <option value="name">이름순</option>
+                <option value="priceAsc">가격 낮은순</option>
+                <option value="priceDesc">가격 높은순</option>
+                <option value="ratingDesc">평점 높은순</option>
+              </Select>
+              <Select
+                value={priceFilter}
+                onChange={(e) => setPriceFilter(e.target.value)}
+                flex={1}
+                borderRadius="lg"
+                bg="gray.50"
+                icon={<ChevronDownIcon />}
+                _focus={{
+                  borderColor: 'blue.400',
+                  boxShadow: '0 0 0 1px blue.400',
+                }}
+              >
+                <option value="all">모든 가격</option>
+                <option value="0-50000">5만원 이하</option>
+                <option value="50000-100000">5-10만원</option>
+                <option value="100000-150000">10-15만원</option>
+                <option value="150000-">15만원 이상</option>
+              </Select>
+              <Select
+                value={ratingFilter}
+                onChange={(e) => setRatingFilter(e.target.value)}
+                flex={1}
+                borderRadius="lg"
+                bg="gray.50"
+                icon={<ChevronDownIcon />}
+                _focus={{
+                  borderColor: 'blue.400',
+                  boxShadow: '0 0 0 1px blue.400',
+                }}
+              >
+                <option value="all">모든 평점</option>
+                <option value="4.5">4.5점 이상</option>
+                <option value="4">4점 이상</option>
+                <option value="3.5">3.5점 이상</option>
+              </Select>
+            </HStack>
+          </VStack>
+        </Collapse>
       </Box>
 
-      {/* List Body */}
+      {/* 본문 - 상하 스크롤 가능 */}
       <Box
         flex="1"
         overflowY="auto"
-        pt={isOpen ? '180px' : '80px'}
-        pb="80px"
+        overflowX="hidden"
+        pt={isOpen ? '180px' : '80px'} // 상단바 높이 고려
+        pb="80px" // 하단 네비게이션 바 높이 + 여유분
         css={{
+          '-webkit-overflow-scrolling': 'touch', // iOS 부드러운 스크롤
           '&::-webkit-scrollbar': {
             width: '4px',
           },
@@ -551,31 +553,35 @@ const HotelList = ({ loadHotelSettings }) => {
             조건에 맞는 호텔이 없습니다.
           </Text>
         ) : (
-          <VStack spacing={0} align="stretch" w="100%">
+          <VStack spacing={0} align="stretch" w="100%" px={4.5}>
             {filteredHotels.map((h, index) => (
-              <HotelCard
-                key={h.hotelId}
-                hotel={{
-                  ...h,
-                  photos: photosMap[h.hotelId] || [],
-                  availableCoupons: hotelCoupons[h.hotelId]?.length || 0,
-                }}
-                isFavorite={favorites[h.hotelId] || false}
-                toggleFavorite={toggleFav}
-                onSelect={handleNav}
-                onViewCoupons={openCoupons}
-                onOpenGallery={openGallery}
-                currentPhotoIndex={currentPhotoIndices[h.hotelId] || 0}
-                handlePrevPhoto={handlePrevPhoto}
-                handleNextPhoto={handleNextPhoto}
-                photoCount={(photosMap[h.hotelId] || []).length}
-                toggleMap={toggleMap}
-                isMapVisible={mapVisible[h.hotelId] || false}
-                handleCopyAddress={handleCopyAddress}
-                handleTMapNavigation={handleTMapNavigation}
-                index={index}
-                totalHotels={filteredHotels.length}
-              />
+              <Box key={h.hotelId}>
+                <HotelCard
+                  hotel={{
+                    ...h,
+                    photos: photosMap[h.hotelId] || [],
+                    availableCoupons: hotelCoupons[h.hotelId]?.length || 0,
+                  }}
+                  isFavorite={favorites[h.hotelId] || false}
+                  toggleFavorite={toggleFav}
+                  onSelect={handleNav}
+                  onViewCoupons={openCoupons}
+                  onOpenGallery={openGallery}
+                  currentPhotoIndex={currentPhotoIndices[h.hotelId] || 0}
+                  handlePrevPhoto={handlePrevPhoto}
+                  handleNextPhoto={handleNextPhoto}
+                  photoCount={(photosMap[h.hotelId] || []).length}
+                  toggleMap={toggleMap}
+                  isMapVisible={mapVisible[h.hotelId] || false}
+                  handleCopyAddress={handleCopyAddress}
+                  handleTMapNavigation={handleTMapNavigation}
+                  index={index}
+                  totalHotels={filteredHotels.length}
+                />
+                {index < filteredHotels.length - 1 && (
+                  <Divider borderColor="gray.300" borderWidth="1.5px" mb={2} />
+                )}
+              </Box>
             ))}
           </VStack>
         )}
@@ -587,7 +593,7 @@ const HotelList = ({ loadHotelSettings }) => {
         onClose={() => setIsCouponModalOpen(false)}
       >
         <ModalOverlay />
-        <ModalContent borderRadius="xl">
+        <ModalContent borderRadius="xl" mx={4.5}>
           <ModalHeader fontSize="md" fontWeight="semibold">
             사용 가능 쿠폰
           </ModalHeader>
@@ -636,7 +642,7 @@ const HotelList = ({ loadHotelSettings }) => {
         size="xl"
       >
         <ModalOverlay />
-        <ModalContent borderRadius="xl">
+        <ModalContent borderRadius="xl" mx={4.5}>
           <ModalHeader fontSize="md" fontWeight="semibold">
             호텔 사진 갤러리
           </ModalHeader>
@@ -660,8 +666,18 @@ const HotelList = ({ loadHotelSettings }) => {
         </ModalContent>
       </Modal>
 
-      <BottomNavigation />
-    </Container>
+      {/* 하단 네비게이션 바 - 고정 위치 */}
+      <Box
+        position="fixed"
+        bottom={0}
+        left={0}
+        right={0}
+        zIndex={100}
+        pb="env(safe-area-inset-bottom)"
+      >
+        <BottomNavigation />
+      </Box>
+    </Box>
   );
 };
 

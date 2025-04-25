@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Container,
+  Box,
   VStack,
   Text,
   Button,
-  Box,
   Image,
   Input,
   InputGroup,
@@ -326,190 +325,194 @@ const Home = () => {
       bg="gray.100"
       display="flex"
       flexDirection="column"
-      w="100%"
-      overflow="auto"
+      w="100vw"
+      maxW="100%"
+      overflow="hidden"
+      position="fixed"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      pt="env(safe-area-inset-top)"
+      pb="env(safe-area-inset-bottom)"
     >
-      {/* 상단 헤더 - 고정 위치 */}
+      {/* 상단바 - 고정 위치 */}
       <Box
+            mt="10px"
         bg="white"
         borderBottom="1px solid"
         borderColor="gray.200"
         width="100%"
         py={3}
-        position="sticky"
+        position="fixed"
         top={0}
         zIndex={100}
         boxShadow="sm"
+        pt="env(safe-area-inset-top)"
       >
-        <Container maxW="container.lg">
-          <Flex align="center" justify="space-between" position="relative">
+        <Flex align="center" justify="space-between" px={4}>
+          <Box flex="1" /> {/* 왼쪽 여백을 위한 빈 공간 */}
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={2}
+            cursor="pointer"
+            onClick={() => navigate('/')}
+          >
             <Box
+              bg="blue.600"
+              w="36px"
+              h="36px"
+              borderRadius="lg"
               display="flex"
               alignItems="center"
-              gap={2}
-              cursor="pointer"
-              onClick={() => navigate('/')}
-              mx="auto"
+              justifyContent="center"
+              boxShadow="sm"
+              position="relative"
+              _before={{
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: 'lg',
+                background:
+                  'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+                opacity: 0.8,
+              }}
             >
-              <Box
-                bg="blue.600"
-                w="36px"
-                h="36px"
-                borderRadius="lg"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                boxShadow="sm"
+              <Text
+                color="white"
+                fontSize="xl"
+                fontWeight="bold"
                 position="relative"
-                _before={{
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  borderRadius: 'lg',
-                  background:
-                    'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
-                  opacity: 0.8,
-                }}
+                zIndex={1}
               >
-                <Text
-                  color="white"
-                  fontSize="xl"
-                  fontWeight="bold"
-                  position="relative"
-                  zIndex={1}
-                >
-                  단
-                </Text>
-              </Box>
-              <Box>
-                <Text
-                  fontSize="lg"
-                  fontWeight="bold"
-                  color="gray.800"
-                  letterSpacing="tight"
-                >
-                  단잠
-                </Text>
-                <Text
-                  fontSize="xs"
-                  color="gray.500"
-                  letterSpacing="wider"
-                  lineHeight="1"
-                >
-                  SWEET DREAMS
-                </Text>
-              </Box>
+                단
+              </Text>
             </Box>
-
-            <Box
-              position="absolute"
-              right={0}
-              display="flex"
-              alignItems="center"
-              gap={4}
-            >
-              <Popover
-                isOpen={isSearchOpen}
-                onClose={() => setIsSearchOpen(false)}
-                placement="bottom-end"
-                closeOnBlur={true}
+            <Box>
+              <Text
+                fontSize="lg"
+                fontWeight="bold"
+                color="gray.800"
+                letterSpacing="tight"
               >
-                <PopoverTrigger>
-                  <Box
-                    as="button"
-                    onClick={() => setIsSearchOpen(!isSearchOpen)}
-                    p={2}
-                    borderRadius="full"
-                    bg="gray.100"
-                    _hover={{ bg: 'gray.200' }}
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <SearchIcon boxSize={5} color="gray.600" />
-                  </Box>
-                </PopoverTrigger>
-                <PopoverContent
-                  w={{ base: '90vw', sm: '400px', md: '500px' }}
-                  p={4}
-                  boxShadow="xl"
-                  border="none"
-                  borderRadius="xl"
-                  bg="white"
+                단잠
+              </Text>
+              <Text
+                fontSize="xs"
+                color="gray.500"
+                letterSpacing="wider"
+                lineHeight="1"
+              >
+                SWEET DREAMS
+              </Text>
+            </Box>
+          </Box>
+          <Box flex="1" display="flex" justifyContent="flex-end">
+            <Popover
+              isOpen={isSearchOpen}
+              onClose={() => setIsSearchOpen(false)}
+              placement="bottom-end"
+              closeOnBlur={true}
+            >
+              <PopoverTrigger>
+                <Box
+                  as="button"
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  p={2}
+                  borderRadius="full"
+                  bg="gray.100"
+                  _hover={{ bg: 'gray.200' }}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
                 >
-                  <PopoverArrow />
-                  <VStack spacing={4}>
-                    <InputGroup>
-                      <InputLeftElement pointerEvents="none">
-                        <SearchIcon color="gray.400" />
-                      </InputLeftElement>
-                      <Input
-                        placeholder="목적지 검색 (예: 부산, 해운대, 서울)"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        borderRadius="lg"
-                        bg="gray.100"
-                      />
-                    </InputGroup>
-
-                    <InputGroup>
-                      <InputLeftElement pointerEvents="none">
-                        <CalendarIcon color="gray.400" />
-                      </InputLeftElement>
-                      <Input
-                        placeholder="날짜 선택"
-                        value={`${format(
-                          dateRange[0].startDate,
-                          'yyyy년 MM월 dd일'
-                        )} - ${format(
-                          dateRange[0].endDate,
-                          'yyyy년 MM월 dd일'
-                        )}`}
-                        onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                        readOnly
-                        cursor="pointer"
-                        borderRadius="lg"
-                        bg="gray.100"
-                      />
-                    </InputGroup>
-
-                    <Select
-                      value={guestCount}
-                      onChange={(e) => setGuestCount(Number(e.target.value))}
+                  <SearchIcon boxSize={5} color="gray.600" />
+                </Box>
+              </PopoverTrigger>
+              <PopoverContent
+                w="90vw"
+                maxW="400px"
+                p={4}
+                boxShadow="xl"
+                border="none"
+                borderRadius="xl"
+                bg="white"
+                mx={4}
+              >
+                <PopoverArrow />
+                <VStack spacing={4}>
+                  <InputGroup>
+                    <InputLeftElement pointerEvents="none">
+                      <SearchIcon color="gray.400" />
+                    </InputLeftElement>
+                    <Input
+                      placeholder="목적지 검색 (예: 부산, 해운대, 서울)"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       borderRadius="lg"
                       bg="gray.100"
-                    >
-                      {[...Array(10)].map((_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          {i + 1}명
-                        </option>
-                      ))}
-                    </Select>
+                    />
+                  </InputGroup>
 
-                    <Button
-                      w="100%"
-                      colorScheme="blue"
-                      onClick={() => {
-                        handleSearch();
-                        setIsSearchOpen(false);
-                      }}
+                  <InputGroup>
+                    <InputLeftElement pointerEvents="none">
+                      <CalendarIcon color="gray.400" />
+                    </InputLeftElement>
+                    <Input
+                      placeholder="날짜 선택"
+                      value={`${format(
+                        dateRange[0].startDate,
+                        'yyyy년 MM월 dd일'
+                      )} - ${format(
+                        dateRange[0].endDate,
+                        'yyyy년 MM월 dd일'
+                      )}`}
+                      onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                      readOnly
+                      cursor="pointer"
                       borderRadius="lg"
-                      bg="blue.600"
-                      _hover={{ bg: 'blue.700' }}
-                    >
-                      검색
-                    </Button>
-                  </VStack>
-                </PopoverContent>
-              </Popover>
-            </Box>
-          </Flex>
-        </Container>
+                      bg="gray.100"
+                    />
+                  </InputGroup>
+
+                  <Select
+                    value={guestCount}
+                    onChange={(e) => setGuestCount(Number(e.target.value))}
+                    borderRadius="lg"
+                    bg="gray.100"
+                  >
+                    {[...Array(10)].map((_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {i + 1}명
+                      </option>
+                    ))}
+                  </Select>
+
+                  <Button
+                    w="100%"
+                    colorScheme="blue"
+                    onClick={() => {
+                      handleSearch();
+                      setIsSearchOpen(false);
+                    }}
+                    borderRadius="lg"
+                    bg="blue.600"
+                    _hover={{ bg: 'blue.700' }}
+                  >
+                    검색
+                  </Button>
+                </VStack>
+              </PopoverContent>
+            </Popover>
+          </Box>
+        </Flex>
       </Box>
 
+      {/* 날짜 선택 모달 */}
       {isCalendarOpen && (
         <Box
           position="fixed"
@@ -521,8 +524,11 @@ const Home = () => {
           borderRadius="xl"
           boxShadow="xl"
           zIndex={1000}
+          w="90vw"
+          maxW="400px"
         >
           <Flex justify="space-between" align="center" mb={4}>
+            
             <Text fontWeight="bold">날짜 선택</Text>
             <Button size="sm" onClick={() => setIsCalendarOpen(false)}>
               닫기
@@ -543,18 +549,19 @@ const Home = () => {
         </Box>
       )}
 
-      {/* 본문 영역 - 스크롤 가능하도록 설정 */}
+      {/* 본문 - 상하 스크롤 가능 */}
       <Box
         flex="1"
         overflowY="auto"
         overflowX="hidden"
-        pb="60px"
+        mt="80px"
+        pb="80px" // 하단 네비게이션 바 높이 + 여유분
         css={{
+          '-webkit-overflow-scrolling': 'touch', // iOS 부드러운 스크롤
           '&::-webkit-scrollbar': {
             width: '4px',
           },
           '&::-webkit-scrollbar-track': {
-            width: '6px',
             background: 'transparent',
           },
           '&::-webkit-scrollbar-thumb': {
@@ -563,294 +570,301 @@ const Home = () => {
           },
         }}
       >
-        <Container maxW="container.md" py={6}>
+        <VStack spacing={6} align="stretch" px={4}>
           {error && (
             <Text color="red.500" textAlign="center" mb={4}>
               {error}
             </Text>
           )}
-          <VStack spacing={6} align="stretch">
-            <Box w="100%" mb={4}>
-              <Button
-                w="100%"
-                size="lg"
-                colorScheme="blue"
-                onClick={() => {
-                  navigate('/hotels', {
-                    state: {
-                      checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
-                      checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
-                      guestCount,
-                    },
-                  });
-                }}
-                borderRadius="lg"
-                py={6}
-                fontSize="lg"
-                fontWeight="semibold"
-                bg="blue.600"
-                color="white"
-                boxShadow="sm"
-                _hover={{
-                  bg: 'blue.700',
-                  transform: 'translateY(-1px)',
-                  boxShadow: 'md',
-                }}
-                _active={{
-                  transform: 'translateY(0)',
-                  boxShadow: 'sm',
-                }}
-              >
-                숙소 예약하기
-              </Button>
-            </Box>
+          <Box w="100%" mb={4}>
+            <Button
+              w="100%"
+              size="lg"
+              colorScheme="blue"
+              onClick={() => {
+                navigate('/hotels', {
+                  state: {
+                    checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
+                    checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
+                    guestCount,
+                  },
+                });
+              }}
+              borderRadius="lg"
+              py={6}
+              fontSize="lg"
+              fontWeight="semibold"
+              bg="blue.600"
+              color="white"
+              boxShadow="sm"
+              _hover={{
+                bg: 'blue.700',
+                transform: 'translateY(-1px)',
+                boxShadow: 'md',
+              }}
+              _active={{
+                transform: 'translateY(0)',
+                boxShadow: 'sm',
+              }}
+            >
+              숙소 예약하기
+            </Button>
+          </Box>
 
+          <Box w="100%" mb={4}>
+            <Text
+              fontSize="md"
+              fontWeight="bold"
+              mb={3}
+              color="gray.800"
+            >
+              추천 호텔
+            </Text>
+            <Box>
+              <Slider {...sliderSettings}>
+                {(loading
+                  ? recommendedHotels
+                  : hotels.length > 0
+                  ? hotels
+                  : recommendedHotels
+                ).map((hotel) => (
+                  <Box
+                    key={hotel.hotelId || hotel.id}
+                    onClick={() => navigate('/hotels')}
+                    position="relative"
+                    cursor="pointer"
+                    h="240px"
+                    borderRadius="lg"
+                    overflow="hidden"
+                    role="group"
+                  >
+                    <Image
+                      src={hotel.image || '/assets/hotel1.jpg'}
+                      alt={`${hotel.hotelName || hotel.name} 호텔 이미지`}
+                      h="100%"
+                      w="100%"
+                      objectFit="cover"
+                      transition="all 0.3s ease"
+                      _groupHover={{ transform: 'scale(1.05)' }}
+                    />
+                    <Box
+                      position="absolute"
+                      top={0}
+                      left={0}
+                      right={0}
+                      bottom={0}
+                      bgGradient="linear(to-t, blackAlpha.700, blackAlpha.300)"
+                      transition="all 0.3s ease"
+                      _groupHover={{
+                        bgGradient:
+                          'linear(to-t, blackAlpha.800, blackAlpha.400)',
+                      }}
+                    />
+                    <Box position="absolute" top={4} right={4}>
+                      <Badge
+                        colorScheme={hotel.color || 'blue'}
+                        fontSize="xs"
+                        px={3}
+                        py={1}
+                        borderRadius="full"
+                        boxShadow="sm"
+                        bg="blue.600"
+                        color="white"
+                      >
+                        {hotel.tag || 'HOT'}
+                      </Badge>
+                    </Box>
+                    <VStack
+                      position="absolute"
+                      bottom={0}
+                      left={0}
+                      right={0}
+                      p={5}
+                      align="flex-start"
+                      spacing={1}
+                    >
+                      <Text
+                        color="white"
+                        fontSize="xl"
+                        fontWeight="bold"
+                        letterSpacing="tight"
+                        transition="all 0.3s ease"
+                        _groupHover={{ transform: 'translateY(-2px)' }}
+                      >
+                        {hotel.hotelName || hotel.name}
+                      </Text>
+                      <Text
+                        color="gray.100"
+                        fontSize="sm"
+                        opacity={0.9}
+                        transition="all 0.3s ease"
+                        _groupHover={{ opacity: 1 }}
+                      >
+                        {hotel.description || hotel.address}
+                      </Text>
+                      <HStack spacing={1}>
+                        <Text
+                          color="yellow.300"
+                          fontSize="sm"
+                          fontWeight="bold"
+                        >
+                          {hotel.rating || 4.5}
+                        </Text>
+                        <Text color="gray.200" fontSize="sm">
+                          / 5.0
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </Box>
+                ))}
+              </Slider>
+            </Box>
+          </Box>
+
+          {customer && (
             <Box w="100%" mb={4}>
               <Text
-                fontSize={{ base: 'md', md: 'lg' }}
+                fontSize="md"
                 fontWeight="bold"
                 mb={3}
                 color="gray.800"
               >
-                추천 호텔
+                쿠폰
               </Text>
-              <Box>
-                <Slider {...sliderSettings}>
-                  {(loading
-                    ? recommendedHotels
-                    : hotels.length > 0
-                    ? hotels
-                    : recommendedHotels
-                  ).map((hotel) => (
+              {isAvailableCouponsLoading ? (
+                <Text color="gray.500" textAlign="center">
+                  사용 가능 쿠폰 로드 중...
+                </Text>
+              ) : availableCoupons.length > 0 ? (
+                <VStack spacing={3}>
+                  {availableCoupons.map((coupon) => (
                     <Box
-                      key={hotel.hotelId || hotel.id}
-                      onClick={() => navigate('/hotels')}
+                      key={coupon.couponUuid}
+                      bg="white"
+                      p={4}
+                      rounded="lg"
+                      shadow="sm"
+                      w="100%"
+                      border="1px solid"
+                      borderColor="gray.200"
                       position="relative"
-                      cursor="pointer"
-                      h={{ base: '240px', sm: '300px', md: '400px' }}
-                      borderRadius="lg"
                       overflow="hidden"
-                      role="group"
+                      _before={{
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '4px',
+                        bg: 'blue.600',
+                      }}
                     >
-                      <Image
-                        src={hotel.image || '/assets/hotel1.jpg'}
-                        alt={`${hotel.hotelName || hotel.name} 호텔 이미지`}
-                        h="100%"
-                        w="100%"
-                        objectFit="cover"
-                        transition="all 0.3s ease"
-                        _groupHover={{ transform: 'scale(1.05)' }}
-                      />
-                      <Box
-                        position="absolute"
-                        top={0}
-                        left={0}
-                        right={0}
-                        bottom={0}
-                        bgGradient="linear(to-t, blackAlpha.700, blackAlpha.300)"
-                        transition="all 0.3s ease"
-                        _groupHover={{
-                          bgGradient:
-                            'linear(to-t, blackAlpha.800, blackAlpha.400)',
-                        }}
-                      />
-                      <Box position="absolute" top={4} right={4}>
-                        <Badge
-                          colorScheme={hotel.color || 'blue'}
-                          fontSize="xs"
-                          px={3}
-                          py={1}
-                          borderRadius="full"
-                          boxShadow="sm"
-                          bg="blue.600"
-                          color="white"
-                        >
-                          {hotel.tag || 'HOT'}
-                        </Badge>
-                      </Box>
-                      <VStack
-                        position="absolute"
-                        bottom={0}
-                        left={0}
-                        right={0}
-                        p={5}
-                        align="flex-start"
-                        spacing={1}
+                      <Text fontWeight="bold" color="gray.800">
+                        {coupon.name}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        코드: {coupon.code}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        할인:{' '}
+                        {coupon.discountType === 'percentage'
+                          ? `${coupon.discountValue}%`
+                          : `${coupon.discountValue.toLocaleString()}원`}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        유효 기간: {coupon.startDate} ~ {coupon.endDate}
+                      </Text>
+                      <Button
+                        mt={2}
+                        colorScheme="blue"
+                        size="sm"
+                        onClick={() => handleDownloadCoupon(coupon.couponUuid)}
+                        borderRadius="lg"
+                        bg="blue.600"
+                        _hover={{ bg: 'blue.700' }}
                       >
-                        <Text
-                          color="white"
-                          fontSize={{ base: 'xl', md: '2xl' }}
-                          fontWeight="bold"
-                          letterSpacing="tight"
-                          transition="all 0.3s ease"
-                          _groupHover={{ transform: 'translateY(-2px)' }}
-                        >
-                          {hotel.hotelName || hotel.name}
-                        </Text>
-                        <Text
-                          color="gray.100"
-                          fontSize={{ base: 'sm', md: 'md' }}
-                          opacity={0.9}
-                          transition="all 0.3s ease"
-                          _groupHover={{ opacity: 1 }}
-                        >
-                          {hotel.description || hotel.address}
-                        </Text>
-                        <HStack spacing={1}>
-                          <Text
-                            color="yellow.300"
-                            fontSize="sm"
-                            fontWeight="bold"
-                          >
-                            {hotel.rating || 4.5}
-                          </Text>
-                          <Text color="gray.200" fontSize="sm">
-                            / 5.0
-                          </Text>
-                        </HStack>
-                      </VStack>
+                        다운로드
+                      </Button>
                     </Box>
                   ))}
-                </Slider>
-              </Box>
-            </Box>
-
-            {customer && (
-              <Box w="100%" mb={4}>
-                <Text
-                  fontSize={{ base: 'md', md: 'lg' }}
-                  fontWeight="bold"
-                  mb={3}
-                  color="gray.800"
-                >
-                  쿠폰
+                </VStack>
+              ) : (
+                <Text color="gray.500" textAlign="center">
+                  사용 가능한 쿠폰이 없습니다.
                 </Text>
-                {isAvailableCouponsLoading ? (
-                  <Text color="gray.500" textAlign="center">
-                    사용 가능 쿠폰 로드 중...
-                  </Text>
-                ) : availableCoupons.length > 0 ? (
-                  <VStack spacing={3}>
-                    {availableCoupons.map((coupon) => (
-                      <Box
-                        key={coupon.couponUuid}
-                        bg="white"
-                        p={4}
-                        rounded="lg"
-                        shadow="sm"
-                        w="100%"
-                        border="1px solid"
-                        borderColor="gray.200"
-                        position="relative"
-                        overflow="hidden"
-                        _before={{
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '4px',
-                          bg: 'blue.600',
-                        }}
-                      >
-                        <Text fontWeight="bold" color="gray.800">
-                          {coupon.name}
-                        </Text>
-                        <Text fontSize="sm" color="gray.600">
-                          코드: {coupon.code}
-                        </Text>
-                        <Text fontSize="sm" color="gray.600">
-                          할인:{' '}
-                          {coupon.discountType === 'percentage'
-                            ? `${coupon.discountValue}%`
-                            : `${coupon.discountValue.toLocaleString()}원`}
-                        </Text>
-                        <Text fontSize="sm" color="gray.600">
-                          유효 기간: {coupon.startDate} ~ {coupon.endDate}
-                        </Text>
-                        <Button
-                          mt={2}
-                          colorScheme="blue"
-                          size="sm"
-                          onClick={() => handleDownloadCoupon(coupon.couponUuid)}
-                          borderRadius="lg"
-                          bg="blue.600"
-                          _hover={{ bg: 'blue.700' }}
-                        >
-                          다운로드
-                        </Button>
-                      </Box>
-                    ))}
-                  </VStack>
-                ) : (
-                  <Text color="gray.500" textAlign="center">
-                    사용 가능한 쿠폰이 없습니다.
-                  </Text>
-                )}
-                <Button
-                  w="100%"
-                  colorScheme="blue"
-                  size="md"
-                  onClick={() => setIsCouponPanelOpen(true)}
-                  borderRadius="lg"
-                  bg="blue.600"
-                  _hover={{ bg: 'blue.700' }}
-                  mt={4}
-                >
-                  쿠폰 보관함
-                </Button>
-              </Box>
-            )}
-
-            <Box w="100%" mb={4}>
-              <Box
-                position="relative"
+              )}
+              <Button
                 w="100%"
-                h={{ base: '80px', sm: '100px', md: '133px' }}
-                bg="gray.900"
+                colorScheme="blue"
+                size="md"
+                onClick={() => setIsCouponPanelOpen(true)}
                 borderRadius="lg"
-                overflow="hidden"
-                boxShadow="md"
-                cursor="pointer"
-                onClick={() => {
-                  const button = document.getElementById('animation-button');
-                  button.style.animation =
-                    'bounceAndDisappear 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
+                bg="blue.600"
+                _hover={{ bg: 'blue.700' }}
+                mt={4}
+              >
+                쿠폰 보관함
+              </Button>
+            </Box>
+          )}
 
-                  setTimeout(() => {
-                    navigate('/events');
-                  }, 1300);
-                }}
-                id="animation-button"
-                _hover={{
-                  transform: 'scale(1.02)',
-                  boxShadow: '0 6px 16px rgba(159, 122, 234, 0.4)',
-                }}
-                _active={{
-                  transform: 'scale(0.98)',
-                }}
-                sx={{
-                  '@keyframes bounceAndDisappear': {
-                    '0%': { transform: 'scale(1)', opacity: 1 },
-                    '20%': {
-                      transform: 'scale(1.2) translateY(-20px)',
-                      opacity: 0.9,
-                    },
-                    '40%': {
-                      transform: 'scale(0.9) translateY(10px)',
-                      opacity: 0.8,
-                    },
-                    '60%': {
-                      transform: 'scale(1.1) translateY(-10px)',
-                      opacity: 0.7,
-                    },
-                    '80%': {
-                      transform: 'scale(0.8) translateY(5px)',
-                      opacity: 0.5,
-                    },
-                    '100%': { transform: 'scale(0)', opacity: 0 },
+          <Box w="100%" mb={4}>
+            <Box
+              position="relative"
+              w="100%"
+              h="80px"
+              bg="gray.900"
+              borderRadius="lg"
+              overflow="hidden"
+              boxShadow="md"
+              cursor="pointer"
+              onClick={() => {
+                const button = document.getElementById('animation-button');
+                button.style.animation =
+                  'bounceAndDisappear 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
+
+                setTimeout(() => {
+                  navigate('/events');
+                }, 1300);
+              }}
+              id="animation-button"
+              _hover={{
+                transform: 'scale(1.02)',
+                boxShadow: '0 6px 16px rgba(159, 122, 234, 0.4)',
+              }}
+              _active={{
+                transform: 'scale(0.98)',
+              }}
+              sx={{
+                '@keyframes bounceAndDisappear': {
+                  '0%': { transform: 'scale(1)', opacity: 1 },
+                  '20%': {
+                    transform: 'scale(1.2) translateY(-20px)',
+                    opacity: 0.9,
                   },
-                }}
+                  '40%': {
+                    transform: 'scale(0.9) translateY(10px)',
+                    opacity: 0.8,
+                  },
+                  '60%': {
+                    transform: 'scale(1.1) translateY(-10px)',
+                    opacity: 0.7,
+                  },
+                  '80%': {
+                    transform: 'scale(0.8) translateY(5px)',
+                    opacity: 0.5,
+                  },
+                  '100%': { transform: 'scale(0)', opacity: 0 },
+                },
+              }}
+            >
+              <Box
+                position="absolute"
+                top={0}
+                left={0}
+                right={0}
+                bottom={0}
+                overflow="hidden"
               >
                 <Box
                   position="absolute"
@@ -858,176 +872,162 @@ const Home = () => {
                   left={0}
                   right={0}
                   bottom={0}
-                  overflow="hidden"
-                >
+                  bgGradient="linear(to-r, purple.600, blue.400, teal.300)"
+                  animation="gradientMove 15s ease infinite"
+                  sx={{
+                    '@keyframes gradientMove': {
+                      '0%': { transform: 'scale(1.5) rotate(0deg)' },
+                      '50%': { transform: 'scale(1.8) rotate(180deg)' },
+                      '100%': { transform: 'scale(1.5) rotate(360deg)' },
+                    },
+                  }}
+                />
+
+                {[...Array(20)].map((_, i) => (
                   <Box
+                    key={i}
                     position="absolute"
-                    top={0}
-                    left={0}
-                    right={0}
-                    bottom={0}
-                    bgGradient="linear(to-r, purple.600, blue.400, teal.300)"
-                    animation="gradientMove 15s ease infinite"
+                    w={`${Math.random() * 100 + 50}px`}
+                    h={`${Math.random() * 100 + 50}px`}
+                    bg="rgba(255, 255, 255, 0.1)"
+                    backdropFilter="blur(5px)"
+                    borderRadius="lg"
+                    animation={`floatPattern${i} ${
+                      Math.random() * 10 + 15
+                    }s infinite linear`}
                     sx={{
-                      '@keyframes gradientMove': {
-                        '0%': { transform: 'scale(1.5) rotate(0deg)' },
-                        '50%': { transform: 'scale(1.8) rotate(180deg)' },
-                        '100%': { transform: 'scale(1.5) rotate(360deg)' },
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                      transform: `rotate(${Math.random() * 360}deg)`,
+                      [`@keyframes floatPattern${i}`]: {
+                        '0%': {
+                          transform: `translate(0, 0) rotate(${
+                            Math.random() * 360
+                          }deg)`,
+                          opacity: Math.random() * 0.5 + 0.3,
+                        },
+                        '50%': {
+                          transform: `translate(${
+                            Math.random() * 100 - 50
+                          }px, ${Math.random() * 100 - 50}px) rotate(${
+                            Math.random() * 360
+                          }deg)`,
+                          opacity: Math.random() * 0.8 + 0.2,
+                        },
+                        '100%': {
+                          transform: `translate(0, 0) rotate(${
+                            Math.random() * 360
+                          }deg)`,
+                          opacity: Math.random() * 0.5 + 0.3,
+                        },
                       },
                     }}
                   />
+                ))}
 
-                  {[...Array(20)].map((_, i) => (
-                    <Box
-                      key={i}
-                      position="absolute"
-                      w={`${Math.random() * 100 + 50}px`}
-                      h={`${Math.random() * 100 + 50}px`}
-                      bg="rgba(255, 255, 255, 0.1)"
-                      backdropFilter="blur(5px)"
-                      borderRadius="lg"
-                      animation={`floatPattern${i} ${
-                        Math.random() * 10 + 15
-                      }s infinite linear`}
-                      sx={{
-                        top: `${Math.random() * 100}%`,
-                        left: `${Math.random() * 100}%`,
-                        transform: `rotate(${Math.random() * 360}deg)`,
-                        [`@keyframes floatPattern${i}`]: {
-                          '0%': {
-                            transform: `translate(0, 0) rotate(${
-                              Math.random() * 360
-                            }deg)`,
-                            opacity: Math.random() * 0.5 + 0.3,
-                          },
-                          '50%': {
-                            transform: `translate(${
-                              Math.random() * 100 - 50
-                            }px, ${Math.random() * 100 - 50}px) rotate(${
-                              Math.random() * 360
-                            }deg)`,
-                            opacity: Math.random() * 0.8 + 0.2,
-                          },
-                          '100%': {
-                            transform: `translate(0, 0) rotate(${
-                              Math.random() * 360
-                            }deg)`,
-                            opacity: Math.random() * 0.5 + 0.3,
-                          },
-                        },
-                      }}
-                    />
-                  ))}
-
-                  {[...Array(5)].map((_, i) => (
-                    <Box
-                      key={i}
-                      position="absolute"
-                      w="2px"
-                      h="100%"
-                      bg="white"
-                      opacity="0.3"
-                      animation={`lightBeam${i} ${
-                        Math.random() * 5 + 5
-                      }s infinite linear`}
-                      sx={{
-                        left: `${Math.random() * 100}%`,
-                        [`@keyframes lightBeam${i}`]: {
-                          '0%': {
-                            transform: 'translateY(-100%) rotate(45deg)',
-                            opacity: 0,
-                          },
-                          '50%': { opacity: 0.3 },
-                          '100%': {
-                            transform: 'translateY(100%) rotate(45deg)',
-                            opacity: 0,
-                          },
-                        },
-                      }}
-                    />
-                  ))}
-
-                  {[...Array(30)].map((_, i) => (
-                    <Box
-                      key={i}
-                      position="absolute"
-                      w="4px"
-                      h="4px"
-                      bg="white"
-                      borderRadius="full"
-                      animation={`particle${i} ${
-                        Math.random() * 20 + 10
-                      }s infinite linear`}
-                      sx={{
-                        top: `${Math.random() * 100}%`,
-                        left: `${Math.random() * 100}%`,
-                        [`@keyframes particle${i}`]: {
-                          '0%': {
-                            transform: 'scale(1) translate(0, 0)',
-                            opacity: Math.random() * 0.5 + 0.3,
-                          },
-                          '50%': {
-                            transform: `scale(${
-                              Math.random() + 0.5
-                            }) translate(${Math.random() * 200 - 100}px, ${
-                              Math.random() * 200 - 100
-                            }px)`,
-                            opacity: Math.random() * 0.8 + 0.2,
-                          },
-                          '100%': {
-                            transform: 'scale(1) translate(0, 0)',
-                            opacity: Math.random() * 0.5 + 0.3,
-                          },
-                        },
-                      }}
-                    />
-                  ))}
-
+                {[...Array(5)].map((_, i) => (
                   <Box
+                    key={i}
                     position="absolute"
-                    top="50%"
-                    left="50%"
-                    transform="translate(-50%, -50%)"
-                    textAlign="center"
-                    color="white"
-                    zIndex={2}
+                    w="2px"
+                    h="100%"
+                    bg="white"
+                    opacity="0.3"
+                    animation={`lightBeam${i} ${
+                      Math.random() * 5 + 5
+                    }s infinite linear`}
+                    sx={{
+                      left: `${Math.random() * 100}%`,
+                      [`@keyframes lightBeam${i}`]: {
+                        '0%': {
+                          transform: 'translateY(-100%) rotate(45deg)',
+                          opacity: 0,
+                        },
+                        '50%': { opacity: 0.3 },
+                        '100%': {
+                          transform: 'translateY(100%) rotate(45deg)',
+                          opacity: 0,
+                        },
+                      },
+                    }}
+                  />
+                ))}
+
+                {[...Array(30)].map((_, i) => (
+                  <Box
+                    key={i}
+                    position="absolute"
+                    w="4px"
+                    h="4px"
+                    bg="white"
+                    borderRadius="full"
+                    animation={`particle${i} ${
+                      Math.random() * 20 + 10
+                    }s infinite linear`}
+                    sx={{
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                      [`@keyframes particle${i}`]: {
+                        '0%': {
+                          transform: 'scale(1) translate(0, 0)',
+                          opacity: Math.random() * 0.5 + 0.3,
+                        },
+                        '50%': {
+                          transform: `scale(${
+                            Math.random() + 0.5
+                          }) translate(${Math.random() * 200 - 100}px, ${
+                            Math.random() * 200 - 100
+                          }px)`,
+                          opacity: Math.random() * 0.8 + 0.2,
+                        },
+                        '100%': {
+                          transform: 'scale(1) translate(0, 0)',
+                          opacity: Math.random() * 0.5 + 0.3,
+                        },
+                      },
+                    }}
+                  />
+                ))}
+
+                <Box
+                  position="absolute"
+                  top="50%"
+                  left="50%"
+                  transform="translate(-50%, -50%)"
+                  textAlign="center"
+                  color="white"
+                  zIndex={2}
+                >
+                  <Text
+                    fontSize="xl"
+                    fontWeight="bold"
+                    mb={1}
+                    textShadow="0 1px 2px rgba(0,0,0,0.2)"
                   >
-                    <Text
-                      fontSize={{ base: 'xl', md: '2xl' }}
-                      fontWeight="bold"
-                      mb={1}
-                      textShadow="0 1px 2px rgba(0,0,0,0.2)"
-                    >
-                      이벤트
-                    </Text>
-                    <Text
-                      fontSize={{ base: 'sm', md: 'md' }}
-                      opacity={0.9}
-                      textShadow="0 1px 2px rgba(0,0,0,0.2)"
-                    >
-                      클릭하여 이벤트 확인하기
-                    </Text>
-                  </Box>
+                    이벤트
+                  </Text>
+                  <Text
+                    fontSize="sm"
+                    opacity={0.9}
+                    textShadow="0 1px 2px rgba(0,0,0,0.2)"
+                  >
+                    클릭하여 이벤트 확인하기
+                  </Text>
                 </Box>
               </Box>
             </Box>
-
-            {/* 더미 콘텐츠 추가로 스크롤 테스트 */}
-            <Box h="100vh" bg="gray.200" borderRadius="lg" p={4} mb={4}>
-              <Text color="gray.700">더미 콘텐츠 (스크롤 테스트용)</Text>
-            </Box>
-          </VStack>
-        </Container>
+          </Box>
+        </VStack>
       </Box>
 
       {/* 쿠폰 보관함 드랍다운 패널 */}
       {isCouponPanelOpen && (
         <Box
           position="fixed"
-          top="0"
-          left="0"
-          right="0"
-          bottom="0"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
           bg="blackAlpha.600"
           zIndex={98}
           onClick={() => setIsCouponPanelOpen(false)}
@@ -1038,8 +1038,8 @@ const Home = () => {
         <Box
           position="fixed"
           top="60px"
-          left="0"
-          right="0"
+          left={0}
+          right={0}
           bg="white"
           zIndex={99}
           boxShadow="md"
@@ -1047,6 +1047,7 @@ const Home = () => {
           overflowY="auto"
           borderBottomRadius="xl"
           p={4}
+          mx={4}
         >
           <Flex justify="space-between" align="center" mb={4}>
             <Text fontSize="lg" fontWeight="bold">
@@ -1122,7 +1123,17 @@ const Home = () => {
         </Box>
       </SlideFade>
 
-      <BottomNavigation />
+      {/* 하단 네비게이션 바 - 고정 위치 */}
+      <Box
+        position="fixed"
+        bottom={0}
+        left={0}
+        right={0}
+        zIndex={100}
+        pb="env(safe-area-inset-bottom)"
+      >
+        <BottomNavigation />
+      </Box>
     </Box>
   );
 };

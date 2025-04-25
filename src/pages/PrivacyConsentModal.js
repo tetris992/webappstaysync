@@ -118,7 +118,7 @@ const PrivacyConsentPage = () => {
         >
           <VStack spacing={8} align="stretch">
             <Heading
-              fontSize={{ base: '2xl', md: '3xl' }}
+              fontSize={{ base: '1xl', md: '2xl' }}
               fontWeight="bold"
               textAlign="center"
               color="teal.500"
