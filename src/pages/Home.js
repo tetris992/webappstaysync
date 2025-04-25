@@ -548,7 +548,7 @@ const Home = () => {
         overflowY="auto"
         overflowX="hidden"
         mt="80px"
-        pb="160px" // 하단 네비게이션 바 높이 + 여유분
+        pb="200px" // 하단 네비게이션 바 높이 + 여유분
         css={{
           '-webkit-overflow-scrolling': 'touch', // iOS 부드러운 스크롤
           '&::-webkit-scrollbar': {

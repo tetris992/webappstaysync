@@ -464,7 +464,7 @@ const ReservationHistory = () => {
         overflowX="hidden"
         position="relative"
         pt="64px" // 헤더 높이
-        pb={{ base: '58px', md: '50px' }} // BottomNavigation 높이(58px)에 맞춰 조정
+        pb={{ base: '120px', md: '140px' }} // BottomNavigation 높이(58px)에 맞춰 조정
         css={{
           '&::-webkit-scrollbar': {
             display: 'none',
