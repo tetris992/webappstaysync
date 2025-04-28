@@ -21,7 +21,6 @@ import {
   getReservationHistory,
   cancelReservation,
   fetchHotelPhotos,
-  fetchCustomerHotelSettings,
 } from '../api/api';
 import { differenceInCalendarDays } from 'date-fns';
 import BottomNavigation from '../components/BottomNavigation';
@@ -30,7 +29,7 @@ const ReservationHistory = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const { customer } = useAuth();
+  const { customer, loadHotelSettings } = useAuth();
   const socket = useSocket();
   const [activeReservations, setActiveReservations] = useState([]);
   const [pastReservations, setPastReservations] = useState([]);
@@ -109,19 +108,18 @@ const ReservationHistory = () => {
       const hotelIds = [...new Set(reservations.map((r) => r.hotelId))];
 
       await Promise.all(
-        hotelIds.map(
-          (hid) =>
-            settingsCache.current[hid] ||
-            (settingsCache.current[hid] = fetchCustomerHotelSettings(hid).catch(
-              (err) => {
-                console.error(
-                  `Failed to fetch settings for hotel ${hid}:`,
-                  err
-                );
-                return {};
-              }
-            ))
-        )
+        hotelIds.map((hid) => {
+          if (!settingsCache.current[hid]) {
+            settingsCache.current[hid] = loadHotelSettings(hid).catch((err) => {
+              console.error(
+                `Failed to fetch settings for hotel ${hid}:`,
+                err
+              );
+              return {};
+            });
+          }
+          return settingsCache.current[hid];
+        })
       );
 
       const enriched = await Promise.all(
@@ -199,7 +197,7 @@ const ReservationHistory = () => {
 
       return enriched.filter((reservation) => reservation !== null);
     },
-    [isReservationConfirmed]
+    [isReservationConfirmed, loadHotelSettings]
   );
 
   const loadHistory = useCallback(async () => {
@@ -397,9 +395,12 @@ const ReservationHistory = () => {
     const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630';
 
     socket.emit('subscribeToReservationUpdates', customer._id);
+
+    // reservationUpdated 이벤트 핸들러
     socket.on('reservationUpdated', (upd) => {
       if (upd.hotelId && upd.hotelId !== defaultHotelId) return;
 
+      console.log('[ReservationHistory] reservationUpdated received:', upd);
       toast({
         title: '예약 상태 변경',
         description: `예약 ${upd.reservationId} 상태가 변경되었습니다.`,
@@ -410,8 +411,68 @@ const ReservationHistory = () => {
       rawHistoryRef.current = null;
       loadHistory();
     });
-    return () => socket.off?.('reservationUpdated');
-  }, [customer, loadHistory, socket, toast]);
+
+    // reservationCancelled 이벤트 핸들러 추가
+    socket.on('reservationCancelled', (upd) => {
+      console.log('[ReservationHistory] reservationCancelled received:', upd);
+      toast({
+        title: '예약 취소됨',
+        description: `예약 ${upd.reservationId}이 취소되었습니다.`,
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
+      const updatedActive = activeReservations.filter(
+        (r) => r.reservationId !== upd.reservationId
+      );
+      setActiveReservations(updatedActive);
+      saveActiveReservationsToCache(updatedActive);
+      const updatedPast = pastReservations.filter(
+        (r) => r.reservationId !== upd.reservationId
+      );
+      setPastReservations(updatedPast);
+      rawHistoryRef.current = null;
+      loadHistory();
+    });
+
+    // historyUpdated 이벤트 핸들러 추가
+    socket.on('historyUpdated', (upd) => {
+      console.log('[ReservationHistory] historyUpdated received:', upd);
+      toast({
+        title: '히스토리 업데이트',
+        description: upd.message || '예약 히스토리가 업데이트되었습니다.',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      // 삭제된 예약 ID를 deletedReservationIds에 추가
+      if (upd.invalidReservations && upd.invalidReservations.length > 0) {
+        const updatedDeletedIds = [
+          ...new Set([...deletedReservationIds, ...upd.invalidReservations]),
+        ];
+        saveDeletedReservations(updatedDeletedIds);
+      }
+
+      // 히스토리 갱신
+      rawHistoryRef.current = null;
+      loadHistory();
+    });
+
+    return () => {
+      socket.off?.('reservationUpdated');
+      socket.off?.('reservationCancelled');
+      socket.off?.('historyUpdated');
+    };
+  }, [
+    customer,
+    loadHistory,
+    socket,
+    toast,
+    activeReservations,
+    pastReservations,
+    deletedReservationIds,
+  ]);
 
   return (
     <Container
@@ -463,8 +524,8 @@ const ReservationHistory = () => {
         overflowY="auto"
         overflowX="hidden"
         position="relative"
-        pt="64px" // 헤더 높이
-        pb={{ base: '120px', md: '140px' }} // BottomNavigation 높이(58px)에 맞춰 조정
+        pt="64px"
+        pb={{ base: '120px', md: '140px' }}
         css={{
           '&::-webkit-scrollbar': {
             display: 'none',
