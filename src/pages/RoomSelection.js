@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  Suspense,
+} from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -107,7 +113,9 @@ const RoomSelection = () => {
   const [selectedCoupons, setSelectedCoupons] = useState({});
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [currentRoomInfo, setCurrentRoomInfo] = useState(null);
-  const [applicableCouponsForModal, setApplicableCouponsForModal] = useState([]);
+  const [applicableCouponsForModal, setApplicableCouponsForModal] = useState(
+    []
+  );
   const [hotelCoupons, setHotelCoupons] = useState([]);
   const [selectedCouponIndex, setSelectedCouponIndex] = useState(null);
 
@@ -552,7 +560,8 @@ const RoomSelection = () => {
               const isRoomMatch = typeKey === 'all' || typeKey === roomKey;
               const isActive = coupon.isActive;
               const hasUsesLeft = coupon.maxUses - coupon.usedCount > 0;
-              const isDateValid = coupon.startDate <= todayStr && coupon.endDate >= todayStr;
+              const isDateValid =
+                coupon.startDate <= todayStr && coupon.endDate >= todayStr;
 
               console.log('[RoomSelection] Hotel coupon filter conditions:', {
                 coupon: {
@@ -574,12 +583,7 @@ const RoomSelection = () => {
                 },
               });
 
-              return (
-                isActive &&
-                hasUsesLeft &&
-                isDateValid &&
-                isRoomMatch
-              );
+              return isActive && hasUsesLeft && isDateValid && isRoomMatch;
             }
           );
 
@@ -588,37 +592,39 @@ const RoomSelection = () => {
             (coupon) => {
               const typeKey = normalizeKey(coupon.applicableRoomType);
               const roomKey = normalizeKey(room.roomInfo);
-              const isRoomMatch = !coupon.applicableRoomType || typeKey === 'all' || typeKey === roomKey;
+              const isRoomMatch =
+                !coupon.applicableRoomType ||
+                typeKey === 'all' ||
+                typeKey === roomKey;
               const isHotelMatch = coupon.hotelId === hotelId;
               const isNotUsed = !coupon.used;
-              const isDateValid = coupon.endDate >= todayStr && coupon.startDate <= todayStr;
+              const isDateValid =
+                coupon.endDate >= todayStr && coupon.startDate <= todayStr;
 
-              console.log('[RoomSelection] Customer coupon filter conditions:', {
-                coupon: {
-                  code: coupon.code,
-                  hotelId: coupon.hotelId,
-                  applicableRoomType: coupon.applicableRoomType,
-                  used: coupon.used,
-                  startDate: coupon.startDate,
-                  endDate: coupon.endDate,
-                },
-                conditions: {
-                  isRoomMatch,
-                  isHotelMatch,
-                  isNotUsed,
-                  isDateValid,
-                  hotelId,
-                  roomInfo: room.roomInfo,
-                  todayStr,
-                },
-              });
-
-              return (
-                isRoomMatch &&
-                isHotelMatch &&
-                isNotUsed &&
-                isDateValid
+              console.log(
+                '[RoomSelection] Customer coupon filter conditions:',
+                {
+                  coupon: {
+                    code: coupon.code,
+                    hotelId: coupon.hotelId,
+                    applicableRoomType: coupon.applicableRoomType,
+                    used: coupon.used,
+                    startDate: coupon.startDate,
+                    endDate: coupon.endDate,
+                  },
+                  conditions: {
+                    isRoomMatch,
+                    isHotelMatch,
+                    isNotUsed,
+                    isDateValid,
+                    hotelId,
+                    roomInfo: room.roomInfo,
+                    todayStr,
+                  },
+                }
               );
+
+              return isRoomMatch && isHotelMatch && isNotUsed && isDateValid;
             }
           );
 
@@ -635,27 +641,32 @@ const RoomSelection = () => {
 
           // 중복 제거 후 가장 할인 금액이 큰 쿠폰 하나만 선택
           const uniqueCoupons = Array.from(
-            new Map(applicableCoupons.map(coupon => [coupon.couponUuid, coupon])).values()
+            new Map(
+              applicableCoupons.map((coupon) => [coupon.couponUuid, coupon])
+            ).values()
           );
 
           // 할인 금액이 가장 큰 쿠폰 선택
-          const bestCoupon = uniqueCoupons
-            .map((coupon) => {
-              let discountValue = 0;
-              const totalPriceForCalc = dayStayPrice * numDays;
-              // 할인 값 검증: 비정상적으로 큰 값 방지
-              const validatedDiscountValue = coupon.discountType === 'percentage'
-                ? Math.min(Number(coupon.discountValue) || 0, 100) // 퍼센트는 100% 이하로 제한
-                : Number(coupon.discountValue) || 0;
+          const bestCoupon =
+            uniqueCoupons
+              .map((coupon) => {
+                let discountValue = 0;
+                const totalPriceForCalc = dayStayPrice * numDays;
+                // 할인 값 검증: 비정상적으로 큰 값 방지
+                const validatedDiscountValue =
+                  coupon.discountType === 'percentage'
+                    ? Math.min(Number(coupon.discountValue) || 0, 100) // 퍼센트는 100% 이하로 제한
+                    : Number(coupon.discountValue) || 0;
 
-              if (coupon.discountType === 'percentage') {
-                discountValue = totalPriceForCalc * (validatedDiscountValue / 100);
-              } else if (coupon.discountType === 'fixed') {
-                discountValue = validatedDiscountValue * numDays;
-              }
-              return { ...coupon, discountValue, validatedDiscountValue };
-            })
-            .sort((a, b) => b.discountValue - a.discountValue)[0] || null;
+                if (coupon.discountType === 'percentage') {
+                  discountValue =
+                    totalPriceForCalc * (validatedDiscountValue / 100);
+                } else if (coupon.discountType === 'fixed') {
+                  discountValue = validatedDiscountValue * numDays;
+                }
+                return { ...coupon, discountValue, validatedDiscountValue };
+              })
+              .sort((a, b) => b.discountValue - a.discountValue)[0] || null;
 
           // 이벤트 할인 적용
           if (discountType === 'fixed' && totalFixedDiscount > 0) {
@@ -824,6 +835,7 @@ const RoomSelection = () => {
     },
     [dateRange, hotelId, guestCount, navigate, updateCustomerCouponsAfterUse]
   );
+
   const handleApplyCoupon = (roomInfo, coupon) => {
     setSelectedCoupons((prev) => ({
       ...prev,
@@ -833,10 +845,10 @@ const RoomSelection = () => {
       roomInfo,
       coupon,
     });
-  
+
     const room = availableRooms.find((r) => r.roomInfo === roomInfo);
     if (!room) return;
-  
+
     // 이벤트 할인과 쿠폰 할인 중복 적용 불가 검증
     if (coupon && (room.discount > 0 || room.fixedDiscount > 0)) {
       toast({
@@ -853,7 +865,7 @@ const RoomSelection = () => {
       setIsCouponModalOpen(false);
       return;
     }
-  
+
     // 쿠폰 적용 후 즉시 handleSelectRoom 호출하여 /confirm 페이지로 이동
     setIsCouponModalOpen(false);
     if (coupon) {
@@ -1028,13 +1040,17 @@ const RoomSelection = () => {
           couponDiscountType = null;
           couponDiscountValue = 0;
         } else if (selectedCoupon.discountType === 'percentage') {
-          couponDiscount = Math.min(Number(selectedCoupon.discountValue) || 0, 100);
+          couponDiscount = Math.min(
+            Number(selectedCoupon.discountValue) || 0,
+            100
+          );
           couponFixedDiscount = 0;
           couponDiscountType = 'percentage';
           couponDiscountValue = couponDiscount;
           totalPrice = Math.round(originalPrice * (1 - couponDiscount / 100));
         } else if (selectedCoupon.discountType === 'fixed') {
-          couponFixedDiscount = (Number(selectedCoupon.discountValue) || 0) * numDays;
+          couponFixedDiscount =
+            (Number(selectedCoupon.discountValue) || 0) * numDays;
           couponDiscount = 0;
           couponDiscountType = 'fixed';
           couponDiscountValue = couponFixedDiscount;
@@ -1048,6 +1064,10 @@ const RoomSelection = () => {
         couponDiscountValue = Number(room.couponDiscountValue) || 0;
       }
 
+      // 1. 재고 여부 계산
+      const stock = room.availableRooms ?? room.stock ?? 0;
+      const isSoldOut = stock <= 0;
+
       return {
         ...room,
         totalPrice,
@@ -1056,6 +1076,7 @@ const RoomSelection = () => {
         couponFixedDiscount,
         couponDiscountType,
         couponDiscountValue,
+        isSoldOut, // 추가
         onSelect: () => {
           const applied = selectedCoupons[room.roomInfo] || null;
           handleSelectRoom(
@@ -1070,9 +1091,15 @@ const RoomSelection = () => {
             room.eventEndDate,
             room.totalFixedDiscount,
             applied?.discountType === 'percentage' ? applied.discountValue : 0,
-            applied?.discountType === 'fixed' ? applied.discountValue * numDays : 0,
+            applied?.discountType === 'fixed'
+              ? applied.discountValue * numDays
+              : 0,
             applied?.discountType,
-            applied?.discountType === 'percentage' ? applied.discountValue : applied?.discountType === 'fixed' ? applied.discountValue * numDays : 0,
+            applied?.discountType === 'percentage'
+              ? applied.discountValue
+              : applied?.discountType === 'fixed'
+              ? applied.discountValue * numDays
+              : 0,
             applied?.code,
             applied?.couponUuid
           );
@@ -1384,27 +1411,47 @@ const RoomSelection = () => {
           isAvailabilityChecked && (
             <VStack spacing={0} align="stretch" w="100%">
               {memoizedRooms.map((room, index) => {
-                const repCoupons = getRepresentativeCoupons(room.applicableCoupons);
+                const repCoupons = getRepresentativeCoupons(
+                  room.applicableCoupons
+                );
                 const originalTotalPrice = Number(room.originalPrice) || 0;
-                const displayedAmenities = (room.activeAmenities || []).slice(0, 2);
-                const remainingAmenities = (room.activeAmenities || []).length - 2;
+                const displayedAmenities = (room.activeAmenities || []).slice(
+                  0,
+                  2
+                );
+                const remainingAmenities =
+                  (room.activeAmenities || []).length - 2;
                 const photos = room.photos || [];
-                const currentIndex = currentPhotoIndices[room.roomInfo.toLowerCase()] || 0;
+                const currentIndex =
+                  currentPhotoIndices[room.roomInfo.toLowerCase()] || 0;
                 const photoCount = photos.length;
 
                 return (
                   <Box key={room.uniqueKey} w="100%">
-                    <Flex align="center" px={{ base: 3, sm: 4 }} py={4} bg="white" minH="120px">
+                    <Flex
+                      align="center"
+                      px={{ base: 3, sm: 4 }}
+                      py={4}
+                      bg={room.isSoldOut ? 'gray.100' : 'white'}
+                      opacity={room.isSoldOut ? 0.6 : 1}
+                      pointerEvents={room.isSoldOut ? 'none' : 'auto'}
+                      minH="120px"
+                    >
                       <Box position="relative">
                         <Image
-                          src={photos[currentIndex]?.photoUrl || '/assets/default-room.jpg'}
+                          src={
+                            photos[currentIndex]?.photoUrl ||
+                            '/assets/default-room.jpg'
+                          }
                           alt={room.roomInfo}
                           w={{ base: '80px', sm: '100px' }}
                           h={{ base: '100px', sm: '130px' }}
                           objectFit="cover"
                           borderRadius="md"
                           mr={{ base: 3, sm: 4 }}
-                          onError={(e) => (e.target.src = '/assets/default-room.jpg')}
+                          onError={(e) =>
+                            (e.target.src = '/assets/default-room.jpg')
+                          }
                           onClick={(e) => {
                             e.stopPropagation();
                             room.onSelect();
@@ -1419,13 +1466,17 @@ const RoomSelection = () => {
                             transform="translateX(-50%)"
                             gap="2"
                           >
-                            {photos.map((_, idx) => (
+                            {photos.map((photo, idx) => (
                               <Box
-                                key={idx}
+                                key={photo.photoUrl} // photoUrl을 key로 사용
                                 w="8px"
                                 h="8px"
                                 borderRadius="full"
-                                bg={idx === currentIndex ? 'white' : 'whiteAlpha.600'}
+                                bg={
+                                  idx === currentIndex
+                                    ? 'white'
+                                    : 'whiteAlpha.600'
+                                }
                                 boxShadow="0 0 2px rgba(0,0,0,0.5)"
                               />
                             ))}
@@ -1433,11 +1484,26 @@ const RoomSelection = () => {
                         )}
                       </Box>
                       <VStack align="start" flex="1" spacing={1}>
-                        <Flex justify="space-between" w="100%" align="center" px={0}>
+                        <Flex
+                          justify="space-between"
+                          w="100%"
+                          align="center"
+                          px={0}
+                        >
                           <Flex align="center" gap={2}>
-                            <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="700">{room.roomInfo}</Text>
+                            <Text
+                              fontSize={{ base: 'md', md: 'lg' }}
+                              fontWeight="700"
+                            >
+                              {room.roomInfo}
+                            </Text>
                             {room.eventName && (
-                              <Badge colorScheme="teal" fontSize={{ base: 'xs', md: 'sm' }}>{room.eventName}</Badge>
+                              <Badge
+                                colorScheme="teal"
+                                fontSize={{ base: 'xs', md: 'sm' }}
+                              >
+                                {room.eventName}
+                              </Badge>
                             )}
                           </Flex>
                           {repCoupons.length > 0 && (
@@ -1460,7 +1526,8 @@ const RoomSelection = () => {
                           )}
                         </Flex>
                         <Text fontSize="sm" color="gray.600">
-                          대실 3시간 | 숙박 {hotelSettings?.checkInTime || '17:00'} 체크인
+                          대실 3시간 | 숙박{' '}
+                          {hotelSettings?.checkInTime || '17:00'} 체크인
                         </Text>
                         <Flex justify="space-between" w="100%" align="center">
                           <VStack align="start" spacing={0}>
@@ -1478,37 +1545,53 @@ const RoomSelection = () => {
                                   ₩{(originalTotalPrice || 0).toLocaleString()}
                                 </Text>
                               )}
-                              <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="600" color="blue.500">
+                              <Text
+                                fontSize={{ base: 'md', md: 'lg' }}
+                                fontWeight="600"
+                                color="blue.500"
+                              >
                                 ₩{(room.totalPrice || 0).toLocaleString()}
                               </Text>
                             </Flex>
                             {(room.discount > 0 || room.fixedDiscount > 0) && (
                               <Text fontSize="xs" color="red.500">
-                                {room.discountType === 'fixed' && (room.fixedDiscount ?? 0) > 0
-                                  ? `이벤트 ₩${(room.fixedDiscount ?? 0).toLocaleString()}원 할인`
+                                {room.discountType === 'fixed' &&
+                                (room.fixedDiscount ?? 0) > 0
+                                  ? `이벤트 ₩${(
+                                      room.fixedDiscount ?? 0
+                                    ).toLocaleString()}원 할인`
                                   : room.discount > 0
                                   ? `이벤트 ${room.discount}% 할인`
                                   : null}
                               </Text>
                             )}
-                            {(room.couponDiscount > 0 || room.couponFixedDiscount > 0) && (
+                            {(room.couponDiscount > 0 ||
+                              room.couponFixedDiscount > 0) && (
                               <Text fontSize="xs" color="red.500">
                                 {room.couponDiscountType === 'percentage'
-                                  ? `쿠폰 ${(room.couponDiscountValue ?? 0)}% 할인`
-                                  : `쿠폰 ₩${(room.couponDiscountValue ?? 0).toLocaleString()}원 할인`}
+                                  ? `쿠폰 ${
+                                      room.couponDiscountValue ?? 0
+                                    }% 할인`
+                                  : `쿠폰 ₩${(
+                                      room.couponDiscountValue ?? 0
+                                    ).toLocaleString()}원 할인`}
                               </Text>
                             )}
                           </VStack>
                           <Text fontSize="xs" color="red.500">
                             {(room.availableRooms || room.stock || 0) === 0
-                              ? '객실 마감'
-                              : `남은 객실 ${room.availableRooms || room.stock || 0}개`}
+                              ? '' // "객실 마감" 텍스트 제거
+                              : `남은 객실 ${
+                                  room.availableRooms || room.stock || 0
+                                }개`}
                           </Text>
                         </Flex>
                         <Flex justify="space-between" w="100%" align="center">
                           <Flex display="inline-flex" align="center" gap={1}>
-                            {displayedAmenities.map((amenity, idx) => (
-                              <Box key={idx} color="gray.500">
+                            {displayedAmenities.map((amenity) => (
+                              <Box key={amenity.nameKor} color="gray.500">
+                                {' '}
+                                {/* nameKor을 key로 사용 */}
                                 {mapIconNameToComponent(amenity.icon)}
                               </Box>
                             ))}
@@ -1518,19 +1601,29 @@ const RoomSelection = () => {
                               </Text>
                             )}
                           </Flex>
-                          <Button
-                            colorScheme="blue"
-                            size="xs"
-                            px={2}
-                            py={1}
-                            fontSize="xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              room.onSelect();
-                            }}
-                          >
-                            선택하기
-                          </Button>
+                          {room.isSoldOut ? (
+                            <Text
+                              color="red.500"
+                              fontWeight="bold"
+                              fontSize="xs"
+                            >
+                              객실 마감
+                            </Text>
+                          ) : (
+                            <Button
+                              colorScheme="blue"
+                              size="xs"
+                              px={2}
+                              py={1}
+                              fontSize="xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                room.onSelect();
+                              }}
+                            >
+                              선택하기
+                            </Button>
+                          )}
                         </Flex>
                       </VStack>
                     </Flex>
@@ -1615,7 +1708,11 @@ const RoomSelection = () => {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size={{ base: 'sm', md: 'lg' }}>
+      <Modal
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        size={{ base: 'sm', md: 'lg' }}
+      >
         <ModalOverlay />
         <ModalContent borderRadius="xl">
           <ModalHeader bg="gray.100" borderTopRadius="xl">
