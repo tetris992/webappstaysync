@@ -531,7 +531,7 @@ const HotelList = ({ loadHotelSettings }) => {
         pt={isOpen ? '180px' : '80px'} // 상단바 높이 고려
         pb="200px" // 하단 네비게이션 바 높이 + 여유분
         css={{
-          '-webkit-overflow-scrolling': 'touch', // iOS 부드러운 스크롤
+          WebkitOverflowScrolling: 'touch',
           '&::-webkit-scrollbar': {
             width: '4px',
           },
