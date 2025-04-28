@@ -824,7 +824,6 @@ const RoomSelection = () => {
     },
     [dateRange, hotelId, guestCount, navigate, updateCustomerCouponsAfterUse]
   );
-
   const handleApplyCoupon = (roomInfo, coupon) => {
     setSelectedCoupons((prev) => ({
       ...prev,
@@ -834,10 +833,10 @@ const RoomSelection = () => {
       roomInfo,
       coupon,
     });
-
+  
     const room = availableRooms.find((r) => r.roomInfo === roomInfo);
     if (!room) return;
-
+  
     // 이벤트 할인과 쿠폰 할인 중복 적용 불가 검증
     if (coupon && (room.discount > 0 || room.fixedDiscount > 0)) {
       toast({
@@ -854,9 +853,33 @@ const RoomSelection = () => {
       setIsCouponModalOpen(false);
       return;
     }
-
-    // 상태만 갱신하고 네비게이션은 하지 않음
+  
+    // 쿠폰 적용 후 즉시 handleSelectRoom 호출하여 /confirm 페이지로 이동
     setIsCouponModalOpen(false);
+    if (coupon) {
+      handleSelectRoom(
+        room.roomInfo,
+        room.dayStayPrice,
+        room.discount,
+        room.fixedDiscount,
+        room.discountType,
+        room.eventName,
+        room.eventUuid,
+        room.eventStartDate,
+        room.eventEndDate,
+        room.totalFixedDiscount,
+        coupon.discountType === 'percentage' ? coupon.discountValue : 0,
+        coupon.discountType === 'fixed' ? coupon.discountValue * numDays : 0,
+        coupon.discountType,
+        coupon.discountType === 'percentage'
+          ? coupon.discountValue
+          : coupon.discountType === 'fixed'
+          ? coupon.discountValue * numDays
+          : 0,
+        coupon.code,
+        coupon.couponUuid
+      );
+    }
   };
 
   const getRepresentativeCoupons = (coupons) => {
