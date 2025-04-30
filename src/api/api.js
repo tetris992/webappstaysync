@@ -15,13 +15,18 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// 재시도 전략 설정: 네트워크 에러 및 500 이상 상태 코드에 대해 재시도
+// api.js
 axiosRetry(api, {
   retries: 3,
-  retryDelay: axiosRetry.exponentialDelay,
-  retryCondition: (err) =>
-    axiosRetry.isNetworkError(err) || err.response?.status >= 500,
-});
+  retryCondition: err => {
+    // 로그인 소셜 kakao 에 대해서는 재시도 금지
+    if (err.config.url?.includes('/login/social/kakao')) {
+      return false
+    }
+    return axiosRetry.isNetworkError(err) || err.response?.status >= 500
+  }
+})
+
 
 // 에러 핸들링 통일
 const handleApiError = (error, defaultMessage) => {

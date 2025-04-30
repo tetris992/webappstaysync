@@ -169,10 +169,7 @@ const ReservationHistory = () => {
           }
 
           const numNights = Math.max(
-            differenceInCalendarDays(
-              new Date(r.checkOut),
-              new Date(r.checkIn)
-            ),
+            differenceInCalendarDays(new Date(r.checkOut), new Date(r.checkIn)),
             1
           );
 
@@ -187,11 +184,7 @@ const ReservationHistory = () => {
             fixedDiscount: r.fixedDiscount || 0,
             discountType: r.discountType || null,
             eventName: r.eventName || null,
-            couponDiscount: r.couponDiscount || 0,
-            couponFixedDiscount: r.couponFixedDiscount || 0,
-            couponTotalFixedDiscount: r.couponTotalFixedDiscount || 0,
-            couponCode: r.couponCode || null,
-            couponUuid: r.couponUuid || null,
+            couponInfo: r.couponInfo || {}, // 백엔드에서 제공하는 couponInfo
             numNights,
           };
         })
@@ -284,20 +277,24 @@ const ReservationHistory = () => {
         await cancelReservation(id);
         toast({
           title: '예약 취소 완료',
+          description: `예약 ${id.slice(-8)}이 취소되었습니다.`,
           status: 'success',
           duration: 3000,
           isClosable: true,
         });
-        const updated = activeReservations.filter(
-          (r) => r.reservationId !== id
-        );
-        setActiveReservations(updated);
-        saveActiveReservationsToCache(updated);
-        // 취소된 예약을 deletedReservationIds에 추가
         const updatedDeletedIds = [...deletedReservationIds, id];
         saveDeletedReservations(updatedDeletedIds);
-        rawHistoryRef.current = null;
-        await loadHistory();
+        const updatedActive = activeReservations.filter(
+          (r) => r.reservationId !== id
+        );
+        setActiveReservations(updatedActive);
+        saveActiveReservationsToCache(updatedActive);
+        if (showPastReservations && pastLoaded) {
+          const updatedPast = pastReservations.filter(
+            (r) => r.reservationId !== id
+          );
+          setPastReservations(updatedPast);
+        }
       } catch (err) {
         toast({
           title: '예약 취소 실패',
@@ -310,7 +307,14 @@ const ReservationHistory = () => {
         setIsLoadingActive(false);
       }
     },
-    [loadHistory, toast, activeReservations, deletedReservationIds]
+    [
+      toast,
+      activeReservations,
+      pastReservations,
+      showPastReservations,
+      pastLoaded,
+      deletedReservationIds,
+    ]
   );
 
   const handleDeleteReservation = (id) => {
@@ -411,36 +415,35 @@ const ReservationHistory = () => {
     const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630';
 
     socket.emit('subscribeToReservationUpdates', customer._id);
-    socket.on('reservationUpdated', (upd) => {
-      if (upd.hotelId && upd.hotelId !== defaultHotelId) return;
+    socket.on('reservationUpdated', ({ reservation }) => {
+      if (reservation.hotelId && reservation.hotelId !== defaultHotelId) return;
 
       toast({
         title: '예약 상태 변경',
-        description: `예약 ${upd.reservationId} 상태가 변경되었습니다.`,
+        description: `예약 ${reservation.reservationId.slice(
+          -8
+        )} 상태가 변경되었습니다.`,
         status: 'info',
         duration: 3000,
         isClosable: true,
       });
-      rawHistoryRef.current = null;
       loadHistory();
     });
-    socket.on('reservationDeleted', (data) => {
+    socket.on('reservationCancelled', ({ data }) => {
       const { reservationId } = data;
       if (!reservationId) return;
 
       toast({
-        title: '예약 삭제됨',
-        description: `예약 ${reservationId}이 삭제되었습니다.`,
-        status: 'info',
+        title: '예약 취소됨',
+        description: `예약 ${reservationId.slice(-8)}이 취소되었습니다.`,
+        status: 'success',
         duration: 3000,
         isClosable: true,
       });
 
-      // 삭제된 예약을 deletedReservationIds에 추가
       const updatedDeletedIds = [...deletedReservationIds, reservationId];
       saveDeletedReservations(updatedDeletedIds);
 
-      // 상태와 캐시 갱신
       const updatedActive = activeReservations.filter(
         (r) => r.reservationId !== reservationId
       );
@@ -453,13 +456,42 @@ const ReservationHistory = () => {
         );
         setPastReservations(updatedPast);
       }
+    });
+    socket.on('historyUpdated', ({ invalidReservations }) => {
+      if (!invalidReservations?.length) return;
 
-      rawHistoryRef.current = null;
-      loadHistory();
+      const updatedDeletedIds = [
+        ...new Set([...deletedReservationIds, ...invalidReservations]),
+      ];
+      saveDeletedReservations(updatedDeletedIds);
+
+      const updatedActive = activeReservations.filter(
+        (r) => !invalidReservations.includes(r.reservationId)
+      );
+      setActiveReservations(updatedActive);
+      saveActiveReservationsToCache(updatedActive);
+
+      if (showPastReservations && pastLoaded) {
+        const updatedPast = pastReservations.filter(
+          (r) => !invalidReservations.includes(r.reservationId)
+        );
+        setPastReservations(updatedPast);
+      }
+
+      toast({
+        title: '히스토리 업데이트',
+        description: `예약 ${invalidReservations
+          .map((id) => id.slice(-8))
+          .join(', ')}이 제거되었습니다.`,
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
     });
     return () => {
       socket.off?.('reservationUpdated');
-      socket.off?.('reservationDeleted');
+      socket.off?.('reservationCancelled');
+      socket.off?.('historyUpdated');
     };
   }, [
     customer,
@@ -524,7 +556,7 @@ const ReservationHistory = () => {
         overflowX="hidden"
         position="relative"
         pt="64px" // 헤더 높이
-        pb={{ base: '120px', md: '140px' }} // BottomNavigation 높이(58px)에 맞춰 조정
+        pb={{ base: '120px', md: '140px' }} // BottomNavigation 높이
         css={{
           '&::-webkit-scrollbar': {
             display: 'none',

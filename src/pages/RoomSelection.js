@@ -6,6 +6,7 @@ import React, {
   Suspense,
 } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { resolveCouponMetadata } from '../utils/coupon';
 import {
   Container,
   VStack,
@@ -779,6 +780,7 @@ const RoomSelection = () => {
       couponDiscountType = null,
       couponDiscountValue = 0,
       couponCode = null,
+      couponName = null, // 추가
       couponUuid = null
     ) => {
       const nights = differenceInCalendarDays(
@@ -787,25 +789,25 @@ const RoomSelection = () => {
       );
       let totalPrice = perNightPrice * nights;
       let originalPrice = totalPrice;
-
+  
       // 이벤트 할인 적용
       if (discountType === 'fixed' && totalFixedDiscount > 0) {
         totalPrice = Math.max(0, totalPrice - totalFixedDiscount);
       } else if (discountType === 'percentage' && discount > 0) {
         totalPrice = Math.round(totalPrice * (1 - discount / 100));
       }
-
+  
       // 쿠폰 할인 적용 (하나만 적용)
       if (couponDiscount > 0) {
         totalPrice = Math.round(totalPrice * (1 - couponDiscount / 100));
       } else if (couponFixedDiscount > 0) {
         totalPrice = Math.max(0, totalPrice - couponFixedDiscount);
       }
-
+  
       if (couponUuid) {
         updateCustomerCouponsAfterUse(couponUuid);
       }
-
+  
       navigate('/confirm', {
         state: {
           hotelId,
@@ -829,70 +831,119 @@ const RoomSelection = () => {
           couponDiscountType,
           couponDiscountValue,
           couponCode,
+          couponName, // 추가
           couponUuid,
         },
       });
     },
     [dateRange, hotelId, guestCount, navigate, updateCustomerCouponsAfterUse]
   );
+const handleApplyCoupon = (roomInfo, coupon) => {
+  setSelectedCoupons((prev) => ({
+    ...prev,
+    [roomInfo]: coupon || null,
+  }));
+  console.log('[RoomSelection] Applied coupon for room:', {
+    roomInfo,
+    coupon,
+  });
 
-  const handleApplyCoupon = (roomInfo, coupon) => {
+  const room = availableRooms.find((r) => r.roomInfo === roomInfo);
+  if (!room) return;
+
+  // 이벤트 할인과 쿠폰 할인 중복 적용 불가 검증
+  if (coupon && (room.discount > 0 || room.fixedDiscount > 0)) {
+    toast({
+      title: '할인 중복 적용 불가',
+      description: '이벤트 할인과 쿠폰 할인은 중복 적용할 수 없습니다.',
+      status: 'error',
+      duration: 3000,
+      isClosable: true,
+    });
     setSelectedCoupons((prev) => ({
       ...prev,
-      [roomInfo]: coupon || null,
+      [roomInfo]: null,
     }));
-    console.log('[RoomSelection] Applied coupon for room:', {
-      roomInfo,
-      coupon,
-    });
-
-    const room = availableRooms.find((r) => r.roomInfo === roomInfo);
-    if (!room) return;
-
-    // 이벤트 할인과 쿠폰 할인 중복 적용 불가 검증
-    if (coupon && (room.discount > 0 || room.fixedDiscount > 0)) {
-      toast({
-        title: '할인 중복 적용 불가',
-        description: '이벤트 할인과 쿠폰 할인은 중복 적용할 수 없습니다.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      setSelectedCoupons((prev) => ({
-        ...prev,
-        [roomInfo]: null,
-      }));
-      setIsCouponModalOpen(false);
-      return;
-    }
-
-    // 쿠폰 적용 후 즉시 handleSelectRoom 호출하여 /confirm 페이지로 이동
     setIsCouponModalOpen(false);
-    if (coupon) {
-      handleSelectRoom(
-        room.roomInfo,
-        room.dayStayPrice,
-        room.discount,
-        room.fixedDiscount,
-        room.discountType,
-        room.eventName,
-        room.eventUuid,
-        room.eventStartDate,
-        room.eventEndDate,
-        room.totalFixedDiscount,
-        coupon.discountType === 'percentage' ? coupon.discountValue : 0,
-        coupon.discountType === 'fixed' ? coupon.discountValue * numDays : 0,
-        coupon.discountType,
-        coupon.discountType === 'percentage'
-          ? coupon.discountValue
-          : coupon.discountType === 'fixed'
-          ? coupon.discountValue * numDays
-          : 0,
-        coupon.code,
-        coupon.couponUuid
+    return;
+  }
+
+  // 쿠폰 이름과 코드 조회
+  const { code: couponCode, name: couponName } = coupon
+    ? resolveCouponMetadata(coupon.couponUuid, [
+        ...customerCoupons,
+        ...hotelCoupons,
+      ])
+    : { code: null, name: null };
+
+  // 디버깅 로그 추가
+  console.log('[RoomSelection] Resolved coupon metadata:', {
+    couponUuid: coupon?.couponUuid,
+    couponCode,
+    couponName,
+  });
+
+  // couponCode가 null일 경우 기본값 설정
+  const finalCouponCode = couponCode || coupon?.code || 'UNKNOWN-COUPON';
+  const finalCouponName =
+    couponName || coupon?.name || `쿠폰-${coupon?.couponUuid.slice(0, 8)}`;
+
+  // 할인 정보 계산
+  let couponDiscount = 0;
+  let couponFixedDiscount = 0;
+  let couponDiscountType = coupon?.discountType || null;
+  let couponDiscountValue = 0;
+  let couponDiscountAmount = 0;
+
+  if (coupon) {
+    if (coupon.discountType === 'percentage') {
+      couponDiscount = Math.min(Number(coupon.discountValue) || 0, 100);
+      couponDiscountType = 'percentage';
+      couponDiscountValue = couponDiscount;
+      couponDiscountAmount = Math.round(
+        room.dayStayPrice * numDays * (couponDiscount / 100)
       );
+    } else if (coupon.discountType === 'fixed') {
+      couponFixedDiscount = (Number(coupon.discountValue) || 0) * numDays;
+      couponDiscountType = 'fixed';
+      couponDiscountValue = coupon.discountValue;
+      couponDiscountAmount = couponFixedDiscount;
     }
-  };
+  }
+
+  // 디버깅 로그 추가
+  console.log('[RoomSelection] Coupon discount info:', {
+    couponDiscount,
+    couponFixedDiscount,
+    couponDiscountType,
+    couponDiscountValue,
+    couponDiscountAmount,
+  });
+
+  // 쿠폰 적용 후 즉시 handleSelectRoom 호출하여 /confirm 페이지로 이동
+  setIsCouponModalOpen(false);
+  if (coupon) {
+    handleSelectRoom(
+      room.roomInfo,
+      room.dayStayPrice,
+      room.discount,
+      room.fixedDiscount,
+      room.discountType,
+      room.eventName,
+      room.eventUuid,
+      room.eventStartDate,
+      room.eventEndDate,
+      room.totalFixedDiscount,
+      couponDiscount,
+      couponFixedDiscount,
+      couponDiscountType,
+      couponDiscountValue,
+      finalCouponCode,
+      finalCouponName,
+      coupon.couponUuid
+    );
+  }
+};
 
   const getRepresentativeCoupons = (coupons) => {
     const map = (coupons || []).reduce((acc, c) => {
@@ -1026,12 +1077,11 @@ const RoomSelection = () => {
       const selectedCoupon = selectedCoupons[room.roomInfo];
       let totalPrice = Number(room.totalPrice) || 0;
       let originalPrice = Number(room.originalPrice) || 0;
-      let couponDiscount = 0; // 초기화
-      let couponFixedDiscount = 0; // 초기화
+      let couponDiscount = 0;
+      let couponFixedDiscount = 0;
       let couponDiscountType = null;
       let couponDiscountValue = 0;
-
-      // 고객이 선택한 쿠폰이 있으면 해당 쿠폰으로 교체
+  
       if (selectedCoupon) {
         if (room.discount > 0 || room.fixedDiscount > 0) {
           totalPrice = originalPrice;
@@ -1040,34 +1090,28 @@ const RoomSelection = () => {
           couponDiscountType = null;
           couponDiscountValue = 0;
         } else if (selectedCoupon.discountType === 'percentage') {
-          couponDiscount = Math.min(
-            Number(selectedCoupon.discountValue) || 0,
-            100
-          );
+          couponDiscount = Math.min(Number(selectedCoupon.discountValue) || 0, 100);
           couponFixedDiscount = 0;
           couponDiscountType = 'percentage';
           couponDiscountValue = couponDiscount;
           totalPrice = Math.round(originalPrice * (1 - couponDiscount / 100));
         } else if (selectedCoupon.discountType === 'fixed') {
-          couponFixedDiscount =
-            (Number(selectedCoupon.discountValue) || 0) * numDays;
+          couponFixedDiscount = (Number(selectedCoupon.discountValue) || 0) * numDays;
           couponDiscount = 0;
           couponDiscountType = 'fixed';
           couponDiscountValue = couponFixedDiscount;
           totalPrice = Math.max(0, originalPrice - couponFixedDiscount);
         }
       } else {
-        // 선택한 쿠폰이 없으면 bestCoupon 기준으로 설정
         couponDiscount = Number(room.couponDiscount) || 0;
         couponFixedDiscount = Number(room.couponFixedDiscount) || 0;
         couponDiscountType = room.couponDiscountType;
         couponDiscountValue = Number(room.couponDiscountValue) || 0;
       }
-
-      // 1. 재고 여부 계산
+  
       const stock = room.availableRooms ?? room.stock ?? 0;
       const isSoldOut = stock <= 0;
-
+  
       return {
         ...room,
         totalPrice,
@@ -1076,9 +1120,15 @@ const RoomSelection = () => {
         couponFixedDiscount,
         couponDiscountType,
         couponDiscountValue,
-        isSoldOut, // 추가
+        isSoldOut,
         onSelect: () => {
           const applied = selectedCoupons[room.roomInfo] || null;
+          const { code: appliedCouponCode, name: appliedCouponName } = applied
+            ? resolveCouponMetadata(applied.couponUuid, [
+                ...customerCoupons,
+                ...hotelCoupons,
+              ])
+            : { code: null, name: null };
           handleSelectRoom(
             room.roomInfo,
             room.dayStayPrice,
@@ -1100,14 +1150,15 @@ const RoomSelection = () => {
               : applied?.discountType === 'fixed'
               ? applied.discountValue * numDays
               : 0,
-            applied?.code,
+            appliedCouponCode,
+            appliedCouponName,
             applied?.couponUuid
           );
         },
         uniqueKey: `${room.roomInfo}-${index}-${room.dayStayPrice}`,
       };
     });
-  }, [availableRooms, selectedCoupons, numDays, handleSelectRoom]);
+  }, [availableRooms, selectedCoupons, numDays, handleSelectRoom, customerCoupons, hotelCoupons]);
 
   if (error) {
     return (

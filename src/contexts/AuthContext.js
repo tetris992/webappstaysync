@@ -1,6 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from 'react';
 import { useToast } from '@chakra-ui/react';
-import { fetchCustomerCoupons, fetchAvailableCoupons, refreshCustomerToken, logoutCustomer } from '../api/api';
+import {
+  fetchCustomerCoupons,
+  fetchAvailableCoupons,
+  refreshCustomerToken,
+  logoutCustomer,
+} from '../api/api';
 import ApiError from '../utils/ApiError';
 
 const AuthContext = createContext();
@@ -24,7 +35,8 @@ export const AuthProvider = ({ children }) => {
 
   // 사용 가능 쿠폰 상태
   const [availableCoupons, setAvailableCoupons] = useState([]);
-  const [isAvailableCouponsLoading, setIsAvailableCouponsLoading] = useState(false);
+  const [isAvailableCouponsLoading, setIsAvailableCouponsLoading] =
+    useState(false);
   const [availableCouponsError, setAvailableCouponsError] = useState(null);
 
   // 리프레시 및 디바이스 토큰 상태
@@ -46,7 +58,10 @@ export const AuthProvider = ({ children }) => {
           setRefreshToken(storedRefreshToken);
           setDeviceToken(storedDeviceToken);
         } catch (error) {
-          console.error('[AuthContext] Failed to parse stored auth data:', error);
+          console.error(
+            '[AuthContext] Failed to parse stored auth data:',
+            error
+          );
           clearAuthData();
         }
       }
@@ -135,7 +150,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   // 로그인 처리
-  const login = async (dataOrCustomer, token, refreshTokenValue, deviceTokenValue) => {
+  const login = async (
+    dataOrCustomer,
+    token,
+    refreshTokenValue,
+    deviceTokenValue
+  ) => {
     if (!dataOrCustomer) {
       throw new Error('고객 정보가 제공되지 않았습니다.');
     }
@@ -205,7 +225,10 @@ export const AuthProvider = ({ children }) => {
       );
       if (response.token) {
         localStorage.setItem('customerToken', response.token);
-        console.log('[AuthContext] Token refreshed successfully:', response.token);
+        console.log(
+          '[AuthContext] Token refreshed successfully:',
+          response.token
+        );
         return true;
       }
       console.warn('[AuthContext] No token in refresh response');
@@ -228,52 +251,25 @@ export const AuthProvider = ({ children }) => {
     }
   }, [refreshToken, deviceToken, toast]);
 
-  // 쿠폰 사용 후 갱신
-  const updateCustomerCouponsAfterUse = useCallback((couponUuid) => {
-    setCustomerCoupons((prevCoupons) =>
-      prevCoupons.map((coupon) =>
-        coupon.couponUuid === couponUuid
-          ? { ...coupon, used: true, usedAt: new Date().toISOString() }
-          : coupon
-      )
-    );
-    console.log('[AuthContext] Updated coupon after use:', couponUuid);
-  }, []);
-
-  // 쿠폰 다운로드
-  const downloadCoupon = useCallback(async (couponUuid) => {
-    try {
-      const response = await fetchAvailableCoupons.downloadCoupon({
-        couponUuid,
-        customerId: customer._id,
-      });
-      const newCoupon = response.coupon;
-      setCustomerCoupons((prev) => [...prev, newCoupon]);
-      setAvailableCoupons((prev) =>
-        prev.filter((coupon) => coupon.couponUuid !== couponUuid)
+  // contexts/AuthContext.js
+  const updateCustomerCouponsAfterUse = useCallback(
+    async (couponUuid) => {
+      setCustomerCoupons((prevCoupons) =>
+        prevCoupons.map((coupon) =>
+          coupon.couponUuid === couponUuid
+            ? { ...coupon, used: true, usedAt: new Date().toISOString() }
+            : coupon
+        )
       );
-      toast({
-        title: '쿠폰 다운로드 성공',
-        description: '쿠폰이 성공적으로 다운로드되었습니다.',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (err) {
-      console.error('[AuthContext] downloadCoupon failed:', err);
-      let errorMessage = '쿠폰 다운로드에 실패했습니다.';
-      if (err instanceof ApiError) {
-        errorMessage = err.message || errorMessage;
-      }
-      toast({
-        title: '쿠폰 다운로드 실패',
-        description: errorMessage,
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  }, [customer, toast]);
+      // 최신 쿠폰 목록으로 동기화
+      await loadCustomerCoupons();
+      console.log(
+        '[AuthContext] Updated and synced coupon after use:',
+        couponUuid
+      );
+    },
+    [loadCustomerCoupons]
+  );
 
   return (
     <AuthContext.Provider
@@ -291,7 +287,6 @@ export const AuthProvider = ({ children }) => {
         logout,
         refreshAuthToken,
         updateCustomerCouponsAfterUse,
-        downloadCoupon,
       }}
     >
       {children}
