@@ -218,7 +218,7 @@ const Login = () => {
                 로그인하시면 아래 내용에 동의하는 것으로 간주됩니다.
               </Text>
 
-              <HStack justify="center" spacing={4} fontSize="sm" color="blue.600">
+              <HStack justify="center" spacing={2} fontSize="xs" color="blue.600">
                 <Text
                   as="a"
                   href="/consent"
