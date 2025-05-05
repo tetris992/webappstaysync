@@ -120,106 +120,126 @@ const Login = () => {
       w="100%"
       bg="white"
       display="flex"
-      alignItems="center" // Center vertically
-      justifyContent="center" // Center horizontally
+      alignItems="center"
+      justifyContent="center"
       p={4}
       position="relative"
       overflow="auto"
     >
       <Container
-        maxW={{ base: '100%', sm: '390px' }} // Standard mobile width
+        maxW={{ base: '100%', sm: '390px' }} // Responsive width: 100% on smaller screens, 390px on small screens and up
         w="100%"
         position="relative"
         zIndex="1"
       >
-        <VStack spacing={10} align="stretch">
-          <VStack spacing="20px" align="center">
-            <Image
-              src="/assets/danjamLogo.svg"
-              alt="Danjam Logo"
-              width="88px"
-              height="auto"
-            />
-            <Text
-              fontSize="lg"
-              color="gray.700"
-              fontWeight="medium"
-              letterSpacing="tight"
-              width="160px"
-              height="27px"
-              lineHeight="27px"
-              textAlign="center"
+        <Box
+          bg="white"
+          p={6} // Padding inside the box: 6 (24px) on all sides
+          borderRadius="md"
+          boxShadow="sm"
+        >
+          <VStack spacing={0} align="stretch">
+            {/* Logo Section */}
+            <VStack spacing="16px" align="center">
+              <Image
+                src="/assets/danjamLogo.svg"
+                alt="Danjam Logo"
+                width="88px" // Logo width: 88px
+                height="auto"
+              />
+              <Text
+                fontSize="lg" // Font size: 18px (Chakra's lg)
+                color="gray.700"
+                fontWeight="medium"
+                letterSpacing="tight"
+                width="160px" // Subtitle width: 160px
+                height="27px" // Subtitle height: 27px
+                lineHeight="27px"
+                textAlign="center"
+              >
+                편안한 숙박예약의 시작
+              </Text>
+            </VStack>
+
+            {/* Gap between Logo Section and Button Section */}
+            {/* Current: 80px (adjustable between 60px and 100px) */}
+            {/* Options: Change h="80px" to h="60px" for a smaller gap, or h="100px" for a larger gap */}
+            <Box h="80px" />
+
+            {/* Button, Description, and Terms Links in a Single Container */}
+            <VStack
+              spacing="16px" // Vertical gap between button, description, and terms links: 16px
+              w="100%"
+              align="stretch"
             >
-              편안한 숙박예약의 시작
-            </Text>
+              <Button
+                leftIcon={
+                  <Box mr="6px">
+                    <Image
+                      src="/assets/kakaoLogo.svg"
+                      alt="Kakao Icon"
+                      width="18px" // Icon width: 18px
+                      height="18px" // Icon height: 18px
+                    />
+                  </Box>
+                }
+                w="100%"
+                maxW="326px" // Button max width: 326px (ensures responsiveness)
+                h="56px" // Button height: 56px
+                mx="auto" // Centers the button horizontally
+                bg="#FEE500"
+                color="rgba(0,0,0,0.85)"
+                _hover={{
+                  bg: '#FDD800',
+                  transform: 'translateY(-2px)',
+                  boxShadow: 'md',
+                }}
+                _active={{ transform: 'translateY(0)' }}
+                onClick={handleKakaoLogin}
+                isLoading={isKakaoLoading}
+                isDisabled={!isKakaoEnabled || isKakaoLoading}
+                fontSize="16px" // Button text font size: 16px
+                fontWeight="700"
+                borderRadius="5px"
+                boxShadow="md"
+                transition="all 0.2s"
+                pl="16px" // Left padding for icon positioning: 16px
+                justifyContent="center"
+              >
+                카카오로 로그인
+              </Button>
+
+              <Text
+                fontSize="xs" // Font size: 12px (Chakra's xs)
+                color="gray.400"
+                textAlign="center"
+                letterSpacing="tight"
+              >
+                로그인하시면 아래 내용에 동의하는 것으로 간주됩니다.
+              </Text>
+
+              <HStack justify="center" spacing={4} fontSize="sm" color="blue.600">
+                <Text
+                  as="a"
+                  href="/consent"
+                  _hover={{ textDecoration: 'underline' }}
+                  transition="color 0.2s"
+                >
+                  이용약관
+                </Text>
+                <Text>|</Text>
+                <Text
+                  as="a"
+                  href="/consent"
+                  _hover={{ textDecoration: 'underline' }}
+                  transition="color 0.2s"
+                >
+                  개인정보처리방침
+                </Text>
+              </HStack>
+            </VStack>
           </VStack>
-
-          <VStack spacing="24px" w="326px" mx="auto">
-            <Button
-              leftIcon={
-                <Box mr="6px">
-                  <Image
-                    src="/assets/kakaoLogo.svg"
-                    alt="Kakao Icon"
-                    width="18px"
-                    height="18px"
-                  />
-                </Box>
-              }
-              w="326px"
-              h="56px"
-              bg="#FEE500"
-              color="rgba(0,0,0,0.85)"
-              _hover={{
-                bg: '#FDD800',
-                transform: 'translateY(-2px)',
-                boxShadow: 'md',
-              }}
-              _active={{ transform: 'translateY(0)' }}
-              onClick={handleKakaoLogin}
-              isLoading={isKakaoLoading}
-              isDisabled={!isKakaoEnabled || isKakaoLoading}
-              fontSize="16px"
-              fontWeight="700"
-              borderRadius="5px"
-              boxShadow="md"
-              transition="all 0.2s"
-              pl="16px"
-              justifyContent="center"
-            >
-              카카오로 로그인
-            </Button>
-
-            <Text
-              fontSize="xs"
-              color="gray.400"
-              textAlign="center"
-              letterSpacing="tight"
-            >
-              로그인하시면 아래 내용에 동의하는 것으로 간주됩니다.
-            </Text>
-          </VStack>
-
-          <HStack justify="center" spacing={4} fontSize="sm" color="blue.600" mt={4}>
-            <Text
-              as="a"
-              href="/consent"
-              _hover={{ textDecoration: 'underline' }}
-              transition="color 0.2s"
-            >
-              이용약관
-            </Text>
-            <Text>|</Text>
-            <Text
-              as="a"
-              href="/consent"
-              _hover={{ textDecoration: 'underline' }}
-              transition="color 0.2s"
-            >
-              개인정보처리방침
-            </Text>
-          </HStack>
-        </VStack>
+        </Box>
       </Container>
     </Box>
   );
