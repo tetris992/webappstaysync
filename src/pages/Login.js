@@ -120,8 +120,8 @@ const Login = () => {
       w="100%"
       bg="white"
       display="flex"
-      alignItems="flex-start"
-      justifyContent="center"
+      alignItems="center" // Center vertically
+      justifyContent="center" // Center horizontally
       p={4}
       position="relative"
       overflow="auto"
@@ -131,9 +131,8 @@ const Login = () => {
         w="100%"
         position="relative"
         zIndex="1"
-        pt="197.5px" // Top positioning for logo section
       >
-        <VStack spacing={0} align="stretch">
+        <VStack spacing={10} align="stretch">
           <VStack spacing="20px" align="center">
             <Image
               src="/assets/danjamLogo.svg"
@@ -155,12 +154,10 @@ const Login = () => {
             </Text>
           </VStack>
 
-          <Box h="69.5px" /> {/* Gap to position button at 445px from top */}
-
           <VStack spacing="24px" w="326px" mx="auto">
             <Button
               leftIcon={
-                <Box mr="8px">
+                <Box mr="6px">
                   <Image
                     src="/assets/kakaoLogo.svg"
                     alt="Kakao Icon"
@@ -182,12 +179,13 @@ const Login = () => {
               onClick={handleKakaoLogin}
               isLoading={isKakaoLoading}
               isDisabled={!isKakaoEnabled || isKakaoLoading}
-              fontSize="16px" // Adjusted font size to match screenshot
+              fontSize="16px"
               fontWeight="700"
               borderRadius="5px"
               boxShadow="md"
               transition="all 0.2s"
-              pl="16px" // Adjusted left padding for icon positioning
+              pl="16px"
+              justifyContent="center"
             >
               카카오로 로그인
             </Button>
