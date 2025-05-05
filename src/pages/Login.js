@@ -6,12 +6,10 @@ import {
   Text,
   Button,
   useToast,
-  Icon,
   HStack,
-  Heading,
   Container,
+  Image,
 } from '@chakra-ui/react';
-import { SiKakao } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
 import { initKakao } from '../utils/kakao';
 
@@ -120,68 +118,58 @@ const Login = () => {
     <Box
       minH="100vh"
       w="100%"
-      bg="gray.50"
+      bg="white"
       display="flex"
-      alignItems="center"
+      alignItems="flex-start"
       justifyContent="center"
       p={4}
       position="relative"
       overflow="auto"
     >
-      <Box
-        position="absolute"
-        top="-100px"
-        right="-100px"
-        width="300px"
-        height="300px"
-        borderRadius="full"
-        bg="blue.50"
-        opacity="0.5"
-        zIndex="0"
-      />
-      <Box
-        position="absolute"
-        bottom="-100px"
-        left="-100px"
-        width="300px"
-        height="300px"
-        borderRadius="full"
-        bg="teal.50"
-        opacity="0.5"
-        zIndex="0"
-      />
-
       <Container
-        maxW={{ base: '100%', sm: '400px' }}
+        maxW={{ base: '100%', sm: '390px' }} // Standard mobile width
         w="100%"
         position="relative"
         zIndex="1"
-        pb="140px" // 하단 여백 추가 (네비게이션 바 높이만큼)
+        pt="197.5px" // Top positioning for logo section
       >
-        <VStack spacing={8} align="stretch">
-          <VStack spacing={2}>
-            <Heading
-              size="xl"
-              bgGradient="linear(to-r, blue.600, teal.500)"
-              bgClip="text"
-              fontWeight="extrabold"
-            >
-              단잠
-            </Heading>
+        <VStack spacing={0} align="stretch">
+          <VStack spacing="20px" align="center">
+            <Image
+              src="/assets/danjamLogo.svg"
+              alt="Danjam Logo"
+              width="88px"
+              height="auto"
+            />
             <Text
               fontSize="lg"
               color="gray.700"
               fontWeight="medium"
               letterSpacing="tight"
+              width="160px"
+              height="27px"
+              lineHeight="27px"
+              textAlign="center"
             >
-              편안한 숙박예약
+              편안한 숙박예약의 시작
             </Text>
           </VStack>
 
-          <VStack spacing={4} w="100%">
+          <Box h="69.5px" /> {/* Gap to position button at 445px from top */}
+
+          <VStack spacing="24px" w="326px" mx="auto">
             <Button
-              leftIcon={<Icon as={SiKakao} boxSize="20px" />}
-              w="100%"
+              leftIcon={
+                <Box mr="8px">
+                  <Image
+                    src="/assets/kakaoLogo.svg"
+                    alt="Kakao Icon"
+                    width="18px"
+                    height="18px"
+                  />
+                </Box>
+              }
+              w="326px"
               h="56px"
               bg="#FEE500"
               color="rgba(0,0,0,0.85)"
@@ -194,13 +182,14 @@ const Login = () => {
               onClick={handleKakaoLogin}
               isLoading={isKakaoLoading}
               isDisabled={!isKakaoEnabled || isKakaoLoading}
-              fontSize="18px"
+              fontSize="16px" // Adjusted font size to match screenshot
               fontWeight="700"
-              borderRadius="full"
+              borderRadius="5px"
               boxShadow="md"
               transition="all 0.2s"
+              pl="16px" // Adjusted left padding for icon positioning
             >
-              카카오로 시작하기
+              카카오로 로그인
             </Button>
 
             <Text
@@ -209,15 +198,15 @@ const Login = () => {
               textAlign="center"
               letterSpacing="tight"
             >
-              카카오 로그인 시 별도의 회원가입이 필요하지 않습니다
+              로그인하시면 아래 내용에 동의하는 것으로 간주됩니다.
             </Text>
           </VStack>
 
-          <HStack justify="center" spacing={4} fontSize="sm" color="gray.500">
+          <HStack justify="center" spacing={4} fontSize="sm" color="blue.600" mt={4}>
             <Text
               as="a"
               href="/consent"
-              _hover={{ color: 'blue.600', textDecoration: 'underline' }}
+              _hover={{ textDecoration: 'underline' }}
               transition="color 0.2s"
             >
               이용약관
@@ -226,7 +215,7 @@ const Login = () => {
             <Text
               as="a"
               href="/consent"
-              _hover={{ color: 'blue.600', textDecoration: 'underline' }}
+              _hover={{ textDecoration: 'underline' }}
               transition="color 0.2s"
             >
               개인정보처리방침
