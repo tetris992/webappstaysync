@@ -645,7 +645,7 @@ const Home = () => {
           )}
           {/* 액션 섹션 */}
           <Box bg="transparent" pt={8} px={8} pb={0} borderRadius="lg">
-            <VStack spacing={4} align="stretch" px={4} pt={4} pb={0}>
+            <VStack spacing={4} align="stretch" px={4} pt={1} pb={0}>
               <Button
                 size="lg"
                 colorScheme="blue"
