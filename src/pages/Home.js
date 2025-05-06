@@ -17,22 +17,35 @@ import {
   PopoverContent,
   PopoverArrow,
   SlideFade,
+  useToast,
+  Spinner,
   Badge,
 } from '@chakra-ui/react';
-import { SearchIcon, CalendarIcon } from '@chakra-ui/icons';
-import { useAuth } from '../contexts/AuthContext';
-import Slider from 'react-slick';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
+import { CalendarIcon } from '@chakra-ui/icons';
 import { DateRange } from 'react-date-range';
-import { format, addDays, startOfDay, addMonths, isValid } from 'date-fns';
+import {
+  format,
+  addDays,
+  startOfDay,
+  addMonths,
+  isValid,
+  differenceInCalendarDays,
+} from 'date-fns';
 import { ko } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
-import { fetchHotelList } from '../api/api';
-import { useToast } from '@chakra-ui/react';
+import Slider from 'react-slick';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
+import {
+  fetchHotelList,
+  fetchHotelPhotos,
+  fetchCustomerHotelSettings,
+} from '../api/api';
+import { useAuth } from '../contexts/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
 import io from 'socket.io-client';
+import pLimit from 'p-limit';
 
 // 기본 호텔 데이터 (API 호출 실패 시 사용)
 const recommendedHotels = [
@@ -40,21 +53,22 @@ const recommendedHotels = [
     id: 1,
     name: '부산 호텔',
     image: '/assets/hotel1.jpg',
-    rating: 4.5,
-    description: '해운대 해변 전망 객실',
-    tag: 'BEST HOT',
-    color: 'blue',
     address: '부산 해운대구 해운대해변로 264',
+    price: 120000,
   },
   {
     id: 11,
     name: '여수 호텔',
     image: '/assets/hotel11.jpg',
-    rating: 4.8,
-    description: '해양 도시 전망 호텔',
-    tag: 'HOT',
-    color: 'green',
     address: '여수시 돌산공원길 1',
+    price: 150000,
+  },
+  {
+    id: 12,
+    name: '제주 호텔',
+    image: '/assets/hotel12.jpg',
+    address: '제주시 서귀포',
+    price: 180000,
   },
 ];
 
@@ -62,14 +76,10 @@ const Home = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const {
-    customer,
     customerCoupons,
     isCouponsLoading,
     couponsLoadError,
-    availableCoupons,
-    isAvailableCouponsLoading,
     availableCouponsError,
-    downloadCoupon,
   } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,11 +94,15 @@ const Home = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [hotels, setHotels] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState([]);
+  const [photosMap, setPhotosMap] = useState({});
+  const [loadingHotels, setLoadingHotels] = useState(true);
+  const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState(null);
   const [isCouponPanelOpen, setIsCouponPanelOpen] = useState(false);
+  const [currentEventIdx, setCurrentEventIdx] = useState(0);
 
-  // Socket.io 연결 및 couponIssued 이벤트 처리
+  // Socket.io 연결 및 쿠폰 이벤트
   useEffect(() => {
     const socket = io(process.env.REACT_APP_API_URL, {
       reconnection: true,
@@ -96,11 +110,6 @@ const Home = () => {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
     });
-
-    socket.on('connect', () => {
-      console.log('[Home] Socket.io connected');
-    });
-
     socket.on('couponIssued', ({ message }) => {
       toast({
         title: '새 쿠폰 발행',
@@ -110,224 +119,302 @@ const Home = () => {
         isClosable: true,
       });
     });
-
-    socket.on('disconnect', () => {
-      console.log('[Home] Socket.io disconnected, attempting to reconnect...');
-    });
-
-    return () => {
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, [toast]);
 
-  // 서버에서 호텔 데이터 가져오기
+  // 호텔 데이터 및 사진 불러오기
   useEffect(() => {
     const fetchHotels = async () => {
+      setLoadingHotels(true);
+      setError(null);
       try {
-        setLoading(true);
-        setError(null);
-        const hotelList = await fetchHotelList();
-        console.log('서버에서 가져온 호텔 데이터:', hotelList);
-
-        const hotelsWithDetails = hotelList.map((hotel) => ({
-          ...hotel,
-          rating: Number((Math.random() * 2 + 3).toFixed(1)),
-          reviewCount: Math.floor(Math.random() * 100) + 10,
+        const list = await fetchHotelList();
+        const withDetails = list.map((h) => ({
+          ...h,
+          image: '/assets/hotel1.jpg', // 임시 이미지, 나중에 photosMap으로 대체
           price: Math.floor(Math.random() * 100000) + 50000,
-          image: '/assets/hotel1.jpg',
-          tag: 'HOT',
-          color: 'blue',
-          description: hotel.address,
         }));
+        setHotels(withDetails);
 
-        setHotels(hotelsWithDetails);
-      } catch (error) {
-        console.error('호텔 데이터 가져오기 실패:', error);
-        setError(error.message || '호텔 목록을 불러오지 못했습니다.');
+        // 호텔 사진 가져오기
+        const limit = pLimit(3);
+        const photoPromises = withDetails.map((h) =>
+          limit(async () => {
+            try {
+              const data = await fetchHotelPhotos(h.hotelId, 'exterior');
+              return { id: h.hotelId, photos: data.commonPhotos || [] };
+            } catch {
+              toast({
+                title: '사진 로드 실패',
+                description: h.hotelName + ' 사진을 표시할 수 없습니다.',
+                status: 'warning',
+                duration: 3000,
+              });
+              return { id: h.hotelId, photos: [] };
+            }
+          })
+        );
+        const photoResults = await Promise.all(photoPromises);
+        const photos = photoResults.reduce((acc, { id, photos }) => {
+          acc[id] = photos;
+          return acc;
+        }, {});
+        setPhotosMap(photos);
+      } catch (e) {
+        setError(e.message);
         setHotels(recommendedHotels);
         toast({
           title: '호텔 목록 로드 실패',
-          description: error.message || '호텔 목록을 불러오지 못했습니다.',
+          description: e.message,
           status: 'error',
           duration: 3000,
           isClosable: true,
         });
       } finally {
-        setLoading(false);
+        setLoadingHotels(false);
       }
     };
-
     fetchHotels();
   }, [toast]);
 
-  // 에러 메시지 표시
+  // 이벤트 데이터 불러오기 및 사진 매핑
   useEffect(() => {
-    if (couponsLoadError) {
-      setError(couponsLoadError);
-    }
-    if (availableCouponsError) {
-      setError(availableCouponsError);
-    }
+    const fetchEvents = async () => {
+      try {
+        setLoadingEvents(true);
+        const hotels = await fetchHotelList();
+        console.log('[Events] Fetched hotels:', hotels);
+
+        if (!hotels || !Array.isArray(hotels) || hotels.length === 0) {
+          console.warn('[Events] No hotels found or invalid response');
+          toast({
+            title: '호텔 목록 로드 실패',
+            description: '등록된 호텔이 없습니다.',
+            status: 'warning',
+            duration: 3000,
+            isClosable: true,
+          });
+          setEvents([]);
+          return;
+        }
+
+        const validHotels = hotels.filter(
+          (hotel) =>
+            hotel.hotelId &&
+            typeof hotel.hotelId === 'string' &&
+            hotel.hotelId.trim() !== ''
+        );
+        console.log('[Events] Valid hotels:', validHotels);
+
+        if (validHotels.length === 0) {
+          console.warn('[Events] No valid hotels with hotelId');
+          toast({
+            title: '호텔 목록 오류',
+            description: '유효한 호텔 데이터가 없습니다.',
+            status: 'warning',
+            duration: 3000,
+            isClosable: true,
+          });
+          setEvents([]);
+          return;
+        }
+
+        const todayKST = format(new Date(), 'yyyy-MM-dd', { locale: ko });
+        console.log('[Events] Today (KST):', todayKST);
+
+        const eventPromises = validHotels.map(async (hotel) => {
+          try {
+            console.log(
+              `[Events] Fetching settings for hotelId: ${hotel.hotelId}`
+            );
+            const settings = await fetchCustomerHotelSettings(hotel.hotelId, {
+              checkIn: todayKST,
+              checkOut: todayKST,
+            });
+            console.log(`[Events] Settings for ${hotel.hotelId}:`, settings);
+            const hotelEvents = (settings.events || [])
+              .filter((event) => {
+                return (
+                  event.isActive &&
+                  event.startDate <= todayKST &&
+                  event.endDate >= todayKST
+                );
+              })
+              .map((event) => {
+                console.log(
+                  `[Events] Event for ${hotel.hotelId}:`,
+                  event.startDate,
+                  event.endDate
+                );
+                return {
+                  ...event,
+                  uuid:
+                    event.uuid ||
+                    `event-${hotel.hotelId}-${Math.random()
+                      .toString(36)
+                      .slice(2)}`,
+                  hotelId: hotel.hotelId,
+                  hotelName:
+                    settings.hotelName || hotel.hotelName || '알 수 없는 호텔',
+                  address: settings.address || hotel.address || null,
+                };
+              });
+            console.log(
+              `[Events] Active Events for ${hotel.hotelId}:`,
+              hotelEvents
+            );
+            return hotelEvents;
+          } catch (error) {
+            console.error(
+              `[Events] Failed to fetch events for hotel ${hotel.hotelId}:`,
+              error
+            );
+            toast({
+              title: `호텔 이벤트 로드 실패`,
+              description: `${
+                hotel.hotelName || hotel.hotelId
+              }: 이벤트를 불러오지 못했습니다.`,
+              status: 'error',
+              duration: 3000,
+              isClosable: true,
+            });
+            return [];
+          }
+        });
+
+        const allEvents = (await Promise.all(eventPromises)).flat();
+        console.log(
+          '[Events] All active events:',
+          allEvents.map((e) => ({
+            uuid: e.uuid,
+            startDate: e.startDate,
+            endDate: e.endDate,
+            eventName: e.eventName,
+            discountType: e.discountType,
+            discountValue: e.discountValue,
+          }))
+        );
+
+        if (allEvents.length === 0) {
+          toast({
+            title: '이벤트 없음',
+            description: '현재 진행 중인 이벤트가 없습니다.',
+            status: 'info',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+
+        setEvents(allEvents);
+      } catch (error) {
+        console.error('[Events] Event data fetch failed:', error);
+        toast({
+          title: '이벤트 로드 실패',
+          description: error.message || '이벤트 데이터를 불러오지 못했습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        setEvents([]);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+    fetchEvents();
+  }, [toast]);
+
+  // 쿠폰 로드 에러
+  useEffect(() => {
+    if (couponsLoadError) setError(couponsLoadError);
+    if (availableCouponsError) setError(availableCouponsError);
   }, [couponsLoadError, availableCouponsError]);
 
-  // 쿠폰 다운로드 처리
-  const handleDownloadCoupon = async (couponUuid) => {
-    try {
-      setError(null);
-      await downloadCoupon(couponUuid);
-      toast({
-        title: '쿠폰 다운로드 성공',
-        description: (
-          <Box>
-            <Text>쿠폰이 성공적으로 다운로드되었습니다.</Text>
-            <Button
-              size="sm"
-              mt={2}
-              colorScheme="blue"
-              onClick={() => setIsCouponPanelOpen(true)}
-            >
-              쿠폰 확인하기
-            </Button>
-          </Box>
-        ),
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.error('쿠폰 다운로드 실패:', error);
-      setError(error.message || '쿠폰 다운로드에 실패했습니다.');
-    }
+  // 날짜 선택
+  const handleDateChange = ({ selection }) => {
+    setDateRange([selection]);
+    setIsCalendarOpen(false);
   };
 
+  // 검색
   const handleSearch = () => {
-    const checkIn = dateRange[0].startDate;
-    const checkOut = dateRange[0].endDate;
-    if (!isValid(checkIn) || !isValid(checkOut)) {
-      toast({
+    const { startDate, endDate } = dateRange[0];
+    if (!isValid(startDate) || !isValid(endDate)) {
+      return toast({
         title: '날짜 오류',
         description: '체크인/체크아웃 날짜가 올바르지 않습니다.',
         status: 'error',
         duration: 3000,
         isClosable: true,
       });
-      return;
     }
+    navigate('/hotels', {
+      state: {
+        searchQuery,
+        checkIn: format(startDate, 'yyyy-MM-dd'),
+        checkOut: format(endDate, 'yyyy-MM-dd'),
+        guestCount,
+      },
+    });
+  };
 
-    const checkInFormatted = format(checkIn, 'yyyy-MM-dd');
-    const checkOutFormatted = format(checkOut, 'yyyy-MM-dd');
-
-    if (!searchQuery.trim()) {
-      navigate('/hotels', {
-        state: {
-          checkIn: checkInFormatted,
-          checkOut: checkOutFormatted,
-          guestCount,
-        },
-      });
-      return;
-    }
-
-    const searchLower = searchQuery.toLowerCase().trim();
-    console.log('검색어:', searchLower);
-
-    const filteredHotels = [];
-
-    const hotelsToSearch = hotels.length > 0 ? hotels : recommendedHotels;
-    console.log('검색 대상 호텔 수:', hotelsToSearch.length);
-
-    hotelsToSearch.forEach((hotel) => {
-      const hotelName = hotel.hotelName || hotel.name || '';
-      const nameMatch = hotelName.toLowerCase().includes(searchLower);
-      const description = hotel.description || '';
-      const descMatch = description.toLowerCase().includes(searchLower);
-      const address = hotel.address || '';
-      const addrMatch = address.toLowerCase().includes(searchLower);
-      const addressParts = address.toLowerCase().split(/[\s,]+/);
-      const addressPartMatch = addressParts.some((part) =>
-        part.includes(searchLower)
-      );
-
-      console.log(`호텔: ${hotelName}, 주소: ${address}`);
-      console.log(
-        `이름 일치: ${nameMatch}, 설명 일치: ${descMatch}, 주소 일치: ${addrMatch}, 주소 부분 일치: ${addressPartMatch}`
-      );
-      console.log(`주소 부분: ${addressParts.join(', ')}`);
-
-      if (nameMatch || descMatch || addrMatch || addressPartMatch) {
-        console.log(`일치하는 호텔 추가: ${hotelName}`);
-        filteredHotels.push(hotel);
-      }
+  // 이벤트 클릭 핸들러 (Events.js에서 가져옴)
+  const handleEventClick = (event) => {
+    console.log('[Events] Event clicked:', {
+      event,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      discountType: event.discountType,
+      discountValue: event.discountValue,
     });
 
-    console.log('검색 결과 호텔 수:', filteredHotels.length);
-    console.log(
-      '검색 결과 호텔:',
-      filteredHotels.map((h) => h.hotelName || h.name)
+    const todayKST = format(new Date(), 'yyyy-MM-dd', { locale: ko });
+    const parsedStartDate = event.startDate;
+    const parsedEndDate = event.endDate;
+
+    const eventDuration =
+      differenceInCalendarDays(
+        new Date(parsedEndDate),
+        new Date(parsedStartDate)
+      ) || 1;
+
+    const adjustedCheckIn =
+      parsedStartDate < todayKST ? todayKST : parsedStartDate;
+
+    const adjustedCheckOut = format(
+      addDays(new Date(adjustedCheckIn), Math.max(eventDuration, 1)),
+      'yyyy-MM-dd'
     );
 
-    if (filteredHotels.length > 0) {
-      navigate('/hotels', {
-        state: {
-          searchQuery,
-          checkIn: checkInFormatted,
-          checkOut: checkOutFormatted,
-          guestCount,
-          filteredHotels: filteredHotels.map(
-            (hotel) => hotel.hotelId || hotel.id
-          ),
-        },
-      });
-    } else {
-      navigate('/hotels', {
-        state: {
-          searchQuery,
-          checkIn: checkInFormatted,
-          checkOut: checkOutFormatted,
-          guestCount,
-          noResults: true,
-        },
-      });
-    }
+    console.log('[Events] Adjusted dates:', {
+      adjustedCheckIn,
+      adjustedCheckOut,
+    });
+
+    navigate(`/rooms/${event.hotelId}`, {
+      state: {
+        checkIn: adjustedCheckIn,
+        checkOut: adjustedCheckOut,
+        applicableRoomTypes: event.applicableRoomTypes || [],
+        discountType: event.discountType,
+        discountValue: event.discountValue,
+      },
+    });
   };
 
-  const handleDateChange = (item) => {
-    setDateRange([item.selection]);
-    setIsCalendarOpen(false);
-  };
-
-  const sliderSettings = {
-    dots: true,
-    infinite: true,
+  const eventSliderSettings = {
+    dots: false,
+    infinite: false,
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    arrows: false,
-    appendDots: (dots) => (
-      <Box
-        position="absolute"
-        bottom="10px"
-        width="100%"
-        display="flex"
-        justifyContent="center"
-        zIndex={10}
-      >
-        <HStack spacing={2}>{dots}</HStack>
-      </Box>
-    ),
+    arrows: true,
+    afterChange: (idx) => setCurrentEventIdx(idx),
   };
 
   return (
     <Box
       minH="100vh"
       bg="gray.100"
-      display="flex"
-      flexDirection="column"
-      w="100vw"
-      maxW="100%"
-      overflow="hidden"
       position="fixed"
       top={0}
       left={0}
@@ -335,783 +422,461 @@ const Home = () => {
       bottom={0}
       pt="env(safe-area-inset-top)"
       pb="env(safe-area-inset-bottom)"
+      display="flex"
+      flexDirection="column"
     >
+      {/* Header */}
       <Box
-        bg="white"
-        borderBottom="1px solid"
-        borderColor="gray.200"
-        width="100%"
-        pt={5} // 상단 여백 (Safe Area와 별개로 타이틀 위 여백 확보)
-        pb={3}
         position="fixed"
         top={0}
-        zIndex={100}
+        left={0}
+        right={0}
+        bg="white"
         boxShadow="sm"
+        zIndex={100}
+        px={5}
+        py={5}
       >
-        <Flex align="center" justify="space-between" px={4}>
-          <Box flex="1" /> {/* 왼쪽 여백을 위한 빈 공간 */}
-          <Box
-            display="flex"
-            alignItems="center"
-            gap={2}
+        <Flex justify="space-between" align="center">
+          <Image
+            src="/assets/Logo.svg"
+            alt="단잠"
+            h="36px"
             cursor="pointer"
             onClick={() => navigate('/')}
-          >
+          />
+          <Flex gap={3}>
             <Box
-              bg="blue.600"
-              w="36px"
-              h="36px"
-              borderRadius="lg"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              boxShadow="sm"
               position="relative"
-              _before={{
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                borderRadius: 'lg',
-                background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
-                opacity: 0.8,
-              }}
+              cursor="pointer"
+              onClick={() => setIsCouponPanelOpen((o) => !o)}
             >
-              <Text
-                color="white"
-                fontSize="xl"
-                fontWeight="bold"
-                position="relative"
-                zIndex={1}
-              >
-                단
-              </Text>
+              <Image src="/assets/Notification.svg" boxSize={8} />
+              <Box
+                position="absolute"
+                top="1"
+                right="1"
+                w="2"
+                h="2"
+                bg="red.500"
+                border="1px solid white"
+                borderRadius="full"
+              />
             </Box>
-            <Box>
-              <Text
-                fontSize="lg"
-                fontWeight="bold"
-                color="gray.800"
-                letterSpacing="tight"
-              >
-                단잠
-              </Text>
-              <Text
-                fontSize="xs"
-                color="gray.500"
-                letterSpacing="wider"
-                lineHeight="1"
-              >
-                SWEET DREAMS
-              </Text>
-            </Box>
-          </Box>
-          <Box flex="1" display="flex" justifyContent="flex-end">
             <Popover
               isOpen={isSearchOpen}
               onClose={() => setIsSearchOpen(false)}
               placement="bottom-end"
-              closeOnBlur={true}
             >
               <PopoverTrigger>
                 <Box
-                  as="button"
-                  onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  p={2}
-                  borderRadius="full"
-                  bg="gray.100"
-                  _hover={{ bg: 'gray.200' }}
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
+                  cursor="pointer"
+                  onClick={() => setIsSearchOpen((o) => !o)}
                 >
-                  <SearchIcon boxSize={5} color="gray.600" />
+                  <Image src="/assets/Search.svg" boxSize={8} />
                 </Box>
               </PopoverTrigger>
-              <PopoverContent
-                w="90vw"
-                maxW="400px"
-                p={4}
-                boxShadow="xl"
-                border="none"
-                borderRadius="xl"
-                bg="white"
-                mx={4}
-              >
+              <PopoverContent w="90vw" maxW="360px" p={4} borderRadius="xl">
                 <PopoverArrow />
                 <VStack spacing={4}>
                   <InputGroup>
                     <InputLeftElement pointerEvents="none">
-                      <SearchIcon color="gray.400" />
+                      <Image src="/assets/Search.svg" boxSize={5} />
                     </InputLeftElement>
                     <Input
-                      placeholder="목적지 검색 (예: 부산, 해운대, 서울)"
+                      placeholder="목적지"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       borderRadius="lg"
                       bg="gray.100"
                     />
                   </InputGroup>
-
                   <InputGroup>
                     <InputLeftElement pointerEvents="none">
                       <CalendarIcon color="gray.400" />
                     </InputLeftElement>
                     <Input
-                      placeholder="날짜 선택"
+                      placeholder="날짜"
                       value={`${format(
                         dateRange[0].startDate,
-                        'yyyy년 MM월 dd일'
-                      )} - ${format(dateRange[0].endDate, 'yyyy년 MM월 dd일')}`}
-                      onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                        'yyyy.MM.dd'
+                      )} - ${format(dateRange[0].endDate, 'yyyy.MM.dd')}`}
                       readOnly
-                      cursor="pointer"
+                      onClick={() => setIsCalendarOpen(true)}
                       borderRadius="lg"
                       bg="gray.100"
                     />
                   </InputGroup>
-
                   <Select
                     value={guestCount}
-                    onChange={(e) => setGuestCount(Number(e.target.value))}
+                    onChange={(e) => setGuestCount(+e.target.value)}
                     borderRadius="lg"
                     bg="gray.100"
                   >
                     {[...Array(10)].map((_, i) => (
-                      <option key={i + 1} value={i + 1}>
+                      <option key={i} value={i + 1}>
                         {i + 1}명
                       </option>
                     ))}
                   </Select>
-
                   <Button
                     w="100%"
                     colorScheme="blue"
-                    onClick={() => {
-                      handleSearch();
-                      setIsSearchOpen(false);
-                    }}
+                    onClick={handleSearch}
                     borderRadius="lg"
-                    bg="blue.600"
-                    _hover={{ bg: 'blue.700' }}
                   >
                     검색
                   </Button>
                 </VStack>
               </PopoverContent>
             </Popover>
-          </Box>
+          </Flex>
         </Flex>
       </Box>
 
-      {/* 날짜 선택 모달 */}
+      {/* 날짜 모달 */}
       {isCalendarOpen && (
         <Box
           position="fixed"
           top="50%"
           left="50%"
-          transform="translate(-50%, -50%)"
+          transform="translate(-50%,-50%)"
           bg="white"
           p={4}
           borderRadius="xl"
           boxShadow="xl"
-          zIndex={1000}
+          zIndex={200}
           w="90vw"
-          maxW="400px"
+          maxW="360px"
         >
-          <Flex justify="space-between" align="center" mb={4}>
+          <Flex justify="space-between" align="center" mb={3}>
             <Text fontWeight="bold">날짜 선택</Text>
             <Button size="sm" onClick={() => setIsCalendarOpen(false)}>
               닫기
             </Button>
           </Flex>
           <DateRange
-            editableDateInputs={true}
-            onChange={handleDateChange}
-            moveRangeOnFirstSelection={false}
+            editableDateInputs
             ranges={dateRange}
-            months={1}
-            direction="vertical"
-            locale={ko}
+            onChange={handleDateChange}
             minDate={startOfDay(new Date())}
             maxDate={addMonths(startOfDay(new Date()), 3)}
+            locale={ko}
+            months={1}
+            direction="vertical"
             rangeColors={['#3B82F6']}
           />
         </Box>
       )}
 
-      {/* 본문 - 상하 스크롤 가능 */}
+      {/* Main Scroll Area */}
       <Box
-        flex="1"
+        flex={1}
         overflowY="auto"
         overflowX="hidden"
-        mt="80px"
-        pb="200px" // 하단 네비게이션 바 높이 + 여유분
-        css={{
-          WebkitOverflowScrolling: 'touch',
-          '&::-webkit-scrollbar': {
-            width: '4px',
-          },
-          '&::-webkit-scrollbar-track': {
-            background: 'transparent',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: '#D1D5DB',
-            borderRadius: '24px',
-          },
-        }}
+        mt="72px"
+        mb="180px"
+        css={{ WebkitOverflowScrolling: 'touch' }}
+        boxShadow="inset 0 7px 9px -7px rgba(0,0,0,0.1)"
       >
-        <VStack spacing={6} align="stretch" px={4}>
+        <VStack spacing={10} align="stretch" px={4}>
           {error && (
-            <Text color="red.500" textAlign="center" mb={4}>
+            <Text color="red.500" textAlign="center">
               {error}
             </Text>
           )}
-          <Box w="100%" mb={4}>
-            <Button
-              w="100%"
-              size="lg"
-              colorScheme="blue"
-              onClick={() => {
-                navigate('/hotels', {
-                  state: {
-                    checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
-                    checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
-                    guestCount,
-                  },
-                });
-              }}
-              borderRadius="lg"
-              py={6}
-              fontSize="lg"
-              fontWeight="semibold"
-              bg="blue.600"
-              color="white"
-              boxShadow="sm"
-              _hover={{
-                bg: 'blue.700',
-                transform: 'translateY(-1px)',
-                boxShadow: 'md',
-              }}
-              _active={{
-                transform: 'translateY(0)',
-                boxShadow: 'sm',
-              }}
-            >
-              숙소 예약하기
-            </Button>
+          {/* 액션 섹션 */}
+          <Box bg="white" p={8} borderRadius="lg" boxShadow="md">
+            <VStack spacing={4} align="stretch">
+              <Button
+                size="lg"
+                colorScheme="blue"
+                borderRadius="50px"
+                onClick={() => navigate('/past-bookings')}
+              >
+                지난 숙소 재예약
+              </Button>
+              <Text
+                textAlign="center"
+                color="gray.600"
+                cursor="pointer"
+                onClick={() =>
+                  navigate('/hotels', {
+                    state: {
+                      checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
+                      checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
+                      guestCount,
+                    },
+                  })
+                }
+              >
+                다른 숙소 예약하기
+              </Text>
+            </VStack>
           </Box>
 
-          <Box w="100%" mb={4}>
-            <Text fontSize="md" fontWeight="bold" mb={3} color="gray.800">
+          {/* 추천 호텔 */}
+          <Box px={0}>
+            <Text fontWeight="bold" mb={2}>
               추천 호텔
             </Text>
-            <Box>
-              <Slider {...sliderSettings}>
-                {(loading
-                  ? recommendedHotels
-                  : hotels.length > 0
-                  ? hotels
-                  : recommendedHotels
-                ).map((hotel) => (
+            <Box overflowX="auto">
+              <HStack spacing="20px" pl={0} pr={0}>
+                {(loadingHotels ? recommendedHotels : hotels).map((hotel) => (
                   <Box
-                    key={hotel.hotelId || hotel.id}
-                    onClick={() => navigate('/hotels')}
-                    position="relative"
+                    key={hotel.id}
+                    w="200px"
                     cursor="pointer"
-                    h="240px"
-                    borderRadius="lg"
-                    overflow="hidden"
-                    role="group"
+                    onClick={() => navigate('/hotels')}
                   >
                     <Image
-                      src={hotel.image || '/assets/hotel1.jpg'}
-                      alt={`${hotel.hotelName || hotel.name} 호텔 이미지`}
-                      h="100%"
+                      src={
+                        photosMap[hotel.hotelId]?.length > 0
+                          ? photosMap[hotel.hotelId][0].photoUrl
+                          : '/assets/default-hotel.jpg'
+                      }
+                      alt={hotel.name}
+                      h="180px"
                       w="100%"
                       objectFit="cover"
-                      transition="all 0.3s ease"
-                      _groupHover={{ transform: 'scale(1.05)' }}
+                      borderRadius="lg"
+                      fallbackSrc="/assets/default-hotel.jpg"
                     />
-                    <Box
-                      position="absolute"
-                      top={0}
-                      left={0}
-                      right={0}
-                      bottom={0}
-                      bgGradient="linear(to-t, blackAlpha.700, blackAlpha.300)"
-                      transition="all 0.3s ease"
-                      _groupHover={{
-                        bgGradient:
-                          'linear(to-t, blackAlpha.800, blackAlpha.400)',
-                      }}
-                    />
-                    <Box position="absolute" top={4} right={4}>
-                      <Badge
-                        colorScheme={hotel.color || 'blue'}
-                        fontSize="xs"
-                        px={3}
-                        py={1}
-                        borderRadius="full"
-                        boxShadow="sm"
-                        bg="blue.600"
-                        color="white"
-                      >
-                        {hotel.tag || 'HOT'}
-                      </Badge>
-                    </Box>
-                    <VStack
-                      position="absolute"
-                      bottom={0}
-                      left={0}
-                      right={0}
-                      p={5}
-                      align="flex-start"
-                      spacing={1}
-                    >
-                      <Text
-                        color="white"
-                        fontSize="xl"
-                        fontWeight="bold"
-                        letterSpacing="tight"
-                        transition="all 0.3s ease"
-                        _groupHover={{ transform: 'translateY(-2px)' }}
-                      >
-                        {hotel.hotelName || hotel.name}
+                    <VStack align="start" mt={2} spacing={0}>
+                      <Text fontWeight="bold">{hotel.name}</Text>
+                      <Text fontSize="sm" color="gray.600" noOfLines={1}>
+                        {hotel.address.length > 10
+                          ? hotel.address.slice(0, 10) + '...'
+                          : hotel.address}
                       </Text>
-                      <Text
-                        color="gray.100"
-                        fontSize="sm"
-                        opacity={0.9}
-                        transition="all 0.3s ease"
-                        _groupHover={{ opacity: 1 }}
-                      >
-                        {hotel.description || hotel.address}
+                      <Text fontWeight="bold">
+                        ₩{hotel.price.toLocaleString()} / 박
                       </Text>
-                      <HStack spacing={1}>
-                        <Text
-                          color="yellow.300"
-                          fontSize="sm"
-                          fontWeight="bold"
-                        >
-                          {hotel.rating || 4.5}
-                        </Text>
-                        <Text color="gray.200" fontSize="sm">
-                          / 5.0
-                        </Text>
-                      </HStack>
                     </VStack>
                   </Box>
                 ))}
-              </Slider>
+              </HStack>
             </Box>
           </Box>
 
-          {customer && (
-            <Box w="100%" mb={4}>
-              <Text fontSize="md" fontWeight="bold" mb={3} color="gray.800">
-                쿠폰
-              </Text>
-              {isAvailableCouponsLoading ? (
-                <Text color="gray.500" textAlign="center">
-                  사용 가능 쿠폰 로드 중...
-                </Text>
-              ) : availableCoupons.length > 0 ? (
-                <VStack spacing={3}>
-                  {availableCoupons.map((coupon) => (
-                    <Box
-                      key={coupon.couponUuid}
-                      bg="white"
-                      p={4}
-                      rounded="lg"
-                      shadow="sm"
-                      w="100%"
-                      border="1px solid"
-                      borderColor="gray.200"
-                      position="relative"
-                      overflow="hidden"
-                      _before={{
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '4px',
-                        bg: 'blue.600',
-                      }}
-                    >
-                      <Text fontWeight="bold" color="gray.800">
-                        {coupon.name}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        코드: {coupon.code}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        할인:{' '}
-                        {coupon.discountType === 'percentage'
-                          ? `${coupon.discountValue}%`
-                          : `${coupon.discountValue.toLocaleString()}원`}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        유효 기간: {coupon.startDate} ~ {coupon.endDate}
-                      </Text>
-                      <Button
-                        mt={2}
-                        colorScheme="blue"
-                        size="sm"
-                        onClick={() => handleDownloadCoupon(coupon.couponUuid)}
-                        borderRadius="lg"
-                        bg="blue.600"
-                        _hover={{ bg: 'blue.700' }}
+          {/* 이벤트 섹션 */}
+          <Box w="100%" mb={4}>
+            <Text fontWeight="bold" mb={2}>
+              이벤트
+            </Text>
+            <Box position="relative">
+              {loadingEvents ? (
+                <Flex justify="center" py={8}>
+                  <Spinner size="xl" />
+                </Flex>
+              ) : events.length > 0 ? (
+                <>
+                  <Slider {...eventSliderSettings}>
+                    {events.map((event, idx) => (
+                      <Box
+                        key={`${event.uuid}-${idx}`}
+                        position="relative"
+                        borderRadius="2xl"
+                        overflow="hidden"
+                        cursor="pointer"
+                        onClick={() => handleEventClick(event)}
+                        transition="transform 0.2s"
+                        _hover={{ transform: 'translateY(-4px)' }}
                       >
-                        다운로드
-                      </Button>
-                    </Box>
-                  ))}
-                </VStack>
+                        <Image
+                          src={
+                            photosMap[event.hotelId]?.length > 0
+                              ? photosMap[event.hotelId][0].photoUrl
+                              : '/assets/default-event.jpg'
+                          }
+                          alt={`${event.eventName || '이벤트'} 이미지`}
+                          w="100%"
+                          h="160px"
+                          objectFit="cover"
+                          fallbackSrc="/assets/default-event.jpg"
+                        />
+                        <Box
+                          position="absolute"
+                          top={0}
+                          left={0}
+                          right={0}
+                          bottom={0}
+                          bg="rgba(0, 0, 0, 0.5)" // 이미지 전체에 50% 블랙 필름
+                          zIndex={1} // 텍스트 위에 오도록 레이어 순서 조정
+                        />
+                        <Box position="absolute" top={4} right={4}>
+                          <Badge
+                            colorScheme="red"
+                            fontSize="md"
+                            px={3}
+                            py={1.5}
+                            borderRadius="full"
+                            bg="rgba(255,255,255,0.9)"
+                            boxShadow="md"
+                          >
+                            {event.discountType === 'fixed'
+                              ? `${(
+                                  event.discountValue || 0
+                                ).toLocaleString()}원 할인`
+                              : `${event.discountValue || 0}% 할인`}
+                          </Badge>
+                        </Box>
+                        <Box
+                          position="absolute"
+                          bottom={0}
+                          left={0}
+                          right={0}
+                          p={4}
+                          color="white"
+                        >
+                          <Flex direction="column" gap={2}>
+                            <Text fontSize="sm" fontWeight="500" opacity={0.9}>
+                              {event.hotelName} |{' '}
+                              {(event.applicableRoomTypes || []).join(', ') ||
+                                '모든 객실'}
+                            </Text>
+                            <Text
+                              fontSize="lg"
+                              fontWeight="700"
+                              lineHeight="1.2"
+                            >
+                              {event.eventName || '특가 이벤트'}
+                            </Text>
+                            <Text fontSize="sm" opacity={0.8} mt={1}>
+                              {event.startDate.replace(/-/g, '.')} ~{' '}
+                              {event.endDate.replace(/-/g, '.')}
+                            </Text>
+                          </Flex>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Slider>
+
+                  {/* 페이지 카운터 */}
+                  <Text
+                    position="absolute"
+                    bottom="12px"
+                    right="12px"
+                    fontSize="sm"
+                    color="gray.700"
+                    bg="whiteAlpha.800"
+                    px={2}
+                    py={1}
+                    borderRadius="md"
+                  >
+                    {currentEventIdx + 1}/{events.length}
+                  </Text>
+                </>
               ) : (
-                <Text color="gray.500" textAlign="center">
-                  사용 가능한 쿠폰이 없습니다.
+                <Text textAlign="center" color="gray.500" py={8}>
+                  현재 진행 중인 이벤트가 없습니다.
                 </Text>
               )}
-              <Button
-                w="100%"
-                colorScheme="blue"
-                size="md"
-                onClick={() => setIsCouponPanelOpen(true)}
-                borderRadius="lg"
-                bg="blue.600"
-                _hover={{ bg: 'blue.700' }}
-                mt={4}
-              >
-                쿠폰 보관함
-              </Button>
             </Box>
-          )}
+          </Box>
 
+          {/* 회사 정보 (ZeroToOne) */}
           <Box w="100%" mb={4}>
-            <Box
-              position="relative"
-              w="100%"
-              h="80px"
-              bg="gray.900"
-              borderRadius="lg"
-              overflow="hidden"
-              boxShadow="md"
-              cursor="pointer"
-              onClick={() => {
-                const button = document.getElementById('animation-button');
-                button.style.animation =
-                  'bounceAndDisappear 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
-
-                setTimeout(() => {
-                  navigate('/events');
-                }, 1300);
-              }}
-              id="animation-button"
-              _hover={{
-                transform: 'scale(1.02)',
-                boxShadow: '0 6px 16px rgba(159, 122, 234, 0.4)',
-              }}
-              _active={{
-                transform: 'scale(0.98)',
-              }}
-              sx={{
-                '@keyframes bounceAndDisappear': {
-                  '0%': { transform: 'scale(1)', opacity: 1 },
-                  '20%': {
-                    transform: 'scale(1.2) translateY(-20px)',
-                    opacity: 0.9,
-                  },
-                  '40%': {
-                    transform: 'scale(0.9) translateY(10px)',
-                    opacity: 0.8,
-                  },
-                  '60%': {
-                    transform: 'scale(1.1) translateY(-10px)',
-                    opacity: 0.7,
-                  },
-                  '80%': {
-                    transform: 'scale(0.8) translateY(5px)',
-                    opacity: 0.5,
-                  },
-                  '100%': { transform: 'scale(0)', opacity: 0 },
-                },
-              }}
-            >
-              <Box
-                position="absolute"
-                top={0}
-                left={0}
-                right={0}
-                bottom={0}
-                overflow="hidden"
-              >
-                <Box
-                  position="absolute"
-                  top={0}
-                  left={0}
-                  right={0}
-                  bottom={0}
-                  bgGradient="linear(to-r, purple.600, blue.400, teal.300)"
-                  animation="gradientMove 15s ease infinite"
-                  sx={{
-                    '@keyframes gradientMove': {
-                      '0%': { transform: 'scale(1.5) rotate(0deg)' },
-                      '50%': { transform: 'scale(1.8) rotate(180deg)' },
-                      '100%': { transform: 'scale(1.5) rotate(360deg)' },
-                    },
-                  }}
-                />
-
-                {[...Array(20)].map((_, i) => (
-                  <Box
-                    key={i}
-                    position="absolute"
-                    w={`${Math.random() * 100 + 50}px`}
-                    h={`${Math.random() * 100 + 50}px`}
-                    bg="rgba(255, 255, 255, 0.1)"
-                    backdropFilter="blur(5px)"
-                    borderRadius="lg"
-                    animation={`floatPattern${i} ${
-                      Math.random() * 10 + 15
-                    }s infinite linear`}
-                    sx={{
-                      top: `${Math.random() * 100}%`,
-                      left: `${Math.random() * 100}%`,
-                      transform: `rotate(${Math.random() * 360}deg)`,
-                      [`@keyframes floatPattern${i}`]: {
-                        '0%': {
-                          transform: `translate(0, 0) rotate(${
-                            Math.random() * 360
-                          }deg)`,
-                          opacity: Math.random() * 0.5 + 0.3,
-                        },
-                        '50%': {
-                          transform: `translate(${
-                            Math.random() * 100 - 50
-                          }px, ${Math.random() * 100 - 50}px) rotate(${
-                            Math.random() * 360
-                          }deg)`,
-                          opacity: Math.random() * 0.8 + 0.2,
-                        },
-                        '100%': {
-                          transform: `translate(0, 0) rotate(${
-                            Math.random() * 360
-                          }deg)`,
-                          opacity: Math.random() * 0.5 + 0.3,
-                        },
-                      },
-                    }}
-                  />
-                ))}
-
-                {[...Array(5)].map((_, i) => (
-                  <Box
-                    key={i}
-                    position="absolute"
-                    w="2px"
-                    h="100%"
-                    bg="white"
-                    opacity="0.3"
-                    animation={`lightBeam${i} ${
-                      Math.random() * 5 + 5
-                    }s infinite linear`}
-                    sx={{
-                      left: `${Math.random() * 100}%`,
-                      [`@keyframes lightBeam${i}`]: {
-                        '0%': {
-                          transform: 'translateY(-100%) rotate(45deg)',
-                          opacity: 0,
-                        },
-                        '50%': { opacity: 0.3 },
-                        '100%': {
-                          transform: 'translateY(100%) rotate(45deg)',
-                          opacity: 0,
-                        },
-                      },
-                    }}
-                  />
-                ))}
-
-                {[...Array(30)].map((_, i) => (
-                  <Box
-                    key={i}
-                    position="absolute"
-                    w="4px"
-                    h="4px"
-                    bg="white"
-                    borderRadius="full"
-                    animation={`particle${i} ${
-                      Math.random() * 20 + 10
-                    }s infinite linear`}
-                    sx={{
-                      top: `${Math.random() * 100}%`,
-                      left: `${Math.random() * 100}%`,
-                      [`@keyframes particle${i}`]: {
-                        '0%': {
-                          transform: 'scale(1) translate(0, 0)',
-                          opacity: Math.random() * 0.5 + 0.3,
-                        },
-                        '50%': {
-                          transform: `scale(${Math.random() + 0.5}) translate(${
-                            Math.random() * 200 - 100
-                          }px, ${Math.random() * 200 - 100}px)`,
-                          opacity: Math.random() * 0.8 + 0.2,
-                        },
-                        '100%': {
-                          transform: 'scale(1) translate(0, 0)',
-                          opacity: Math.random() * 0.5 + 0.3,
-                        },
-                      },
-                    }}
-                  />
-                ))}
-
-                <Box
-                  position="absolute"
-                  top="50%"
-                  left="50%"
-                  transform="translate(-50%, -50%)"
-                  textAlign="center"
-                  color="white"
-                  zIndex={2}
-                >
-                  <Text
-                    fontSize="xl"
-                    fontWeight="bold"
-                    mb={1}
-                    textShadow="0 1px 2px rgba(0,0,0,0.2)"
-                  >
-                    이벤트
-                  </Text>
-                  <Text
-                    fontSize="sm"
-                    opacity={0.9}
-                    textShadow="0 1px 2px rgba(0,0,0,0.2)"
-                  >
-                    클릭하여 이벤트 확인하기
-                  </Text>
-                </Box>
-              </Box>
-            </Box>
+            <VStack spacing={3} align="start">
+              <Image
+                src="/assets/ZeroToOne.svg"
+                alt="ZeroToOne 로고"
+                w="100px"
+                h="14px"
+              />
+              <Text fontSize="10px" color="gray.600">
+                주소: 경상남도 창원시 성산구 마디미로 61, 601호(상남동,
+                위드빌딩)
+                <br />
+                대표이사: 최정환 | 사업자등록번호: 835-87-03326
+              </Text>
+              <HStack spacing={2}>
+                <Text fontSize="11px" color="gray.600" cursor="pointer">
+                  이용약관
+                </Text>
+                <Text fontSize="11px" color="gray.600">
+                  │
+                </Text>
+                <Text fontSize="11px" color="gray.600" cursor="pointer">
+                  개인정보 처리방침
+                </Text>
+              </HStack>
+              <Text fontSize="10px" color="gray.600">
+                (주) 제로투원은 통신판매중개자로서 통신판매의 당사자가 아니며,
+                <br />
+                상품의 예약, 이용 및 환불 등과 관련한 의무와 책임은 각
+                판매자에게 있습니다.
+              </Text>
+            </VStack>
           </Box>
         </VStack>
       </Box>
 
-      {/* 쿠폰 보관함 드랍다운 패널 */}
+      {/* 쿠폰 패널 */}
       {isCouponPanelOpen && (
         <Box
           position="fixed"
-          top={0}
-          left={0}
-          right={0}
-          bottom={0}
+          inset={0}
           bg="blackAlpha.600"
-          zIndex={98}
           onClick={() => setIsCouponPanelOpen(false)}
-          backdropFilter="blur(4px)"
         />
       )}
       <SlideFade in={isCouponPanelOpen} offsetY="-20px">
         <Box
           position="fixed"
           top="60px"
-          left={0}
-          right={0}
+          left={4}
+          right={4}
           bg="white"
-          zIndex={99}
-          boxShadow="md"
+          borderRadius="lg"
+          boxShadow="lg"
+          p={4}
           maxH="50vh"
           overflowY="auto"
-          borderBottomRadius="xl"
-          p={4}
-          mx={4}
         >
-          <Flex justify="space-between" align="center" mb={4}>
-            <Text fontSize="lg" fontWeight="bold">
-              쿠폰 보관함
-            </Text>
-            <Button
-              size="sm"
-              onClick={() => setIsCouponPanelOpen(false)}
-              variant="ghost"
-            >
-              닫기
-            </Button>
-          </Flex>
-          {isCouponsLoading ? (
-            <Text color="gray.500" textAlign="center">
-              쿠폰 로드 중...
-            </Text>
-          ) : customerCoupons.length === 0 ? (
-            <Text color="gray.500" textAlign="center">
-              보유한 쿠폰이 없습니다.
-            </Text>
-          ) : (
-            <VStack spacing={3}>
-              {customerCoupons.map((coupon) => (
-                <Box
-                  key={coupon.couponUuid}
-                  bg="gray.50"
-                  p={3}
-                  rounded="lg"
-                  w="100%"
-                  borderTop="1px dashed"
-                  borderColor="gray.300"
-                >
-                  <Text fontWeight="bold" color="gray.800">
-                    {coupon.name}
-                  </Text>
-                  <Text fontSize="sm" color="gray.600">
-                    코드: {coupon.code}
-                  </Text>
-                  <Text fontSize="sm" color="gray.600">
+          <VStack align="stretch" spacing={3}>
+            {/* 쿠폰 리스트 */}
+            {isCouponsLoading ? (
+              <Text>쿠폰 로드 중...</Text>
+            ) : customerCoupons.length ? (
+              customerCoupons.map((c) => (
+                <Box key={c.couponUuid} p={3} bg="gray.50" borderRadius="md">
+                  <Text fontWeight="bold">{c.name}</Text>
+                  <Text fontSize="sm">코드: {c.code}</Text>
+                  <Text fontSize="sm">
                     할인:{' '}
-                    {coupon.discountType === 'percentage'
-                      ? `${coupon.discountValue}%`
-                      : `${coupon.discountValue.toLocaleString()}원`}
+                    {c.discountType === 'percentage'
+                      ? `${c.discountValue}%`
+                      : `₩${c.discountValue.toLocaleString()}`}
                   </Text>
-                  <Text fontSize="sm" color="gray.600">
-                    유효 기간: {coupon.startDate} ~ {coupon.endDate}
-                  </Text>
-                  <Text
-                    fontSize="sm"
-                    color={coupon.used ? 'red.500' : 'green.500'}
-                  >
-                    상태: {coupon.used ? '사용됨' : '사용 가능'}
+                  <Text fontSize="sm">
+                    유효기간: {c.startDate} ~ {c.endDate}
                   </Text>
                 </Box>
-              ))}
-              <Button
-                w="100%"
-                colorScheme="blue"
-                size="sm"
-                onClick={() => {
-                  setIsCouponPanelOpen(false);
-                  setTimeout(() => navigate('/coupon-wallet'), 300);
-                }}
-                borderRadius="lg"
-                bg="blue.600"
-                _hover={{ bg: 'blue.700' }}
-              >
-                쿠폰 보관함으로 이동
-              </Button>
-            </VStack>
-          )}
+              ))
+            ) : (
+              <Text>보유한 쿠폰이 없습니다.</Text>
+            )}
+            <Button
+              w="full"
+              mt={2}
+              colorScheme="blue"
+              onClick={() => navigate('/coupon-wallet')}
+            >
+              쿠폰 보관함 이동
+            </Button>
+          </VStack>
         </Box>
       </SlideFade>
 
-      {/* 하단 네비게이션 바 - 고정 위치 */}
+      {/* 하단 네비게이션 */}
       <Box
         position="fixed"
         bottom={0}
         left={0}
         right={0}
-        zIndex={100}
-        pb="env(safe-area-inset-bottom)"
+        bg="white"
+        boxShadow="md"
       >
         <BottomNavigation />
       </Box>

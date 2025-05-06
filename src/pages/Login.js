@@ -184,7 +184,7 @@ const Login = () => {
                   </Box>
                 }
                 w="100%"
-                maxW="326px" // Button max width: 326px (ensures responsiveness)
+                maxW="346px" // Button max width: 346px (ensures responsiveness)
                 h="56px" // Button height: 56px
                 mx="auto" // Centers the button horizontally
                 bg="#FEE500"
