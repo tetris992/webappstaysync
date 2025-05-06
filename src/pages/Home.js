@@ -401,6 +401,17 @@ const Home = () => {
     });
   };
 
+  const hotelSliderSettings = {
+    dots: false,
+    infinite: true,
+    speed: 400,
+    slidesToShow: 2.1,
+    slidesToScroll: 1,
+    arrows: false,
+    centerMode: true,
+    centerPadding: '16px',
+  };
+
   const eventSliderSettings = {
     dots: false,
     infinite: false,
@@ -615,49 +626,84 @@ const Home = () => {
             </VStack>
           </Box>
 
-          {/* 추천 호텔 */}
-          <Box px={0}>
-            <Text fontWeight="bold" mb={2}>
-              추천 호텔
-            </Text>
-            <Box overflowX="auto">
-              <HStack spacing="20px" pl={0} pr={0}>
-                {(loadingHotels ? recommendedHotels : hotels).map((hotel) => (
-                  <Box
-                    key={hotel.id}
-                    w="200px"
-                    cursor="pointer"
-                    onClick={() => navigate('/hotels')}
-                  >
-                    <Image
-                      src={
-                        photosMap[hotel.hotelId]?.length > 0
-                          ? photosMap[hotel.hotelId][0].photoUrl
-                          : '/assets/default-hotel.jpg'
-                      }
-                      alt={hotel.name}
-                      h="180px"
-                      w="100%"
-                      objectFit="cover"
-                      borderRadius="lg"
-                      fallbackSrc="/assets/default-hotel.jpg"
-                    />
-                    <VStack align="start" mt={2} spacing={0}>
-                      <Text fontWeight="bold">{hotel.name}</Text>
-                      <Text fontSize="sm" color="gray.600" noOfLines={1}>
-                        {hotel.address.length > 10
-                          ? hotel.address.slice(0, 10) + '...'
-                          : hotel.address}
-                      </Text>
-                      <Text fontWeight="bold">
-                        ₩{hotel.price.toLocaleString()} / 박
-                      </Text>
-                    </VStack>
-                  </Box>
-                ))}
-              </HStack>
-            </Box>
+{/* 추천 호텔 */}
+<Box
+  px={0}
+  overflow="hidden"
+  css={{
+    '.slick-list': {
+      paddingLeft: 0, // remove any built-in left gutter
+    },
+  }}
+>
+  <Text fontWeight="bold" mb={2}>
+    추천 호텔
+  </Text>
+  <Slider {...hotelSliderSettings}>
+    {(loadingHotels ? recommendedHotels : hotels).map((hotel) => {
+      // API 로 받은 경우 hotel.hotelName, 더미일 땐 hotel.name
+      const displayName = hotel.hotelName || hotel.name;
+      // 해당 호텔에 이벤트가 있는지 체크
+      const evt = events.find((e) => e.hotelId === hotel.hotelId);
+
+      return (
+        <Box
+          key={hotel.id}
+          cursor="pointer"
+          onClick={() => navigate('/hotels')}
+          px={2}
+        >
+          <Box w="100%" borderRadius="lg" overflow="hidden" position="relative">
+            <Image
+              src={
+                photosMap[hotel.hotelId]?.[0]?.photoUrl ||
+                '/assets/default-hotel.jpg'
+              }
+              alt={displayName}
+              h="180px"
+              w="100%"
+              objectFit="cover"
+            />
+            {evt && (
+              <Badge
+                position="absolute"
+                top="2"
+                right="2"
+                colorScheme="red"
+                fontSize="xs"
+                px={2}
+                py={1}
+                borderRadius="full"
+                zIndex={2}
+              >
+                {evt.discountType === 'fixed'
+                  ? `₩${evt.discountValue.toLocaleString()}`
+                  : `${evt.discountValue}%`}
+              </Badge>
+            )}
           </Box>
+          <VStack align="start" mt={2} spacing={1}>
+            {/* 호텔 이름 */}
+            <Text fontSize="md" fontWeight="bold" noOfLines={1}>
+              {displayName}
+            </Text>
+            {/* 주소 */}
+            <Text fontSize="sm" color="gray.600" noOfLines={1}>
+              {hotel.address.length > 10
+                ? hotel.address.slice(0, 10) + '…'
+                : hotel.address}
+            </Text>
+            {/* 가격 */}
+            <Text fontWeight="bold">
+              ₩{hotel.price.toLocaleString()} / 박
+            </Text>
+          </VStack>
+        </Box>
+      );
+    })}
+  </Slider>
+</Box>
+
 
           {/* 이벤트 섹션 */}
           <Box w="100%" mb={4}>
@@ -701,10 +747,10 @@ const Home = () => {
                           left={0}
                           right={0}
                           bottom={0}
-                          bg="rgba(0, 0, 0, 0.5)" // 이미지 전체에 50% 블랙 필름
-                          zIndex={1} // 텍스트 위에 오도록 레이어 순서 조정
+                          bg="rgba(0, 0, 0, 0.5)"
+                          zIndex={1}
                         />
-                       <Box position="absolute" top={4} right={4} zIndex={2}>
+                        <Box position="absolute" top={4} right={4} zIndex={2}>
                           <Badge
                             colorScheme="red"
                             fontSize="md"
@@ -729,7 +775,7 @@ const Home = () => {
                           right={0}
                           p={4}
                           color="white"
-                          zIndex={2} 
+                          zIndex={2}
                         >
                           <Flex direction="column" gap={2}>
                             <Text fontSize="sm" fontWeight="500" opacity={0.9}>
