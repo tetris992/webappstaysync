@@ -11,6 +11,8 @@ import {
   SlideFade,
   IconButton,
   Badge,
+  Image,
+  HStack,
 } from '@chakra-ui/react';
 import { BellIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -136,13 +138,13 @@ const MyInfo = () => {
       pt="env(safe-area-inset-top)"
       pb="env(safe-area-inset-bottom)"
     >
-{/* 상단바 - 고정 위치 */}
-<Box
+      {/* 상단바 - 고정 위치 */}
+      <Box
         bg="white"
         borderBottom="1px solid"
         borderColor="gray.200"
         width="100%"
-        pt={5} // 상단 여백 (Safe Area와 별개로 타이틀 위 여백 확보)
+        pt={5}
         pb={3}
         position="fixed"
         top={0}
@@ -161,8 +163,8 @@ const MyInfo = () => {
         flex="1"
         overflowY="auto"
         overflowX="hidden"
-        pt="70px" // 상단바 높이 고려
-        pb="240px" // 하단 네비게이션 바 높이 + 여유분
+        pt="70px"
+        pb="240px"
         css={{
           WebkitOverflowScrolling: 'touch',
           '&::-webkit-scrollbar': {
@@ -180,16 +182,16 @@ const MyInfo = () => {
         <VStack spacing={6} align="stretch" px={4}>
           {/* 사용자 정보 */}
           <Box bg="white" p={4} rounded="lg" shadow="sm">
-            <Heading size="md" mb={4}>
+            <Heading fontSize="14px" mb={4}>
               사용자 정보
             </Heading>
-            <Text fontSize="md" color="gray.600">
+            <Text fontSize="sm" color="gray.600">
               이름: {customer.name || '정보 없음'}
             </Text>
-            <Text fontSize="md" color="gray.600">
+            <Text fontSize="sm" color="gray.600">
               이메일: {customer.email || '정보 없음'}
             </Text>
-            <Text fontSize="md" color="gray.600">
+            <Text fontSize="sm" color="gray.600">
               전화번호: {customer.phoneNumber || '정보 없음'}
             </Text>
           </Box>
@@ -197,7 +199,7 @@ const MyInfo = () => {
           {/* 나의 쿠폰 */}
           <Box bg="white" p={4} rounded="lg" shadow="sm">
             <Flex align="center" justify="space-between" mb={4}>
-              <Heading size="md">나의 쿠폰</Heading>
+              <Heading fontSize="14px">나의 쿠폰</Heading>
               <Box position="relative">
                 <IconButton
                   icon={<BellIcon />}
@@ -241,10 +243,10 @@ const MyInfo = () => {
 
           {/* 예약 요약 */}
           <Box bg="white" p={4} rounded="lg" shadow="sm">
-            <Heading size="md" mb={4}>
+            <Heading fontSize="14px" mb={4}>
               예약 요약
             </Heading>
-            <Text fontSize="md" color="gray.600">
+            <Text fontSize="sm" color="gray.600">
               최근 예약 건수: 0건 (상세 데이터는 나의 예약에서 확인)
             </Text>
             <Button
@@ -261,34 +263,15 @@ const MyInfo = () => {
             </Button>
           </Box>
 
-          {/* 약관 및 정책 */}
-          <Box bg="white" p={4} rounded="lg" shadow="sm">
-            <Heading size="md" mb={4}>
-              약관 및 정책
-            </Heading>
-            <Button
-              as={Link}
-              to="/consent"
-              w="100%"
-              colorScheme="gray"
-              size="sm"
-              variant="outline"
-              borderRadius="lg"
-              mb={2}
-            >
-              개인정보처리방침 및 서비스 이용약관
-            </Button>
-          </Box>
-
           {/* 고객센터 */}
           <Box bg="white" p={4} rounded="lg" shadow="sm">
-            <Heading size="md" mb={4}>
+            <Heading fontSize="14px" mb={4}>
               고객센터
             </Heading>
-            <Text fontSize="md" color="gray.600">
+            <Text fontSize="sm" color="gray.600">
               문의: help@danjam.com
             </Text>
-            <Text fontSize="md" color="gray.600">
+            <Text fontSize="sm" color="gray.600">
               전화: 123-456-7890 (평일 09:00 - 18:00)
             </Text>
           </Box>
@@ -298,13 +281,54 @@ const MyInfo = () => {
             <Button
               w="100%"
               colorScheme="red"
-              size="md"
+              size="sm"
               onClick={handleLogout}
               borderRadius="lg"
             >
               로그아웃
             </Button>
           </Box>
+
+          {/* 회사 정보 (ZeroToOne) */}
+          <Flex justify="center" w="100%" mb={8}>
+            <Box maxW="sm" w="90%">
+              <VStack spacing={3} align="left">
+                <Image
+                  src="/assets/ZeroToOne.svg"
+                  alt="ZeroToOne 로고"
+                  w="100px"
+                  h="14px"
+                />
+                <Text fontSize="10px" color="gray.600">
+                  주소: 경상남도 창원시 성산구 마디미로 61, 601호(상남동,
+                  위드빌딩)
+                  <br />
+                  대표이사: 최정환 | 사업자등록번호: 835-87-03326
+                </Text>
+                <HStack spacing={2}>
+                  <Link to="/terms">
+                    <Text fontSize="11px" color="gray.600" cursor="pointer">
+                      이용약관
+                    </Text>
+                  </Link>
+                  <Text fontSize="11px" color="gray.600">
+                    │
+                  </Text>
+                  <Link to="/consent">
+                    <Text fontSize="11px" color="gray.600" cursor="pointer">
+                      개인정보 처리방침
+                    </Text>
+                  </Link>
+                </HStack>
+                <Text fontSize="10px" color="gray.600">
+                  (주) 제로투원은 통신판매중개자로서 통신판매의 당사자가 아니며,
+                  <br />
+                  상품의 예약, 이용 및 환불 등과 관련한 의무와 책임은 각
+                  판매자에게 있습니다.
+                </Text>
+              </VStack>
+            </Box>
+          </Flex>
         </VStack>
       </Box>
 
