@@ -440,6 +440,7 @@ const Home = () => {
       state: {
         checkIn: adjustedCheckIn,
         checkOut: adjustedCheckOut,
+        guestCount,
         applicableRoomTypes: event.applicableRoomTypes || [],
         discountType: event.discountType,
         discountValue: event.discountValue,
@@ -697,7 +698,22 @@ const Home = () => {
                   <Box
                     key={hotel.id}
                     cursor="pointer"
-                    onClick={() => navigate('/hotels')}
+                    onClick={() =>
+                      hotel.hotelId &&
+                      navigate(`/rooms/${hotel.hotelId}`, {
+                        state: {
+                          checkIn: format(
+                            dateRange[0].startDate,
+                            'yyyy-MM-dd'
+                          ),
+                          checkOut: format(
+                            dateRange[0].endDate,
+                            'yyyy-MM-dd'
+                          ),
+                          guestCount,
+                        },
+                      })
+                    }
                     px={2}
                   >
                     <Box
