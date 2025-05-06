@@ -1192,111 +1192,117 @@ const handleApplyCoupon = (roomInfo, coupon) => {
       bottom={0}
       overflowX="hidden"
     >
-      <Box
-        w="100%"
-        py={3}
-        px={{ base: 2, sm: 3 }}
-        bg="white"
-        position="sticky"
-        top={0}
-        zIndex={2}
-        borderBottom="1px solid"
-        borderColor="gray.200"
-        boxShadow="sm"
+<Box
+  w="100%"
+  py={3}
+  px={{ base: 2, sm: 3 }}
+  bg="white"
+  position="sticky"
+  top={0}
+  zIndex={2}
+  borderBottom="1px solid"
+  borderColor="gray.200"
+  boxShadow="sm"
+>
+  <Flex align="center" justify="space-between" flexWrap="nowrap">
+    {/* 왼쪽: 뒤로 가기 */}
+    <IconButton
+      icon={<ArrowBackIcon />}
+      variant="ghost"
+      onClick={() => navigate(-1)}
+      aria-label="뒤로 가기"
+      color="gray.700"
+      mr={2}
+    />
+
+    {/* 가운데: 호텔 이름 + 지도 아이콘 */}
+    <Flex align="center" mx="auto">
+      <Text
+        fontSize={{ base: 'lg', md: '2xl' }}
+        fontWeight="700"
+        color="gray.900"
+        maxW={{ base: '200px', md: '250px' }}
+        whiteSpace="nowrap"
+        overflow="hidden"
+        textOverflow="ellipsis"
+        px={2}
       >
-        <Flex align="center" justify="space-between" flexWrap="nowrap">
-          <Flex align="center" maxWidth={{ base: '60%', md: '70%' }}>
-            <IconButton
-              icon={<ArrowBackIcon />}
-              variant="ghost"
-              onClick={() => navigate(-1)}
-              aria-label="뒤로 가기"
-              color="gray.700"
-              mr={2}
-            />
-            <Text
-              fontSize={{ base: 'lg', md: '2xl' }}
-              fontWeight="700"
-              color="gray.900"
-              whiteSpace="nowrap"
-              overflow="hidden"
-              textOverflow="ellipsis"
-            >
-              {hotelSettings?.hotelName || '객실 선택'}
-            </Text>
-            {hotelSettings && (
-              <Button
-                variant="ghost"
-                color="gray.700"
-                onClick={handleAddressClick}
-                _hover={{ color: 'blue.500', bg: 'blue.50' }}
-                size="sm"
-                ml={2}
-                p={0}
-              >
-                <FaMapMarkerAlt size={14} />
-              </Button>
-            )}
-          </Flex>
-          <HStack spacing={2}>
-            <Button
-              variant="solid"
-              colorScheme="gray"
-              size="sm"
-              fontWeight="400"
-              fontSize={{ base: 'sm', md: 'md' }}
-              onClick={() => {
-                const next =
-                  sortMode === 'event'
-                    ? 'asc'
-                    : sortMode === 'asc'
-                    ? 'desc'
-                    : 'event';
-                let sorted;
-                if (next === 'event') {
-                  sorted = [...availableRooms].sort((a, b) => {
-                    const ea = a.eventName ? 1 : 0;
-                    const eb = b.eventName ? 1 : 0;
-                    if (ea !== eb) return eb - ea;
-                    const aDiscount = a.fixedDiscount || a.discount || 0;
-                    const bDiscount = b.fixedDiscount || b.discount || 0;
-                    return bDiscount - aDiscount;
-                  });
-                } else if (next === 'asc') {
-                  sorted = [...availableRooms].sort(
-                    (a, b) => a.dayStayPrice - b.dayStayPrice
-                  );
-                } else {
-                  sorted = [...availableRooms].sort(
-                    (a, b) => b.dayStayPrice - b.dayStayPrice
-                  );
-                }
-                setAvailableRooms(sorted);
-                setSortMode(next);
-                const labels = {
-                  event: '이벤트 우선 정렬',
-                  asc: '가격 낮은순 정렬',
-                  desc: '가격 높은순 정렬',
-                };
-                toast({
-                  title: labels[next],
-                  status: 'success',
-                  duration: 2000,
-                  isClosable: true,
-                });
-              }}
-              _hover={{ bg: 'gray.300' }}
-              whiteSpace="nowrap"
-            >
-              {sortMode === 'event'
-                ? '이벤트'
-                : sortMode === 'asc'
-                ? '가격 낮은순'
-                : '가격 높은순'}
-            </Button>
-          </HStack>
-        </Flex>
-      </Box>
+        {hotelSettings?.hotelName || '객실 선택'}
+      </Text>
+      {hotelSettings && (
+        <IconButton
+          icon={<FaMapMarkerAlt size={16} />}
+          variant="ghost"
+          onClick={handleAddressClick}
+          aria-label="지도 보기"
+          color="gray.700"
+          ml={1}
+          p={1}
+        />
+      )}
+    </Flex>
+
+    {/* 오른쪽: 정렬 버튼 */}
+    <HStack spacing={2}>
+      <Button
+        variant="solid"
+        colorScheme="gray"
+        size="sm"
+        fontWeight="400"
+        fontSize={{ base: 'sm', md: 'md' }}
+        onClick={() => {
+          const next =
+            sortMode === 'event'
+              ? 'asc'
+              : sortMode === 'asc'
+              ? 'desc'
+              : 'event';
+          let sorted;
+          if (next === 'event') {
+            sorted = [...availableRooms].sort((a, b) => {
+              const ea = a.eventName ? 1 : 0;
+              const eb = b.eventName ? 1 : 0;
+              if (ea !== eb) return eb - ea;
+              const aDiscount = a.fixedDiscount || a.discount || 0;
+              const bDiscount = b.fixedDiscount || b.discount || 0;
+              return bDiscount - aDiscount;
+            });
+          } else if (next === 'asc') {
+            sorted = [...availableRooms].sort(
+              (a, b) => a.dayStayPrice - b.dayStayPrice
+            );
+          } else {
+            sorted = [...availableRooms].sort(
+              (a, b) => b.dayStayPrice - a.dayStayPrice
+            );
+          }
+          setAvailableRooms(sorted);
+          setSortMode(next);
+          const labels = {
+            event: '이벤트 우선 정렬',
+            asc: '가격 낮은순 정렬',
+            desc: '가격 높은순 정렬',
+          };
+          toast({
+            title: labels[next],
+            status: 'success',
+            duration: 2000,
+            isClosable: true,
+          });
+        }}
+        _hover={{ bg: 'gray.300' }}
+        whiteSpace="nowrap"
+      >
+        {sortMode === 'event'
+          ? '이벤트'
+          : sortMode === 'asc'
+          ? '가격 낮은순'
+          : '가격 높은순'}
+      </Button>
+    </HStack>
+  </Flex>
+</Box>
+
 
       <Box
         w="100%"
