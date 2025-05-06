@@ -704,7 +704,7 @@ const Home = () => {
                           bg="rgba(0, 0, 0, 0.5)" // 이미지 전체에 50% 블랙 필름
                           zIndex={1} // 텍스트 위에 오도록 레이어 순서 조정
                         />
-                        <Box position="absolute" top={4} right={4}>
+                       <Box position="absolute" top={4} right={4} zIndex={2}>
                           <Badge
                             colorScheme="red"
                             fontSize="md"
@@ -713,6 +713,7 @@ const Home = () => {
                             borderRadius="full"
                             bg="rgba(255,255,255,0.9)"
                             boxShadow="md"
+                            zIndex={3}
                           >
                             {event.discountType === 'fixed'
                               ? `${(
@@ -728,6 +729,7 @@ const Home = () => {
                           right={0}
                           p={4}
                           color="white"
+                          zIndex={2} 
                         >
                           <Flex direction="column" gap={2}>
                             <Text fontSize="sm" fontWeight="500" opacity={0.9}>
