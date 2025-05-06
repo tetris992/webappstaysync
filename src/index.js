@@ -27,3 +27,13 @@ root.render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+// --- PWA: Service Worker 등록 ---
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')   // public/sw.js 또는 빌드된 서비스워커 파일 경로
+      .then(reg => console.log('🟢 ServiceWorker registered:', reg.scope))
+      .catch(err => console.error('🔴 SW registration failed:', err));
+  });
+}

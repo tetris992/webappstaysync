@@ -644,7 +644,7 @@ const Home = () => {
             </Text>
           )}
           {/* 액션 섹션 */}
-          <Box bg="transparent" pt={8} px={8} pb={0} borderRadius="lg">
+          <Box bg="transparent" pt={8} px={2} pb={0} borderRadius="lg">
             <VStack spacing={4} align="stretch" px={4} pt={1} pb={0}>
               <Button
                 size="lg"
@@ -652,7 +652,7 @@ const Home = () => {
                 borderRadius="50px"
                 onClick={handleRebookFavorite}
               >
-                단골 숙소예약
+                단골 숙소 예약
               </Button>
               <Text
                 fontSize="sm"
@@ -689,26 +689,33 @@ const Home = () => {
             </Text>
             <Slider {...hotelSliderSettings}>
               {(loadingHotels ? recommendedHotels : hotels).map((hotel) => {
-                // API 로 받은 경우 hotel.hotelName, 더미일 땐 hotel.name
+                // key 에는 더미 데이터(id) 또는 API 데이터(hotelId)를 사용
+                const hotelKey = loadingHotels ? hotel.id : hotel.hotelId;
                 const displayName = hotel.hotelName || hotel.name;
-                // 해당 호텔에 이벤트가 있는지 체크
                 const evt = events.find((e) => e.hotelId === hotel.hotelId);
 
                 return (
                   <Box
-                    key={hotel.id}
+                    key={hotelKey}
                     cursor="pointer"
-                    onClick={() =>
-                      hotel.hotelId &&
-                      navigate(`/rooms/${hotel.hotelId}`, {
-                        state: {
-                          checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
-                          checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
-                          guestCount,
-                        },
-                      })
-                    }
                     px={2}
+                    onClick={() => {
+                      if (hotel.hotelId) {
+                        navigate(`/rooms/${hotel.hotelId}`, {
+                          state: {
+                            checkIn: format(
+                              dateRange[0].startDate,
+                              'yyyy-MM-dd'
+                            ),
+                            checkOut: format(
+                              dateRange[0].endDate,
+                              'yyyy-MM-dd'
+                            ),
+                            guestCount,
+                          },
+                        });
+                      }
+                    }}
                   >
                     <Box
                       w="100%"

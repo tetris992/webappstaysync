@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+      "target": "es6",
+      "lib": [
+        "es6",
+        "dom",
+        "webworker"
+      ],
+      "allowJs": true,
+      "checkJs": false
+    },
+    "include": [
+      "src",
+      "public/sw.js"
+    ]
+  }
+  

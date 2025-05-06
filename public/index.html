@@ -2,38 +2,36 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+
+  <!-- 모바일 화면 설정 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#ffffff" />
+
+  <!-- PWA 매니페스트 -->
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+  <!-- iOS 홈스크린에 웹앱처럼 띄우기 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <!-- 파비콘 (브라우저 탭) -->
+  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" type="image/x-icon" />
+
+  <!-- iOS 용 앱 아이콘 -->
+  <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="%PUBLIC_URL%/icons/icon-512.png" />
+
   <title>Danjam</title>
-  <!-- Kakao SDK (JavaScript 키 사용하여 프론트 초기화) -->
+
+  <!-- (기존) Kakao / Naver / Google SDK, 폰트 등 -->
   <script src="https://developers.kakao.com/sdk/js/kakao.min.js"></script>
-  <!-- Naver SDK -->
-  <!-- Google SDK -->
-  <!-- Chakra UI 폰트 및 초기 스타일 (필수 추가) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- … -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
-    * {
-      -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      position: fixed;
-      width: 100%;
-      height: 100%;
-      overscroll-behavior: none;
-    }
-    #root {
-      height: 100%;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-    }
+    /* 터치/스크롤 최적화 스타일 */
+    * { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+    body { margin:0; padding:0; overflow:hidden; position:fixed; width:100%; height:100%; overscroll-behavior:none; }
+    #root { height:100%; overflow:auto; -webkit-overflow-scrolling: touch; }
   </style>
 </head>
 <body>
