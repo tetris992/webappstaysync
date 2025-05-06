@@ -41,6 +41,7 @@ import {
   fetchHotelList,
   fetchHotelPhotos,
   fetchCustomerHotelSettings,
+  getReservationHistory,
 } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
@@ -101,6 +102,51 @@ const Home = () => {
   const [error, setError] = useState(null);
   const [isCouponPanelOpen, setIsCouponPanelOpen] = useState(false);
   const [currentEventIdx, setCurrentEventIdx] = useState(0);
+
+  // “단골 숙소예약” 클릭 시: 가장 최근 예약을 불러와 오늘→내일 1박 일정으로 객실선택 페이지로 이동
+  const handleRebookFavorite = async () => {
+    try {
+      const resp = await getReservationHistory();
+      const reservations = resp.history;
+      if (!reservations || reservations.length === 0) {
+        return toast({
+          title: '예약 이력 없음',
+          description: '지난 예약 내역이 없습니다.',
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+      const last = reservations[0];
+      if (!last || !last.hotelId) {
+        return toast({
+          title: '예약 데이터 오류',
+          description: '최근 예약의 호텔 정보를 찾을 수 없습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+      const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
+      const tomorrow = format(addDays(startOfDay(new Date()), 1), 'yyyy-MM-dd');
+      navigate(`/rooms/${last.hotelId}`, {
+        state: {
+          checkIn: today,
+          checkOut: tomorrow,
+          guestCount: last.guestCount || 1,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: '단골 숙소 예약 실패',
+        description: error.message || '다시 시도해주세요.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
 
   // Socket.io 연결 및 쿠폰 이벤트
   useEffect(() => {
@@ -597,16 +643,15 @@ const Home = () => {
             </Text>
           )}
           {/* 액션 섹션 */}
-          <Box bg="transparent" p={8} borderRadius="lg"     pb={0} >
-            {/* 액션 섹션 */}
-            <VStack spacing={4} align="stretch" px={4} py={4}>
+          <Box bg="transparent" pt={8} px={8} pb={0} borderRadius="lg">
+            <VStack spacing={4} align="stretch" px={4} pt={4} pb={0}>
               <Button
                 size="lg"
                 colorScheme="blue"
                 borderRadius="50px"
-                onClick={() => navigate('/past-bookings')}
+                onClick={handleRebookFavorite}
               >
-                단골들을 위한 숙소예약
+                단골 숙소예약
               </Button>
               <Text
                 fontSize="sm"
