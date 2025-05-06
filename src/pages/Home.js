@@ -499,7 +499,7 @@ const Home = () => {
           <Image
             src="/assets/Logo.svg"
             alt="단잠"
-            h="36px"
+            h="28px"
             cursor="pointer"
             onClick={() => navigate('/')}
           />
