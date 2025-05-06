@@ -575,7 +575,7 @@ const Home = () => {
         overflowY="auto"
         overflowX="hidden"
         mt="72px"
-        mb="180px"
+        mb="80px"
         css={{ WebkitOverflowScrolling: 'touch' }}
         boxShadow="inset 0 7px 9px -7px rgba(0,0,0,0.1)"
       >
