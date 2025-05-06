@@ -597,16 +597,16 @@ const Home = () => {
             </Text>
           )}
           {/* 액션 섹션 */}
-          <Box bg="white" p={8} borderRadius="lg">
+          <Box bg="transparent" p={8} borderRadius="lg"     pb={0} >
             {/* 액션 섹션 */}
-            <VStack spacing={4} align="stretch" px={4} py={8}>
+            <VStack spacing={4} align="stretch" px={4} py={4}>
               <Button
                 size="lg"
                 colorScheme="blue"
                 borderRadius="50px"
                 onClick={() => navigate('/past-bookings')}
               >
-                지난 숙소 재예약
+                단골들을 위한 숙소예약
               </Button>
               <Text
                 fontSize="sm"
