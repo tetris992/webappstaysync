@@ -6,7 +6,7 @@ import {
   Button,
   Flex,
   IconButton,
-  Icon,
+  // Icon,
   Badge,
   Collapse,
   AspectRatio,
@@ -16,7 +16,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import {
   FaHeart,
   FaRegHeart,
-  FaMapMarkerAlt,
+  // FaMapMarkerAlt,
   FaCopy,
   FaRoute,
 } from 'react-icons/fa';
@@ -189,7 +189,7 @@ const HotelCard = ({
           </Flex>
 
           <Flex align="center" gap={2}>
-            <Icon as={FaMapMarkerAlt} color="gray.500" boxSize={4} />
+            {/* <Icon as={FaMapMarkerAlt} color="gray.500" boxSize={4} /> */}
             <Text
               fontSize="sm"
               color="gray.600"
@@ -209,8 +209,17 @@ const HotelCard = ({
               size="sm"
               onClick={() => handleCopyAddress(hotel.address)}
               aria-label="주소 복사"
-              color="gray.500"
+              color="gray.400"
             />
+            <Button
+              size="sm"
+              variant="ghost"
+              color="blue.400"
+              borderRadius="full"
+              flex="1"
+              leftIcon={<FaRoute />}
+              onClick={() => handleTMapNavigation(hotel)}
+            ></Button>
           </Flex>
 
           {/* 지도 슬라이드 영역 */}
@@ -247,23 +256,12 @@ const HotelCard = ({
           <Flex justify="space-between" align="center" gap={2} mt={2}>
             <Button
               size="md"
-              variant="outline"
-              colorScheme="gray"
-              borderRadius="full"
-              flex="1"
-              leftIcon={<FaRoute />}
-              onClick={() => handleTMapNavigation(hotel)}
-            >
-              길찾기
-            </Button>
-            <Button
-              size="md"
               colorScheme="blue"
               borderRadius="full"
               flex="2"
               onClick={() => onOpenGallery(hotel.photos)}
             >
-              자세히 보기
+              호텔 사진 더보기
             </Button>
           </Flex>
         </Flex>

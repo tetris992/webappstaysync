@@ -657,7 +657,7 @@ const HotelList = ({ loadHotelSettings }) => {
                   h="300px"
                   w="100%"
                   objectFit="cover"
-                  borderRadius="lg"
+                  borderRadius="5px"
                   fallbackSrc="/assets/default-hotel.jpg"
                 />
               ))}
