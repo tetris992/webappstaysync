@@ -489,7 +489,7 @@ const Home = () => {
         top={0}
         left={0}
         right={0}
-        bg="white"
+           bg="white"
         boxShadow="sm"
         zIndex={100}
         px={5}
@@ -599,7 +599,7 @@ const Home = () => {
           top="50%"
           left="50%"
           transform="translate(-50%,-50%)"
-          bg="white"
+             bg="white"
           p={4}
           borderRadius="xl"
           boxShadow="xl"
@@ -942,7 +942,7 @@ const Home = () => {
           top="60px"
           left={4}
           right={4}
-          bg="white"
+             bg="white"
           borderRadius="lg"
           boxShadow="lg"
           p={4}
@@ -990,7 +990,7 @@ const Home = () => {
         bottom={0}
         left={0}
         right={0}
-        bg="white"
+           bg="white"
         boxShadow="md"
       >
         <BottomNavigation />
