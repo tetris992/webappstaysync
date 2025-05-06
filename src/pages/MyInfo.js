@@ -182,7 +182,7 @@ const MyInfo = () => {
         <VStack spacing={6} align="stretch" px={4}>
           {/* 사용자 정보 */}
           <Box bg="white" p={4} rounded="lg" shadow="sm">
-            <Heading fontSize="14px" mb={4}>
+            <Heading fontSize="16px" mb={4}>
               사용자 정보
             </Heading>
             <Text fontSize="sm" color="gray.600">
@@ -199,7 +199,7 @@ const MyInfo = () => {
           {/* 나의 쿠폰 */}
           <Box bg="white" p={4} rounded="lg" shadow="sm">
             <Flex align="center" justify="space-between" mb={4}>
-              <Heading fontSize="14px">나의 쿠폰</Heading>
+              <Heading fontSize="16px">나의 쿠폰</Heading>
               <Box position="relative">
                 <IconButton
                   icon={<BellIcon />}
@@ -243,7 +243,7 @@ const MyInfo = () => {
 
           {/* 예약 요약 */}
           <Box bg="white" p={4} rounded="lg" shadow="sm">
-            <Heading fontSize="14px" mb={4}>
+            <Heading fontSize="16px" mb={4}>
               예약 요약
             </Heading>
             <Text fontSize="sm" color="gray.600">
@@ -265,7 +265,7 @@ const MyInfo = () => {
 
           {/* 고객센터 */}
           <Box bg="white" p={4} rounded="lg" shadow="sm">
-            <Heading fontSize="14px" mb={4}>
+            <Heading fontSize="16px" mb={4}>
               고객센터
             </Heading>
             <Text fontSize="sm" color="gray.600">
