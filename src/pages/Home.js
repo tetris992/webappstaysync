@@ -590,14 +590,14 @@ const Home = () => {
         css={{ WebkitOverflowScrolling: 'touch' }}
         boxShadow="inset 0 7px 9px -7px rgba(0,0,0,0.1)"
       >
-      <VStack spacing={6} align="stretch" px={4} pb="180px">
+        <VStack spacing={12} align="stretch" px={4} pb="180px">
           {error && (
             <Text color="red.500" textAlign="center">
               {error}
             </Text>
           )}
           {/* 액션 섹션 */}
-          <Box bg="white" p={8} borderRadius="lg" >
+          <Box bg="white" p={8} borderRadius="lg">
             {/* 액션 섹션 */}
             <VStack spacing={4} align="stretch" px={4} py={8}>
               <Button
@@ -609,7 +609,7 @@ const Home = () => {
                 지난 숙소 재예약
               </Button>
               <Text
-               fontSize="sm"
+                fontSize="sm"
                 textAlign="center"
                 color="gray.600"
                 cursor="pointer"
