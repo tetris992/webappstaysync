@@ -493,7 +493,7 @@ const Home = () => {
         boxShadow="sm"
         zIndex={100}
         px={5}
-        py={5}
+        py={4}
       >
         <Flex justify="space-between" align="center">
           <Image
