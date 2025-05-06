@@ -590,15 +590,16 @@ const Home = () => {
         css={{ WebkitOverflowScrolling: 'touch' }}
         boxShadow="inset 0 7px 9px -7px rgba(0,0,0,0.1)"
       >
-        <VStack spacing={10} align="stretch" px={4}>
+      <VStack spacing={6} align="stretch" px={4} pb="180px">
           {error && (
             <Text color="red.500" textAlign="center">
               {error}
             </Text>
           )}
           {/* 액션 섹션 */}
-          <Box bg="white" p={8} borderRadius="lg" boxShadow="md">
-            <VStack spacing={4} align="stretch">
+          <Box bg="white" p={8} borderRadius="lg" >
+            {/* 액션 섹션 */}
+            <VStack spacing={4} align="stretch" px={4} py={8}>
               <Button
                 size="lg"
                 colorScheme="blue"
@@ -608,6 +609,7 @@ const Home = () => {
                 지난 숙소 재예약
               </Button>
               <Text
+               fontSize="sm"
                 textAlign="center"
                 color="gray.600"
                 cursor="pointer"
@@ -626,84 +628,88 @@ const Home = () => {
             </VStack>
           </Box>
 
-{/* 추천 호텔 */}
-<Box
-  px={0}
-  overflow="hidden"
-  css={{
-    '.slick-list': {
-      paddingLeft: 0, // remove any built-in left gutter
-    },
-  }}
->
-  <Text fontWeight="bold" mb={2}>
-    추천 호텔
-  </Text>
-  <Slider {...hotelSliderSettings}>
-    {(loadingHotels ? recommendedHotels : hotels).map((hotel) => {
-      // API 로 받은 경우 hotel.hotelName, 더미일 땐 hotel.name
-      const displayName = hotel.hotelName || hotel.name;
-      // 해당 호텔에 이벤트가 있는지 체크
-      const evt = events.find((e) => e.hotelId === hotel.hotelId);
+          {/* 추천 호텔 */}
+          <Box
+            px={0}
+            overflow="hidden"
+            css={{
+              '.slick-list': {
+                paddingLeft: 0, // remove any built-in left gutter
+              },
+            }}
+          >
+            <Text fontWeight="bold" mb={2}>
+              추천 호텔
+            </Text>
+            <Slider {...hotelSliderSettings}>
+              {(loadingHotels ? recommendedHotels : hotels).map((hotel) => {
+                // API 로 받은 경우 hotel.hotelName, 더미일 땐 hotel.name
+                const displayName = hotel.hotelName || hotel.name;
+                // 해당 호텔에 이벤트가 있는지 체크
+                const evt = events.find((e) => e.hotelId === hotel.hotelId);
 
-      return (
-        <Box
-          key={hotel.id}
-          cursor="pointer"
-          onClick={() => navigate('/hotels')}
-          px={2}
-        >
-          <Box w="100%" borderRadius="lg" overflow="hidden" position="relative">
-            <Image
-              src={
-                photosMap[hotel.hotelId]?.[0]?.photoUrl ||
-                '/assets/default-hotel.jpg'
-              }
-              alt={displayName}
-              h="180px"
-              w="100%"
-              objectFit="cover"
-            />
-            {evt && (
-              <Badge
-                position="absolute"
-                top="2"
-                right="2"
-                colorScheme="red"
-                fontSize="xs"
-                px={2}
-                py={1}
-                borderRadius="full"
-                zIndex={2}
-              >
-                {evt.discountType === 'fixed'
-                  ? `₩${evt.discountValue.toLocaleString()}`
-                  : `${evt.discountValue}%`}
-              </Badge>
-            )}
+                return (
+                  <Box
+                    key={hotel.id}
+                    cursor="pointer"
+                    onClick={() => navigate('/hotels')}
+                    px={2}
+                  >
+                    <Box
+                      w="100%"
+                      borderRadius="lg"
+                      overflow="hidden"
+                      position="relative"
+                    >
+                      <Image
+                        src={
+                          photosMap[hotel.hotelId]?.[0]?.photoUrl ||
+                          '/assets/default-hotel.jpg'
+                        }
+                        alt={displayName}
+                        h="180px"
+                        w="100%"
+                        objectFit="cover"
+                      />
+                      {evt && (
+                        <Badge
+                          position="absolute"
+                          top="2"
+                          right="2"
+                          colorScheme="red"
+                          fontSize="xs"
+                          px={2}
+                          py={1}
+                          borderRadius="full"
+                          zIndex={2}
+                        >
+                          {evt.discountType === 'fixed'
+                            ? `₩${evt.discountValue.toLocaleString()}`
+                            : `${evt.discountValue}%`}
+                        </Badge>
+                      )}
+                    </Box>
+                    <VStack align="start" mt={2} spacing={1}>
+                      {/* 호텔 이름 */}
+                      <Text fontSize="md" fontWeight="bold" noOfLines={1}>
+                        {displayName}
+                      </Text>
+                      {/* 주소 */}
+                      <Text fontSize="sm" color="gray.600" noOfLines={1}>
+                        {hotel.address.length > 10
+                          ? hotel.address.slice(0, 10) + '…'
+                          : hotel.address}
+                      </Text>
+                      {/* 가격 */}
+                      <Text fontWeight="bold">
+                        ₩{hotel.price.toLocaleString()} / 박
+                      </Text>
+                    </VStack>
+                  </Box>
+                );
+              })}
+            </Slider>
           </Box>
-          <VStack align="start" mt={2} spacing={1}>
-            {/* 호텔 이름 */}
-            <Text fontSize="md" fontWeight="bold" noOfLines={1}>
-              {displayName}
-            </Text>
-            {/* 주소 */}
-            <Text fontSize="sm" color="gray.600" noOfLines={1}>
-              {hotel.address.length > 10
-                ? hotel.address.slice(0, 10) + '…'
-                : hotel.address}
-            </Text>
-            {/* 가격 */}
-            <Text fontWeight="bold">
-              ₩{hotel.price.toLocaleString()} / 박
-            </Text>
-          </VStack>
-        </Box>
-      );
-    })}
-  </Slider>
-</Box>
-
 
           {/* 이벤트 섹션 */}
           <Box w="100%" mb={4}>
