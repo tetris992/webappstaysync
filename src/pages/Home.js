@@ -489,7 +489,7 @@ const Home = () => {
         top={0}
         left={0}
         right={0}
-           bg="white"
+        bg="gray.100"
         boxShadow="sm"
         zIndex={100}
         px={5}
@@ -599,7 +599,7 @@ const Home = () => {
           top="50%"
           left="50%"
           transform="translate(-50%,-50%)"
-             bg="white"
+          bg="gray.100"
           p={4}
           borderRadius="xl"
           boxShadow="xl"
@@ -702,14 +702,8 @@ const Home = () => {
                       hotel.hotelId &&
                       navigate(`/rooms/${hotel.hotelId}`, {
                         state: {
-                          checkIn: format(
-                            dateRange[0].startDate,
-                            'yyyy-MM-dd'
-                          ),
-                          checkOut: format(
-                            dateRange[0].endDate,
-                            'yyyy-MM-dd'
-                          ),
+                          checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
+                          checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
                           guestCount,
                         },
                       })
@@ -942,7 +936,7 @@ const Home = () => {
           top="60px"
           left={4}
           right={4}
-             bg="white"
+          bg="white"
           borderRadius="lg"
           boxShadow="lg"
           p={4}
@@ -990,7 +984,7 @@ const Home = () => {
         bottom={0}
         left={0}
         right={0}
-           bg="white"
+        bg="gray.100"
         boxShadow="md"
       >
         <BottomNavigation />
