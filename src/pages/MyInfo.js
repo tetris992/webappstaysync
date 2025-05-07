@@ -164,7 +164,7 @@ const MyInfo = () => {
         overflowY="auto"
         overflowX="hidden"
         pt="70px"
-        pb="240px"
+        pb="140px"
         css={{
           WebkitOverflowScrolling: 'touch',
           '&::-webkit-scrollbar': {
