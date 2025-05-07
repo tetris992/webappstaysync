@@ -1,7 +1,7 @@
+// src/AppContent.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Box, Alert, AlertIcon, Button } from '@chakra-ui/react';
-
+import { Box } from '@chakra-ui/react';
 import Home from './pages/Home';
 import HotelList from './pages/HotelList';
 import RoomSelection from './pages/RoomSelection';
@@ -15,7 +15,6 @@ import PhoneVerification from './pages/PhoneVerification';
 import BottomNavigation from './components/BottomNavigation';
 import MyInfo from './pages/MyInfo';
 import Events from './pages/Events';
-
 import { useAuth } from './contexts/AuthContext';
 import { fetchCustomerHotelSettings } from './api/api';
 import { usePwaInstall } from './hooks/usePwaInstall';
@@ -30,13 +29,28 @@ function AppContent() {
   // PWA 설치 훅
   const { canInstall, promptInstall } = usePwaInstall();
 
+  // QR 스캔 등으로 페이지 로드 후, 설치 가능해지면 바로 묻고 설치
+  useEffect(() => {
+    if (canInstall) {
+      const agree = window.confirm('홈 화면에 추가하시겠습니까?');
+      if (agree) {
+        promptInstall()
+          .then((accepted) => {
+            if (!accepted) {
+              console.log('사용자가 설치를 거부했습니다.');
+            }
+          })
+          .catch(console.error);
+      }
+    }
+  }, [canInstall, promptInstall]);
+
   const loadHotelSettings = useCallback(async (hotelId) => {
     try {
       const settings = await fetchCustomerHotelSettings(hotelId);
       setHotelSettings(settings);
     } catch (error) {
       console.error('Failed to load hotel settings:', error);
-      // 대체 기본값
       setHotelSettings({
         roomTypes: [
           {
@@ -50,7 +64,6 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    // 로딩 대기 (예시)
     setTimeout(() => setIsLoading(false), 1000);
   }, []);
 
@@ -87,23 +100,18 @@ function AppContent() {
           scrollBehavior: 'smooth',
         }}
       >
-        {/* Android용 PWA 설치 배너 */}
-        {canInstall && (
-          <Alert status="info" mb={4} borderRadius="md" mx={4}>
-            <AlertIcon />
-            앱을 설치하려면{' '}
-            <Button size="sm" ml={2} onClick={promptInstall}>
-              여기를 탭
-            </Button>
-          </Alert>
-        )}
-
-        {/* iOS Safari 설치 안내 */}
+        {/* iOS 용 가이드 */}
         {isIos() && !isInStandaloneMode() && (
-          <Alert status="info" mb={4} borderRadius="md" mx={4}>
-            <AlertIcon />
-            Safari의 ‘공유’ 버튼 → ‘홈 화면에 추가’로 설치할 수 있어요.
-          </Alert>
+          <Box
+            bg="blue.50"
+            color="blue.800"
+            p={3}
+            m={4}
+            borderRadius="md"
+            fontSize="sm"
+          >
+            Safari 공유 버튼 → 홈 화면에 추가 로 설치하세요.
+          </Box>
         )}
 
         <Routes>
@@ -114,12 +122,18 @@ function AppContent() {
           <Route path="/consent" element={<PrivacyConsentPage />} />
           <Route path="/events" element={<Events />} />
           <Route path="/my-info" element={<MyInfo />} />
-          <Route path="/verify-phone/:customerId" element={<PhoneVerification />} />
+          <Route
+            path="/verify-phone/:customerId"
+            element={<PhoneVerification />}
+          />
           <Route
             path="/hotels"
             element={
               isAuthenticated && customer ? (
-                <HotelList onLogout={logout} loadHotelSettings={loadHotelSettings} />
+                <HotelList
+                  onLogout={logout}
+                  loadHotelSettings={loadHotelSettings}
+                />
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -165,7 +179,6 @@ function AppContent() {
         </Routes>
       </Box>
 
-      {/* 로그인 후, 로그인 페이지가 아닐 때만 하단 내비게이션 */}
       {isAuthenticated && location.pathname !== '/login' && (
         <BottomNavigation />
       )}

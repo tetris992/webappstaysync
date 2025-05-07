@@ -1,3 +1,4 @@
+// src/hooks/usePwaInstall.js
 import { useEffect, useState } from 'react';
 
 export function usePwaInstall() {
@@ -5,9 +6,8 @@ export function usePwaInstall() {
 
   useEffect(() => {
     const handler = (e) => {
-      // 브라우저 기본 자동 프롬프트를 막고, 이벤트 객체를 저장
-      e.preventDefault();
-      setDeferredPrompt(e);
+      e.preventDefault();       // 브라우저 기본 프롬프트 억제
+      setDeferredPrompt(e);     // 나중에 사용하도록 저장
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -15,7 +15,6 @@ export function usePwaInstall() {
 
   const promptInstall = async () => {
     if (!deferredPrompt) return false;
-    // 저장해둔 이벤트로 직접 프롬프트 호출
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
@@ -23,7 +22,6 @@ export function usePwaInstall() {
   };
 
   return {
-    // 프롬프트를 띄울 수 있는 시점인지
     canInstall: !!deferredPrompt,
     promptInstall,
   };
