@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Flex, Text, Icon, useColorModeValue, Badge } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Text,
+  Icon,
+  useColorModeValue,
+  Badge,
+} from '@chakra-ui/react';
 import { FaHome, FaHistory, FaHeart, FaUser } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,12 +23,17 @@ const BottomNavigation = () => {
   useEffect(() => {
     const fetchCoupons = async () => {
       if (!customer) {
-        console.log('[BottomNavigation] Customer not available, skipping fetchCoupons');
+        console.log(
+          '[BottomNavigation] Customer not available, skipping fetchCoupons'
+        );
         return;
       }
       try {
         const customerCoupons = await fetchCustomerCoupons();
-        console.log('[BottomNavigation] Fetched customer coupons:', customerCoupons);
+        console.log(
+          '[BottomNavigation] Fetched customer coupons:',
+          customerCoupons
+        );
         setCoupons(customerCoupons || []);
       } catch (error) {
         console.error('쿠폰 데이터 가져오기 실패:', error);
@@ -73,7 +85,7 @@ const BottomNavigation = () => {
       px={4}
       py={2}
       zIndex={2000}
-      height="60px"
+      height="calc(60px + env(safe-area-inset-bottom))"
       boxShadow="0 -2px 10px rgba(0, 0, 0, 0.05)"
     >
       <Flex justify="space-around" align="center" height="100%">
