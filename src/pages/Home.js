@@ -472,16 +472,12 @@ const Home = () => {
   return (
     <Box
       minH="100vh"
-      bg="gray.100"
+      bg="white"
       position="fixed"
-      top={0}
-      left={0}
-      right={0}
-      bottom={0}
-      pt="env(safe-area-inset-top)"
-      pb="env(safe-area-inset-bottom)"
+      inset={0}
       display="flex"
       flexDirection="column"
+      overflow="hidden"
     >
       {/* Header */}
       <Box
@@ -489,11 +485,13 @@ const Home = () => {
         top={0}
         left={0}
         right={0}
-        bg="gray.100"
+        /* safe-area은 헤더에서만! */
+        pt="env(safe-area-inset-top)"
+        px={5}
+        py={5}
+        bg="white"
         boxShadow="sm"
         zIndex={100}
-        px={5}
-        py={4}
       >
         <Flex justify="space-between" align="center">
           <Image
