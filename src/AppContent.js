@@ -1,7 +1,13 @@
 // src/AppContent.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Box } from '@chakra-ui/react';
+import {
+  Box,
+  Alert,
+  AlertIcon,
+  Button,
+  useToast,
+} from '@chakra-ui/react';
 import Home from './pages/Home';
 import HotelList from './pages/HotelList';
 import RoomSelection from './pages/RoomSelection';
@@ -25,25 +31,37 @@ function AppContent() {
   const [hotelSettings, setHotelSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
+  const toast = useToast();
 
   // PWA 설치 훅
   const { canInstall, promptInstall } = usePwaInstall();
 
-  // QR 스캔 등으로 페이지 로드 후, 설치 가능해지면 바로 묻고 설치
-  useEffect(() => {
-    if (canInstall) {
-      const agree = window.confirm('홈 화면에 추가하시겠습니까?');
-      if (agree) {
-        promptInstall()
-          .then((accepted) => {
-            if (!accepted) {
-              console.log('사용자가 설치를 거부했습니다.');
-            }
-          })
-          .catch(console.error);
+  // "설치하기" 버튼 핸들러 (반드시 사용자 클릭 제스처 안에서만 prompt 호출)
+  const handlePwaInstall = async () => {
+    try {
+      const accepted = await promptInstall();
+      if (accepted) {
+        toast({
+          title: '앱이 설치되었습니다.',
+          status: 'success',
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: '설치를 거부하셨습니다.',
+          status: 'info',
+          duration: 3000,
+        });
       }
+    } catch (err) {
+      console.error('PWA 설치 중 오류:', err);
+      toast({
+        title: '설치 중 오류가 발생했습니다.',
+        status: 'error',
+        duration: 3000,
+      });
     }
-  }, [canInstall, promptInstall]);
+  };
 
   const loadHotelSettings = useCallback(async (hotelId) => {
     try {
@@ -64,7 +82,9 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    setTimeout(() => setIsLoading(false), 1000);
+    // 로딩 스피너 대체용 임시 딜레이
+    const t = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(t);
   }, []);
 
   if (isLoading) {
@@ -100,7 +120,18 @@ function AppContent() {
           scrollBehavior: 'smooth',
         }}
       >
-        {/* iOS 용 가이드 */}
+        {/* Android/Chrome PWA 설치 배너 */}
+        {canInstall && (
+          <Alert status="info" mb={4} borderRadius="md" mx={4}>
+            <AlertIcon />
+            앱을 설치하려면{' '}
+            <Button size="sm" ml={2} onClick={handlePwaInstall}>
+              설치하기
+            </Button>
+          </Alert>
+        )}
+
+        {/* iOS/Safari 설치 안내 */}
         {isIos() && !isInStandaloneMode() && (
           <Box
             bg="blue.50"
@@ -110,7 +141,7 @@ function AppContent() {
             borderRadius="md"
             fontSize="sm"
           >
-            Safari 공유 버튼 → 홈 화면에 추가 로 설치하세요.
+            Safari 공유 버튼 → <strong>홈 화면에 추가</strong> 로 설치하세요.
           </Box>
         )}
 
@@ -179,6 +210,7 @@ function AppContent() {
         </Routes>
       </Box>
 
+      {/* 하단 내비게이션 (로그인 후, 로그인 화면이 아닐 때만 표시) */}
       {isAuthenticated && location.pathname !== '/login' && (
         <BottomNavigation />
       )}
