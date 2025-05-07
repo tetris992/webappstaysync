@@ -1,7 +1,7 @@
-// src/AppContent.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Box, Alert, AlertIcon, Button } from '@chakra-ui/react';
+
 import Home from './pages/Home';
 import HotelList from './pages/HotelList';
 import RoomSelection from './pages/RoomSelection';
@@ -15,6 +15,7 @@ import PhoneVerification from './pages/PhoneVerification';
 import BottomNavigation from './components/BottomNavigation';
 import MyInfo from './pages/MyInfo';
 import Events from './pages/Events';
+
 import { useAuth } from './contexts/AuthContext';
 import { fetchCustomerHotelSettings } from './api/api';
 import { usePwaInstall } from './hooks/usePwaInstall';
@@ -35,6 +36,7 @@ function AppContent() {
       setHotelSettings(settings);
     } catch (error) {
       console.error('Failed to load hotel settings:', error);
+      // 대체 기본값
       setHotelSettings({
         roomTypes: [
           {
@@ -48,7 +50,7 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    // 로딩 스피너 대체용 임시 딜레이
+    // 로딩 대기 (예시)
     setTimeout(() => setIsLoading(false), 1000);
   }, []);
 
@@ -85,7 +87,7 @@ function AppContent() {
           scrollBehavior: 'smooth',
         }}
       >
-        {/* PWA 설치 배너 (Android) */}
+        {/* Android용 PWA 설치 배너 */}
         {canInstall && (
           <Alert status="info" mb={4} borderRadius="md" mx={4}>
             <AlertIcon />
@@ -96,7 +98,7 @@ function AppContent() {
           </Alert>
         )}
 
-        {/* PWA 설치 안내 (iOS Safari) */}
+        {/* iOS Safari 설치 안내 */}
         {isIos() && !isInStandaloneMode() && (
           <Alert status="info" mb={4} borderRadius="md" mx={4}>
             <AlertIcon />
@@ -112,18 +114,12 @@ function AppContent() {
           <Route path="/consent" element={<PrivacyConsentPage />} />
           <Route path="/events" element={<Events />} />
           <Route path="/my-info" element={<MyInfo />} />
-          <Route
-            path="/verify-phone/:customerId"
-            element={<PhoneVerification />}
-          />
+          <Route path="/verify-phone/:customerId" element={<PhoneVerification />} />
           <Route
             path="/hotels"
             element={
               isAuthenticated && customer ? (
-                <HotelList
-                  onLogout={logout}
-                  loadHotelSettings={loadHotelSettings}
-                />
+                <HotelList onLogout={logout} loadHotelSettings={loadHotelSettings} />
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -169,7 +165,7 @@ function AppContent() {
         </Routes>
       </Box>
 
-      {/* 하단 내비게이션 (로그인 후, 로그인 화면이 아닐 때만 표시) */}
+      {/* 로그인 후, 로그인 페이지가 아닐 때만 하단 내비게이션 */}
       {isAuthenticated && location.pathname !== '/login' && (
         <BottomNavigation />
       )}
