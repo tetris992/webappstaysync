@@ -635,7 +635,7 @@ const Home = () => {
         css={{ WebkitOverflowScrolling: 'touch' }}
         boxShadow="inset 0 7px 9px -7px rgba(0,0,0,0.1)"
       >
-        <VStack spacing={12} align="stretch" px={4} pb="180px">
+        <VStack spacing={12} align="stretch" px={4} pb="80px">
           {error && (
             <Text color="red.500" textAlign="center">
               {error}
