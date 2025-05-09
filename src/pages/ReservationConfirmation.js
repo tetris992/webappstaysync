@@ -668,7 +668,7 @@ const ReservationConfirmation = () => {
       checkOut: checkOut
         ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
         : null,
-      reservationDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss'+09:00"),
+      // reservationDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss'+09:00"),
       reservationStatus: '예약완료',
       price,
       originalPrice,
