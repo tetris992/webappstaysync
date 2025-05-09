@@ -6,6 +6,7 @@ import {
   Icon,
   useColorModeValue,
   Badge,
+  Button,
 } from '@chakra-ui/react';
 import { FaHome, FaHistory, FaHeart, FaUser } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -69,7 +70,7 @@ const BottomNavigation = () => {
       label: '나의 정보',
       onClick: () => navigate('/my-info'),
       path: '/my-info',
-      hasBadge: true, // Badge 표시 여부
+      hasBadge: true,
     },
   ];
 
@@ -90,25 +91,27 @@ const BottomNavigation = () => {
     >
       <Flex justify="space-around" align="center" height="100%">
         {menuItems.map((item, index) => (
-          <Flex
+          <Button
             key={index}
-            direction="column"
-            align="center"
-            justify="center"
-            cursor="pointer"
+            variant="unstyled"
+            display="flex"
+            flexDirection="column"
+            alignItems="center"
+            justifyContent="center"
             onClick={item.onClick}
             color={isActive(item.path) ? 'blue.500' : 'gray.500'}
             _hover={{ color: 'blue.600' }}
-            role="group"
+            _active={{ bg: 'gray.100' }}
             flex={1}
             position="relative"
+            userSelect="none" // 전체 버튼에서 텍스트 선택 비활성화
           >
             <Icon
               as={item.icon}
               boxSize={5}
               mb={1}
               transition="all 0.2s"
-              _groupHover={{ transform: 'scale(1.1)' }}
+              _hover={{ transform: 'scale(1.1)' }}
             />
             {item.hasBadge && coupons.length > 0 && (
               <Badge
@@ -126,10 +129,12 @@ const BottomNavigation = () => {
             <Text
               fontSize="xs"
               fontWeight={isActive(item.path) ? 'bold' : 'normal'}
+              userSelect="none" // 텍스트 선택 비활성화
+              pointerEvents="none" // 텍스트에서 터치 이벤트 방지
             >
               {item.label}
             </Text>
-          </Flex>
+          </Button>
         ))}
       </Flex>
     </Box>
