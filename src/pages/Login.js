@@ -21,11 +21,14 @@ const Login = () => {
   const [isKakaoEnabled, setIsKakaoEnabled] = useState(true);
   const [api, setApi] = useState(null);
 
-  // API 모듈 동적 로드
   useEffect(() => {
     const loadApi = async () => {
       try {
         const apiModule = await import('../api/api');
+        console.log('[Login.js] Loaded apiModule:', apiModule);
+        if (typeof apiModule.fetchCustomerCoupons !== 'function') {
+          throw new Error('fetchCustomerCoupons is not a function');
+        }
         setApi(apiModule);
       } catch (error) {
         console.error('Failed to load API module:', error);
@@ -44,16 +47,19 @@ const Login = () => {
   useEffect(() => {
     if (customer && api) {
       const { fetchHotelList, fetchCustomerCoupons } = api;
-      // 로그인 성공 후 호텔 목록과 쿠폰 로드
       const loadInitialData = async () => {
         try {
           const hotelList = await fetchHotelList();
           setHotelList(hotelList);
 
-          const coupons = await fetchCustomerCoupons(customer._id);
+          const coupons = await fetchCustomerCoupons(); // 인자 제거
           setCustomerCoupons(coupons);
         } catch (error) {
-          console.error('Initial data load failed:', error);
+          console.error('Initial data load failed:', {
+            error,
+            message: error.message,
+            stack: error.stack,
+          });
           toast({
             title: '데이터 로드 실패',
             description: error.message || '호텔 목록 및 쿠폰을 불러오지 못했습니다.',
@@ -127,48 +133,41 @@ const Login = () => {
       overflow="auto"
     >
       <Container
-        maxW={{ base: '100%', sm: '390px' }} // Responsive width: 100% on smaller screens, 390px on small screens and up
+        maxW={{ base: '100%', sm: '390px' }}
         w="100%"
         position="relative"
         zIndex="1"
       >
         <Box
           bg="white"
-          p={6} // Padding inside the box: 6 (24px) on all sides
+          p={6}
           borderRadius="md"
           boxShadow="sm"
         >
           <VStack spacing={0} align="stretch">
-            {/* Logo Section */}
             <VStack spacing="16px" align="center">
               <Image
                 src="/assets/danjamLogo.svg"
                 alt="Danjam Logo"
-                width="88px" // Logo width: 88px
+                width="88px"
                 height="auto"
               />
               <Text
-                fontSize="lg" // Font size: 18px (Chakra's lg)
+                fontSize="lg"
                 color="gray.700"
                 fontWeight="medium"
                 letterSpacing="tight"
-                width="160px" // Subtitle width: 160px
-                height="27px" // Subtitle height: 27px
+                width="160px"
+                height="27px"
                 lineHeight="27px"
                 textAlign="center"
               >
                 편안한 숙박예약의 시작
               </Text>
             </VStack>
-
-            {/* Gap between Logo Section and Button Section */}
-            {/* Current: 80px (adjustable between 60px and 100px) */}
-            {/* Options: Change h="80px" to h="60px" for a smaller gap, or h="100px" for a larger gap */}
             <Box h="80px" />
-
-            {/* Button, Description, and Terms Links in a Single Container */}
             <VStack
-              spacing="16px" // Vertical gap between button, description, and terms links: 16px
+              spacing="16px"
               w="100%"
               align="stretch"
             >
@@ -178,15 +177,15 @@ const Login = () => {
                     <Image
                       src="/assets/kakaoLogo.svg"
                       alt="Kakao Icon"
-                      width="18px" // Icon width: 18px
-                      height="18px" // Icon height: 18px
+                      width="18px"
+                      height="18px"
                     />
                   </Box>
                 }
                 w="100%"
-                maxW="346px" // Button max width: 346px (ensures responsiveness)
-                h="56px" // Button height: 56px
-                mx="auto" // Centers the button horizontally
+                maxW="346px"
+                h="56px"
+                mx="auto"
                 bg="#FEE500"
                 color="rgba(0,0,0,0.85)"
                 _hover={{
@@ -198,26 +197,24 @@ const Login = () => {
                 onClick={handleKakaoLogin}
                 isLoading={isKakaoLoading}
                 isDisabled={!isKakaoEnabled || isKakaoLoading}
-                fontSize="16px" // Button text font size: 16px
+                fontSize="16px"
                 fontWeight="700"
                 borderRadius="5px"
                 boxShadow="md"
                 transition="all 0.2s"
-                pl="16px" // Left padding for icon positioning: 16px
+                pl="16px"
                 justifyContent="center"
               >
                 카카오로 로그인
               </Button>
-
               <Text
-                fontSize="xs" // Font size: 12px (Chakra's xs)
+                fontSize="xs"
                 color="gray.400"
                 textAlign="center"
                 letterSpacing="tight"
               >
                 로그인하시면 아래 내용에 동의하는 것으로 간주됩니다.
               </Text>
-
               <HStack justify="center" spacing={2} fontSize="xs" color="blue.600">
                 <Text
                   as="a"

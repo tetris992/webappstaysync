@@ -9,6 +9,7 @@ import { useToast } from '@chakra-ui/react';
 import {
   fetchCustomerCoupons,
   fetchAvailableCoupons,
+  fetchHotelList,
   refreshCustomerToken,
   logoutCustomer,
 } from '../api/api';
@@ -16,17 +17,15 @@ import ApiError from '../utils/ApiError';
 
 const AuthContext = createContext();
 
-/**
- * AuthProvider - 인증 및 고객 쿠폰 전역 상태 관리
- * @param {Object} props
- * @param {React.ReactNode} props.children - 하위 컴포넌트
- */
 export const AuthProvider = ({ children }) => {
   const toast = useToast();
 
   // 인증 상태
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [customer, setCustomer] = useState(null);
+
+  // 호텔 목록 상태
+  const [hotelList, setHotelList] = useState([]);
 
   // 고객 쿠폰 상태
   const [customerCoupons, setCustomerCoupons] = useState([]);
@@ -139,6 +138,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('csrfTokenId');
     setIsAuthenticated(false);
     setCustomer(null);
+    setHotelList([]);
     setCustomerCoupons([]);
     setCouponsLoadError(null);
     setIsCouponsLoading(false);
@@ -149,7 +149,7 @@ export const AuthProvider = ({ children }) => {
     setDeviceToken(null);
   };
 
-  // 로그인 처리
+  // 로그인 처리 및 초기 데이터 로드
   const login = async (
     dataOrCustomer,
     token,
@@ -161,20 +161,24 @@ export const AuthProvider = ({ children }) => {
     }
     const customerData = { ...dataOrCustomer };
     try {
-      if (token) {
-        localStorage.setItem('customerToken', token);
-      }
-      if (refreshTokenValue) {
-        localStorage.setItem('refreshToken', refreshTokenValue);
-        setRefreshToken(refreshTokenValue);
-      }
-      if (deviceTokenValue) {
-        localStorage.setItem('deviceToken', deviceTokenValue);
-        setDeviceToken(deviceTokenValue);
-      }
+      // 로컬 스토리지 및 상태 설정
+      localStorage.setItem('customerToken', token);
+      localStorage.setItem('refreshToken', refreshTokenValue);
+      localStorage.setItem('deviceToken', deviceTokenValue);
       localStorage.setItem('customer', JSON.stringify(customerData));
       setIsAuthenticated(true);
       setCustomer(customerData);
+      setRefreshToken(refreshTokenValue);
+      setDeviceToken(deviceTokenValue);
+
+      // 초기 데이터 로드
+      const [hotels, coupons] = await Promise.all([
+        fetchHotelList(),
+        fetchCustomerCoupons(),
+      ]);
+      setHotelList(hotels || []);
+      setCustomerCoupons(coupons || []);
+
       return {
         token,
         refreshToken: refreshTokenValue,
@@ -182,9 +186,12 @@ export const AuthProvider = ({ children }) => {
         customer: customerData,
       };
     } catch (err) {
-      console.error('[AuthContext] login error:', err);
+      console.error('[AuthContext] login error:', {
+        message: err.message,
+        stack: err.stack,
+      });
       clearAuthData();
-      throw new Error('인증 정보 저장에 실패했습니다.');
+      throw new Error('인증 정보 저장 또는 초기 데이터 로드에 실패했습니다.');
     }
   };
 
@@ -251,7 +258,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [refreshToken, deviceToken, toast]);
 
-  // contexts/AuthContext.js
+  // 쿠폰 사용 후 업데이트
   const updateCustomerCouponsAfterUse = useCallback(
     async (couponUuid) => {
       setCustomerCoupons((prevCoupons) =>
@@ -261,7 +268,6 @@ export const AuthProvider = ({ children }) => {
             : coupon
         )
       );
-      // 최신 쿠폰 목록으로 동기화
       await loadCustomerCoupons();
       console.log(
         '[AuthContext] Updated and synced coupon after use:',
@@ -276,6 +282,8 @@ export const AuthProvider = ({ children }) => {
       value={{
         isAuthenticated,
         customer,
+        hotelList,
+        setHotelList,
         customerCoupons,
         setCustomerCoupons,
         isCouponsLoading,
@@ -294,10 +302,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-/**
- * useAuth - AuthContext 값을 반환
- * @returns {Object} 인증 및 쿠폰 관련 상태와 함수
- */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

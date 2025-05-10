@@ -5,21 +5,24 @@ import {
   VStack,
   Text,
   Button,
-  Image,
   Input,
   InputGroup,
   InputLeftElement,
   HStack,
   Select,
   Flex,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverArrow,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
   SlideFade,
   useToast,
   Spinner,
   Badge,
+  Image,
 } from '@chakra-ui/react';
 import { CalendarIcon } from '@chakra-ui/icons';
 import { DateRange } from 'react-date-range';
@@ -29,7 +32,7 @@ import {
   startOfDay,
   addMonths,
   isValid,
-  differenceInCalendarDays,
+  isSameDay,
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css';
@@ -47,31 +50,11 @@ import { useAuth } from '../contexts/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
 import io from 'socket.io-client';
 import pLimit from 'p-limit';
+import useImagePreloader from '../hooks/useImagePreloader';
+import LazyImage from '../components/LazyImage';
 
-// 기본 호텔 데이터 (API 호출 실패 시 사용)
-const recommendedHotels = [
-  {
-    id: 1,
-    name: '부산 호텔',
-    image: '/assets/hotel1.jpg',
-    address: '부산 해운대구 해운대해변로 264',
-    price: 120000,
-  },
-  {
-    id: 11,
-    name: '여수 호텔',
-    image: '/assets/hotel11.jpg',
-    address: '여수시 돌산공원길 1',
-    price: 150000,
-  },
-  {
-    id: 12,
-    name: '제주 호텔',
-    image: '/assets/hotel12.jpg',
-    address: '제주시 서귀포',
-    price: 180000,
-  },
-];
+// HTML <head>에 추가 권장 (프로젝트 설정에서 별도 처리)
+// <link rel="preload" as="image" href="/assets/low-res-placeholder.jpg">
 
 const Home = () => {
   const navigate = useNavigate();
@@ -87,12 +70,12 @@ const Home = () => {
   const [dateRange, setDateRange] = useState([
     {
       startDate: startOfDay(new Date()),
-      endDate: addDays(startOfDay(new Date()), 1),
+      endDate: addDays(startOfDay(new Date()), 1), // 기본 1박 설정
       key: 'selection',
     },
   ]);
   const [guestCount, setGuestCount] = useState(1);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // 모달 상태
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [hotels, setHotels] = useState([]);
   const [events, setEvents] = useState([]);
@@ -103,7 +86,19 @@ const Home = () => {
   const [isCouponPanelOpen, setIsCouponPanelOpen] = useState(false);
   const [currentEventIdx, setCurrentEventIdx] = useState(0);
 
-  // “단골 숙소예약” 클릭 시: 가장 최근 예약을 불러와 오늘→내일 1박 일정으로 객실선택 페이지로 이동
+  // 사진 미리 로드
+  useImagePreloader(
+    hotels
+      .slice(0, 3)
+      .flatMap(
+        (hotel) =>
+          photosMap[hotel.hotelId]?.slice(0, 2)?.map((photo) => photo.photoUrl) ||
+          []
+      ),
+    6 // 최대 6장 프리로드 (3개 호텔 x 2장)
+  );
+
+  // "단골 숙소예약" 클릭 시
   const handleRebookFavorite = async () => {
     try {
       const resp = await getReservationHistory();
@@ -137,7 +132,7 @@ const Home = () => {
         },
       });
     } catch (error) {
-      console.error(error);
+      console.error('[Home] Rebook favorite error:', error);
       toast({
         title: '단골 숙소 예약 실패',
         description: error.message || '다시 시도해주세요.',
@@ -146,6 +141,23 @@ const Home = () => {
         isClosable: true,
       });
     }
+  };
+
+  // "다른 숙소 예약하기" 및 "돋보기" 클릭 시 검색창 열기 + 기본값 설정
+  const handleOpenSearch = () => {
+    console.log('handleOpenSearch called'); // 이벤트 호출 확인
+    const today = startOfDay(new Date());
+    const tomorrow = addDays(today, 1);
+    setDateRange([
+      {
+        startDate: today,
+        endDate: tomorrow, // 기본 1박 설정
+        key: 'selection',
+      },
+    ]);
+    setGuestCount(2);
+    setIsModalOpen(true); // 모달 열기
+    setIsCalendarOpen(false); // 달력은 클릭 시 열림
   };
 
   // Socket.io 연결 및 쿠폰 이벤트
@@ -175,16 +187,10 @@ const Home = () => {
       setError(null);
       try {
         const list = await fetchHotelList();
-        const withDetails = list.map((h) => ({
-          ...h,
-          image: '/assets/hotel1.jpg', // 임시 이미지, 나중에 photosMap으로 대체
-          price: Math.floor(Math.random() * 100000) + 50000,
-        }));
-        setHotels(withDetails);
+        setHotels(list || []);
 
-        // 호텔 사진 가져오기
         const limit = pLimit(3);
-        const photoPromises = withDetails.map((h) =>
+        const photoPromises = list.map((h) =>
           limit(async () => {
             try {
               const data = await fetchHotelPhotos(h.hotelId, 'exterior');
@@ -192,7 +198,7 @@ const Home = () => {
             } catch {
               toast({
                 title: '사진 로드 실패',
-                description: h.hotelName + ' 사진을 표시할 수 없습니다.',
+                description: `${h.hotelName} 사진을 표시할 수 없습니다.`,
                 status: 'warning',
                 duration: 3000,
               });
@@ -208,7 +214,7 @@ const Home = () => {
         setPhotosMap(photos);
       } catch (e) {
         setError(e.message);
-        setHotels(recommendedHotels);
+        setHotels([]);
         toast({
           title: '호텔 목록 로드 실패',
           description: e.message,
@@ -377,8 +383,28 @@ const Home = () => {
 
   // 날짜 선택
   const handleDateChange = ({ selection }) => {
-    setDateRange([selection]);
-    setIsCalendarOpen(false);
+    let { startDate, endDate } = selection;
+
+    // 항상 작은 날짜가 체크인, 큰 날짜가 체크아웃
+    if (startDate > endDate) [startDate, endDate] = [endDate, startDate];
+
+    // 같은 날짜 선택 방지: 체크아웃을 체크인 다음 날로 설정
+    if (isSameDay(startDate, endDate)) {
+      endDate = addDays(startDate, 1);
+    }
+
+    setDateRange([{ startDate, endDate, key: 'selection' }]);
+
+    toast({
+      title: '날짜 선택 완료',
+      description: `${format(startDate, 'yyyy.MM.dd')} - ${format(
+        endDate,
+        'yyyy.MM.dd'
+      )}`,
+      status: 'success',
+      duration: 2000,
+      isClosable: true,
+    });
   };
 
   // 검색
@@ -401,9 +427,11 @@ const Home = () => {
         guestCount,
       },
     });
+    setIsModalOpen(false);
+    setIsCalendarOpen(false); // 검색 후 달력 닫기
   };
 
-  // 이벤트 클릭 핸들러 (Events.js에서 가져옴)
+  // 이벤트 클릭 핸들러
   const handleEventClick = (event) => {
     console.log('[Events] Event clicked:', {
       event,
@@ -414,33 +442,20 @@ const Home = () => {
     });
 
     const todayKST = format(new Date(), 'yyyy-MM-dd', { locale: ko });
-    const parsedStartDate = event.startDate;
-    const parsedEndDate = event.endDate;
-
-    const eventDuration =
-      differenceInCalendarDays(
-        new Date(parsedEndDate),
-        new Date(parsedStartDate)
-      ) || 1;
-
-    const adjustedCheckIn =
-      parsedStartDate < todayKST ? todayKST : parsedStartDate;
-
-    const adjustedCheckOut = format(
-      addDays(new Date(adjustedCheckIn), Math.max(eventDuration, 1)),
-      'yyyy-MM-dd'
-    );
+    const tomorrowKST = format(addDays(new Date(), 1), 'yyyy-MM-dd', {
+      locale: ko,
+    });
 
     console.log('[Events] Adjusted dates:', {
-      adjustedCheckIn,
-      adjustedCheckOut,
+      checkIn: todayKST,
+      checkOut: tomorrowKST,
     });
 
     navigate(`/rooms/${event.hotelId}`, {
       state: {
-        checkIn: adjustedCheckIn,
-        checkOut: adjustedCheckOut,
-        guestCount,
+        checkIn: todayKST,
+        checkOut: tomorrowKST,
+        guestCount: 2,
         applicableRoomTypes: event.applicableRoomTypes || [],
         discountType: event.discountType,
         discountValue: event.discountValue,
@@ -485,7 +500,6 @@ const Home = () => {
         top={0}
         left={0}
         right={0}
-        /* safe-area은 헤더에서만! */
         pt="env(safe-area-inset-top)"
         px={5}
         py={5}
@@ -501,7 +515,7 @@ const Home = () => {
             cursor="pointer"
             onClick={() => navigate('/')}
           />
-          <Flex gap={3}>
+          <HStack spacing={3}>
             <Box
               position="relative"
               cursor="pointer"
@@ -519,111 +533,172 @@ const Home = () => {
                 borderRadius="full"
               />
             </Box>
-            <Popover
-              isOpen={isSearchOpen}
-              onClose={() => setIsSearchOpen(false)}
-              placement="bottom-end"
+            <Box
+              cursor="pointer"
+              onClick={handleOpenSearch} // 돋보기 클릭 시 handleOpenSearch 호출
             >
-              <PopoverTrigger>
-                <Box
-                  cursor="pointer"
-                  onClick={() => setIsSearchOpen((o) => !o)}
-                >
-                  <Image src="/assets/Search.svg" boxSize={8} />
-                </Box>
-              </PopoverTrigger>
-              <PopoverContent w="90vw" maxW="360px" p={4} borderRadius="xl">
-                <PopoverArrow />
-                <VStack spacing={4}>
-                  <InputGroup>
-                    <InputLeftElement pointerEvents="none">
-                      <Image src="/assets/Search.svg" boxSize={5} />
-                    </InputLeftElement>
-                    <Input
-                      placeholder="목적지"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      borderRadius="lg"
-                      bg="gray.100"
-                    />
-                  </InputGroup>
-                  <InputGroup>
-                    <InputLeftElement pointerEvents="none">
-                      <CalendarIcon color="gray.400" />
-                    </InputLeftElement>
-                    <Input
-                      placeholder="날짜"
-                      value={`${format(
-                        dateRange[0].startDate,
-                        'yyyy.MM.dd'
-                      )} - ${format(dateRange[0].endDate, 'yyyy.MM.dd')}`}
-                      readOnly
-                      onClick={() => setIsCalendarOpen(true)}
-                      borderRadius="lg"
-                      bg="gray.100"
-                    />
-                  </InputGroup>
-                  <Select
-                    value={guestCount}
-                    onChange={(e) => setGuestCount(+e.target.value)}
-                    borderRadius="lg"
-                    bg="gray.100"
-                  >
-                    {[...Array(10)].map((_, i) => (
-                      <option key={i} value={i + 1}>
-                        {i + 1}명
-                      </option>
-                    ))}
-                  </Select>
-                  <Button
-                    w="100%"
-                    colorScheme="blue"
-                    onClick={handleSearch}
-                    borderRadius="lg"
-                  >
-                    검색
-                  </Button>
-                </VStack>
-              </PopoverContent>
-            </Popover>
-          </Flex>
+              <Image src="/assets/Search.svg" boxSize={8} />
+            </Box>
+          </HStack>
         </Flex>
       </Box>
 
-      {/* 날짜 모달 */}
-      {isCalendarOpen && (
-        <Box
-          position="fixed"
-          top="50%"
-          left="50%"
-          transform="translate(-50%,-50%)"
-          bg="gray.100"
-          p={4}
-          borderRadius="xl"
-          boxShadow="xl"
-          zIndex={200}
-          w="90vw"
-          maxW="360px"
-        >
-          <Flex justify="space-between" align="center" mb={3}>
-            <Text fontWeight="bold">날짜 선택</Text>
-            <Button size="sm" onClick={() => setIsCalendarOpen(false)}>
-              닫기
+      {/* 검색창 모달 ("다른 숙소 예약하기" 또는 "돋보기" 클릭 시) */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          /* 검색 버튼 누르기 전에는 닫히지 않게 오버레이·ESC 클릭 막기 */
+          setIsModalOpen(false);
+          setIsCalendarOpen(false);
+        }}
+        closeOnEsc={false} // ESC 키로 닫히지 않도록
+        closeOnOverlayClick={false} // 오버레이 클릭으로 닫히지 않도록
+        isCentered
+      >
+        <ModalOverlay />
+        <ModalContent borderRadius="xl" mx={4} maxW="90vw">
+          <ModalHeader>숙소 검색</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4}>
+              <InputGroup>
+                <InputLeftElement pointerEvents="none">
+                  <Image src="/assets/Search.svg" boxSize={5} />
+                </InputLeftElement>
+                <Input
+                  placeholder="목적지"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  borderRadius="lg"
+                  bg="gray.100"
+                />
+              </InputGroup>
+              <InputGroup>
+                <InputLeftElement pointerEvents="none">
+                  <CalendarIcon color="gray.400" />
+                </InputLeftElement>
+                <Input
+                  placeholder="날짜"
+                  value={`${format(dateRange[0].startDate, 'yyyy.MM.dd')} - ${format(
+                    dateRange[0].endDate,
+                    'yyyy.MM.dd'
+                  )}`}
+                  readOnly
+                  onClick={() => setIsCalendarOpen(true)}
+                  borderRadius="lg"
+                  bg="gray.100"
+                />
+              </InputGroup>
+              <Select
+                value={guestCount}
+                onChange={(e) => setGuestCount(+e.target.value)}
+                borderRadius="lg"
+                bg="gray.100"
+              >
+                {[...Array(10)].map((_, i) => (
+                  <option key={i} value={i + 1}>
+                    {i + 1}명
+                  </option>
+                ))}
+              </Select>
+              {isCalendarOpen && (
+                <Box mt={4} w="100%">
+                  <DateRange
+                    ranges={dateRange}
+                    onChange={handleDateChange}
+                    minDate={startOfDay(new Date())} // 과거 날짜 선택 방지
+                    maxDate={addMonths(startOfDay(new Date()), 3)}
+                    locale={ko}
+                    months={1}
+                    direction="vertical"
+                    showDateDisplay={false}
+                    rangeColors={['transparent']}
+                    showSelectionPreview={false}
+                    moveRangeOnFirstSelection={false}
+                    onPreviewChange={() => {}}
+                    dayContentRenderer={(date) => {
+                      const start = dateRange[0].startDate;
+                      const end = dateRange[0].endDate;
+                      const isStart = isSameDay(date, start);
+                      const isEnd = isSameDay(date, end);
+                      const sameDaySel = isSameDay(start, end);
+                      const isSel = isStart || isEnd;
+
+                      return (
+                        <Box position="relative" w="100%" h="56px">
+                          {/* 1) 날짜 숫자 */}
+                          <Text
+                            position="absolute"
+                            top="4px"
+                            w="100%"
+                            textAlign="center"
+                            fontSize="md"
+                            fontWeight={isSel ? 'bold' : 'normal'}
+                            color={isSel ? 'blue.500' : 'black'}
+                          >
+                            {date.getDate()}
+                          </Text>
+
+                          {/* 2) 라벨: 동일일이면 통합, 아니면 각각 */}
+                          {sameDaySel && isStart ? (
+                            <Text
+                              position="absolute"
+                              bottom="4px"
+                              w="100%"
+                              textAlign="center"
+                              fontSize="xs"
+                              color="blue.500"
+                            >
+                              체크인 / 체크아웃
+                            </Text>
+                          ) : (
+                            <>
+                              {isStart && (
+                                <Text
+                                  position="absolute"
+                                  bottom="4px"
+                                  w="100%"
+                                  textAlign="center"
+                                  fontSize="xs"
+                                  color="blue.500"
+                                >
+                                  체크인
+                                </Text>
+                              )}
+                              {isEnd && (
+                                <Text
+                                  position="absolute"
+                                  bottom="4px"
+                                  w="100%"
+                                  textAlign="center"
+                                  fontSize="xs"
+                                  color="blue.500"
+                                >
+                                  체크아웃
+                                </Text>
+                              )}
+                            </>
+                          )}
+                        </Box>
+                      );
+                    }}
+                  />
+                </Box>
+              )}
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              w="100%"
+              colorScheme="blue"
+              onClick={handleSearch}
+              borderRadius="lg"
+            >
+              검색
             </Button>
-          </Flex>
-          <DateRange
-            editableDateInputs
-            ranges={dateRange}
-            onChange={handleDateChange}
-            minDate={startOfDay(new Date())}
-            maxDate={addMonths(startOfDay(new Date()), 3)}
-            locale={ko}
-            months={1}
-            direction="vertical"
-            rangeColors={['#3B82F6']}
-          />
-        </Box>
-      )}
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Main Scroll Area */}
       <Box
@@ -657,15 +732,7 @@ const Home = () => {
                 textAlign="center"
                 color="gray.600"
                 cursor="pointer"
-                onClick={() =>
-                  navigate('/hotels', {
-                    state: {
-                      checkIn: format(dateRange[0].startDate, 'yyyy-MM-dd'),
-                      checkOut: format(dateRange[0].endDate, 'yyyy-MM-dd'),
-                      guestCount,
-                    },
-                  })
-                }
+                onClick={handleOpenSearch}
               >
                 다른 숙소 예약하기
               </Text>
@@ -678,27 +745,31 @@ const Home = () => {
             overflow="hidden"
             css={{
               '.slick-list': {
-                paddingLeft: 0, // remove any built-in left gutter
+                paddingLeft: 0,
               },
             }}
           >
             <Text fontWeight="bold" mb={2}>
               추천 호텔
             </Text>
-            <Slider {...hotelSliderSettings}>
-              {(loadingHotels ? recommendedHotels : hotels).map((hotel) => {
-                // key 에는 더미 데이터(id) 또는 API 데이터(hotelId)를 사용
-                const hotelKey = loadingHotels ? hotel.id : hotel.hotelId;
-                const displayName = hotel.hotelName || hotel.name;
-                const evt = events.find((e) => e.hotelId === hotel.hotelId);
+            {loadingHotels ? (
+              <Flex justify="center" py={8}>
+                <Spinner size="xl" />
+              </Flex>
+            ) : hotels.length > 0 ? (
+              <Slider {...hotelSliderSettings}>
+                {hotels.map((hotel) => {
+                  const photo =
+                    photosMap[hotel.hotelId]?.[0]?.photoUrl ||
+                    '/assets/default-hotel.jpg';
+                  const evt = events.find((e) => e.hotelId === hotel.hotelId);
 
-                return (
-                  <Box
-                    key={hotelKey}
-                    cursor="pointer"
-                    px={2}
-                    onClick={() => {
-                      if (hotel.hotelId) {
+                  return (
+                    <Box
+                      key={hotel.hotelId}
+                      cursor="pointer"
+                      px={2}
+                      onClick={() => {
                         navigate(`/rooms/${hotel.hotelId}`, {
                           state: {
                             checkIn: format(
@@ -712,63 +783,66 @@ const Home = () => {
                             guestCount,
                           },
                         });
-                      }
-                    }}
-                  >
-                    <Box
-                      w="100%"
-                      borderRadius="lg"
-                      overflow="hidden"
-                      position="relative"
+                      }}
                     >
-                      <Image
-                        src={
-                          photosMap[hotel.hotelId]?.[0]?.photoUrl ||
-                          '/assets/default-hotel.jpg'
-                        }
-                        alt={displayName}
-                        h="180px"
+                      <Box
                         w="100%"
-                        objectFit="cover"
-                      />
-                      {evt && (
-                        <Badge
-                          position="absolute"
-                          top="2"
-                          right="2"
-                          colorScheme="red"
-                          fontSize="xs"
-                          px={2}
-                          py={1}
-                          borderRadius="full"
-                          zIndex={2}
-                        >
-                          {evt.discountType === 'fixed'
-                            ? `₩${evt.discountValue.toLocaleString()}`
-                            : `${evt.discountValue}%`}
-                        </Badge>
-                      )}
+                        borderRadius="lg"
+                        overflow="hidden"
+                        position="relative"
+                      >
+                        <LazyImage
+                          src={photo}
+                          alt={hotel.hotelName}
+                          h="180px"
+                          w="100%"
+                          objectFit="cover"
+                        />
+                        {evt && (
+                          <Badge
+                            position="absolute"
+                            top="2"
+                            right="2"
+                            colorScheme="red"
+                            fontSize="xs"
+                            px={2}
+                            py={1}
+                            borderRadius="full"
+                            zIndex={2}
+                          >
+                            {evt.discountType === 'fixed'
+                              ? `₩${evt.discountValue.toLocaleString()}`
+                              : `${evt.discountValue}%`}
+                          </Badge>
+                        )}
+                      </Box>
+                      <VStack align="start" mt={2} spacing={1}>
+                        <Text fontSize="md" fontWeight="bold" noOfLines={1}>
+                          {hotel.hotelName}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600" noOfLines={1}>
+                          {hotel.address.length > 10
+                            ? hotel.address.slice(0, 10) + '…'
+                            : hotel.address}
+                        </Text>
+                        <Text fontWeight="bold">
+                          ₩
+                          {(
+                            hotel.price ||
+                            Math.floor(Math.random() * 100000) + 50000
+                          ).toLocaleString()}{' '}
+                          / 박
+                        </Text>
+                      </VStack>
                     </Box>
-                    <VStack align="start" mt={2} spacing={1}>
-                      {/* 호텔 이름 */}
-                      <Text fontSize="md" fontWeight="bold" noOfLines={1}>
-                        {displayName}
-                      </Text>
-                      {/* 주소 */}
-                      <Text fontSize="sm" color="gray.600" noOfLines={1}>
-                        {hotel.address.length > 10
-                          ? hotel.address.slice(0, 10) + '…'
-                          : hotel.address}
-                      </Text>
-                      {/* 가격 */}
-                      <Text fontWeight="bold">
-                        ₩{hotel.price.toLocaleString()} / 박
-                      </Text>
-                    </VStack>
-                  </Box>
-                );
-              })}
-            </Slider>
+                  );
+                })}
+              </Slider>
+            ) : (
+              <Text textAlign="center" color="gray.500" py={8}>
+                추천 호텔이 없습니다.
+              </Text>
+            )}
           </Box>
 
           {/* 이벤트 섹션 */}
@@ -795,17 +869,15 @@ const Home = () => {
                         transition="transform 0.2s"
                         _hover={{ transform: 'translateY(-4px)' }}
                       >
-                        <Image
+                        <LazyImage
                           src={
-                            photosMap[event.hotelId]?.length > 0
-                              ? photosMap[event.hotelId][0].photoUrl
-                              : '/assets/default-event.jpg'
+                            photosMap[event.hotelId]?.[0]?.photoUrl ||
+                            '/assets/default-event.jpg'
                           }
                           alt={`${event.eventName || '이벤트'} 이미지`}
                           w="100%"
                           h="160px"
                           objectFit="cover"
-                          fallbackSrc="/assets/default-event.jpg"
                         />
                         <Box
                           position="absolute"
@@ -828,10 +900,8 @@ const Home = () => {
                             zIndex={3}
                           >
                             {event.discountType === 'fixed'
-                              ? `${(
-                                  event.discountValue || 0
-                                ).toLocaleString()}원 할인`
-                              : `${event.discountValue || 0}% 할인`}
+                              ? `${event.discountValue.toLocaleString()}원 할인`
+                              : `${event.discountValue}% 할인`}
                           </Badge>
                         </Box>
                         <Box
@@ -865,8 +935,6 @@ const Home = () => {
                       </Box>
                     ))}
                   </Slider>
-
-                  {/* 페이지 카운터 */}
                   <Text
                     position="absolute"
                     bottom="12px"
@@ -889,7 +957,7 @@ const Home = () => {
             </Box>
           </Box>
 
-          {/* 회사 정보 (ZeroToOne) */}
+          {/* 회사 정보 */}
           <Box w="100%" mb={4}>
             <VStack spacing={3} align="start">
               <Image
@@ -949,7 +1017,6 @@ const Home = () => {
           overflowY="auto"
         >
           <VStack align="stretch" spacing={3}>
-            {/* 쿠폰 리스트 */}
             {isCouponsLoading ? (
               <Text>쿠폰 로드 중...</Text>
             ) : customerCoupons.length ? (
