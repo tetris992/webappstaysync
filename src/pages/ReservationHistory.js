@@ -25,6 +25,7 @@ import {
 } from '../api/api';
 import { differenceInCalendarDays } from 'date-fns';
 import BottomNavigation from '../components/BottomNavigation';
+import useImagePreloader from '../hooks/useImagePreloader';
 
 const ReservationHistory = () => {
   const navigate = useNavigate();
@@ -45,8 +46,26 @@ const ReservationHistory = () => {
   const [sortOption, setSortOption] = useState('latest');
 
   const settingsCache = useRef({});
-  const photosCache = useRef({});
-  const rawHistoryRef = useRef(null);
+  const photosCache = useRef(() => {
+    const stored = localStorage.getItem('photosCache');
+    return stored ? JSON.parse(stored) : {};
+  });
+
+  const rawHistoryRef = useRef(null); // rawHistoryRef 정의
+
+  // 이미지 URL 목록 준비
+  const imageUrls = [
+    ...activeReservations.map((r) => r.photoUrl),
+    ...(showPastReservations ? pastReservations.map((r) => r.photoUrl) : []),
+  ].filter((url) => url && url !== '/assets/default-room1.jpg');
+
+  // 이미지 미리 로드
+  useImagePreloader(imageUrls, imageUrls.length);
+
+  const savePhotosCache = (cache) => {
+    localStorage.setItem('photosCache', JSON.stringify(cache));
+    photosCache.current = cache;
+  };
 
   const saveDeletedReservations = (ids) => {
     localStorage.setItem('deletedReservations', JSON.stringify(ids));
@@ -95,7 +114,7 @@ const ReservationHistory = () => {
   };
 
   const fetchRawHistory = useCallback(async () => {
-    rawHistoryRef.current = null;
+    rawHistoryRef.current = null; // 초기화
     const resp = await getReservationHistory();
     console.log('[ReservationHistory] Fetched raw history:', resp.history);
     rawHistoryRef.current = (resp.history || []).sort(
@@ -141,17 +160,20 @@ const ReservationHistory = () => {
             const cacheKey = `${r.hotelId}::${r.roomInfo}`;
             if (!photosCache.current[cacheKey]) {
               try {
-                photosCache.current[cacheKey] = await fetchHotelPhotos(
+                const photosData = await fetchHotelPhotos(
                   r.hotelId,
                   'room',
                   r.roomInfo
                 );
+                photosCache.current[cacheKey] = photosData;
+                savePhotosCache(photosCache.current);
               } catch (err) {
                 console.error(
                   `Failed to fetch photos for hotel ${r.hotelId}, room ${r.roomInfo}:`,
                   err
                 );
                 photosCache.current[cacheKey] = { roomPhotos: [] };
+                savePhotosCache(photosCache.current);
               }
             }
             photoUrl =
@@ -184,7 +206,7 @@ const ReservationHistory = () => {
             fixedDiscount: r.fixedDiscount || 0,
             discountType: r.discountType || null,
             eventName: r.eventName || null,
-            couponInfo: r.couponInfo || {}, // 백엔드에서 제공하는 couponInfo
+            couponInfo: r.couponInfo || {},
             numNights,
           };
         })
@@ -555,8 +577,8 @@ const ReservationHistory = () => {
         overflowY="auto"
         overflowX="hidden"
         position="relative"
-        pt="64px" // 헤더 높이
-        pb={{ base: '120px', md: '140px' }} // BottomNavigation 높이
+        pt="64px"
+        pb={{ base: '120px', md: '140px' }}
         css={{
           '&::-webkit-scrollbar': {
             display: 'none',
@@ -603,6 +625,7 @@ const ReservationHistory = () => {
                       reservation={r}
                       onCancelReservation={handleCancel}
                       isConfirmed={r.isConfirmed}
+                      useLazyImage // LazyImage 사용 플래그 추가
                     />
                   ))}
                 </VStack>
@@ -651,6 +674,7 @@ const ReservationHistory = () => {
                           isConfirmed={r.isConfirmed}
                           bg="gray.100"
                           opacity={0.8}
+                          useLazyImage // LazyImage 사용 플래그 추가
                         />
                         <IconButton
                           icon={<DeleteIcon />}

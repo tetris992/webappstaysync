@@ -1,10 +1,9 @@
-import React, { useEffect, useCallback, useReducer, useMemo } from 'react';
+import React, { useEffect, useCallback, useReducer, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Container,
   VStack,
   Text,
-  Image,
   Button,
   useToast,
   Spinner,
@@ -38,13 +37,18 @@ import Map from '../components/HotelMap';
 import BottomNavigation from '../components/BottomNavigation';
 import { resolveCouponMetadata } from '../utils/coupon';
 import logger from '../utils/logger';
+import Slider from 'react-slick';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
+import useImagePreloader from '../hooks/useImagePreloader';
+import LazyImage from '../components/LazyImage';
 
 const initialState = {
   hotelId: null,
   hotelInfo: null,
   hotelPhoneNumber: null,
   coordinates: null,
-  roomImage: null,
+  roomImages: [], // 여러 장의 사진을 저장
   checkIn: null,
   checkOut: null,
   price: 0,
@@ -104,6 +108,8 @@ const ReservationConfirmation = () => {
   } = useAuth();
 
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   const { state: locState } = location;
 
@@ -114,11 +120,52 @@ const ReservationConfirmation = () => {
       differenceInCalendarDays(
         new Date(locState?.checkOut),
         new Date(locState?.checkIn)
-      ) ||
-      locState?.numNights ||
-      1
+      ) || locState?.numNights || 1
     );
   }, [locState]);
+
+  // 이미지 미리 로드
+  useImagePreloader(
+    state.roomImages.map((img) => img.photoUrl),
+    state.roomImages.length
+  );
+
+  // 슬라이더 설정
+  const sliderSettings = {
+    dots: false,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    arrows: true,
+    autoplay: false, // 자동 슬라이드 비활성화
+    afterChange: (current) => setCurrentSlideIndex(current),
+  };
+
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+  // 스크롤 이벤트 핸들러
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        // 스크롤 다운: 헤더 숨김
+        setIsHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY) {
+        // 스크롤 업: 헤더 표시
+        setIsHeaderVisible(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [lastScrollY]);
 
   const applicableCoupons = useMemo(() => {
     return customerCoupons.filter((coupon) => {
@@ -245,7 +292,7 @@ const ReservationConfirmation = () => {
               settings.latitude && settings.longitude
                 ? { lat: settings.latitude, lng: settings.longitude }
                 : null,
-            roomImage: photosData?.roomPhotos?.[0]?.photoUrl || null,
+            roomImages: photosData?.roomPhotos || [],
             checkIn: inDt,
             checkOut: outDt,
             isHotelInfoLoading: false,
@@ -517,13 +564,11 @@ const ReservationConfirmation = () => {
       numNights,
     ]
   );
-  
-  
+
   const handleConfirm = async () => {
     const {
       hotelId,
       hotelPhoneNumber,
-      roomImage,
       checkIn,
       checkOut,
       price,
@@ -540,9 +585,9 @@ const ReservationConfirmation = () => {
       couponDiscount,
       couponTotalFixedDiscount,
     } = state;
-  
+
     const { roomInfo, specialRequests } = locState || {};
-  
+
     // 인증 확인
     if (!localStorage.getItem('customerToken')) {
       toast({
@@ -555,7 +600,7 @@ const ReservationConfirmation = () => {
       navigate('/login', { replace: true });
       return;
     }
-  
+
     // hotelId 유효성 검증
     if (!hotelId || typeof hotelId !== 'string' || hotelId.trim() === '') {
       logger.warn('[handleConfirm] Invalid hotelId:', hotelId);
@@ -568,7 +613,7 @@ const ReservationConfirmation = () => {
       });
       return;
     }
-  
+
     // couponUuid 유효성 검증
     if (couponUuid && (typeof couponUuid !== 'string' || couponUuid.trim() === '')) {
       logger.warn('[handleConfirm] Invalid couponUuid:', couponUuid);
@@ -581,18 +626,18 @@ const ReservationConfirmation = () => {
       });
       return;
     }
-  
+
     // 중복 요청 방지
     if (state.isLoading) {
       logger.warn('[handleConfirm] Already processing a reservation request');
       return;
     }
-  
+
     // 즉시 로딩 상태 설정
     dispatch({ type: 'INIT_STATE', payload: { isLoading: true } });
-  
+
     // 이미지 처리
-    let finalPhotoUrl = roomImage;
+    let finalPhotoUrl = state.roomImages.length > 0 ? state.roomImages[0].photoUrl : null;
     if (!finalPhotoUrl) {
       try {
         const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
@@ -602,14 +647,14 @@ const ReservationConfirmation = () => {
         finalPhotoUrl = '/assets/default-room1.jpg';
       }
     }
-  
+
     // 쿠폰 처리
     let finalCouponCode = couponCode;
     let finalCouponName = couponName;
     let finalCouponDiscountType = couponDiscountType;
     let finalCouponDiscount = couponDiscount;
     let finalCouponTotalFixedDiscount = couponTotalFixedDiscount;
-  
+
     if (couponUuid) {
       const selectedCoupon = customerCoupons.find(
         (c) => c.couponUuid === couponUuid
@@ -639,7 +684,7 @@ const ReservationConfirmation = () => {
         finalCouponTotalFixedDiscount = 0;
       }
     }
-  
+
     // couponInfo 구성
     const couponInfo = couponUuid && finalCouponCode
       ? {
@@ -651,9 +696,9 @@ const ReservationConfirmation = () => {
           discountAmount: finalCouponTotalFixedDiscount,
         }
       : null;
-  
+
     logger.debug('[handleConfirm] Constructed couponInfo:', couponInfo);
-  
+
     const payload = {
       hotelId,
       siteName: '단잠',
@@ -668,7 +713,6 @@ const ReservationConfirmation = () => {
       checkOut: checkOut
         ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
         : null,
-      // reservationDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss'+09:00"),
       reservationStatus: '예약완료',
       price,
       originalPrice,
@@ -703,13 +747,13 @@ const ReservationConfirmation = () => {
       couponDiscountValue: finalCouponDiscount || null,
       couponDiscountAmount: finalCouponTotalFixedDiscount || null,
     };
-  
+
     logger.debug('[handleConfirm] Sending reservation data:', payload);
-  
+
     try {
       const res = await createReservation(payload);
       logger.info(`[handleConfirm] Reservation created: ${res.reservationId}`);
-  
+
       // 쿠폰 처리 알림
       if (couponUuid && finalCouponCode) {
         logger.info(
@@ -724,7 +768,7 @@ const ReservationConfirmation = () => {
           isClosable: true,
         });
       }
-  
+
       toast({
         title: '예약 성공',
         description: '예약이 완료되었습니다.',
@@ -761,7 +805,6 @@ const ReservationConfirmation = () => {
       dispatch({ type: 'INIT_STATE', payload: { isLoading: false } });
     }
   };
-
 
   const handleCopyAddress = async () => {
     if (!state.hotelInfo?.address) {
@@ -840,6 +883,7 @@ const ReservationConfirmation = () => {
       bottom={0}
       overflowX="hidden"
     >
+      {/* 헤더 */}
       <Box
         position="fixed"
         top={0}
@@ -850,6 +894,8 @@ const ReservationConfirmation = () => {
         borderColor="gray.200"
         py={4}
         zIndex={1000}
+        transform={isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)'}
+        transition="transform 0.3s ease-in-out"
       >
         <Container maxW={{ base: '100%', sm: 'container.sm' }}>
           <Flex align="center" justify="center" pos="relative">
@@ -874,11 +920,12 @@ const ReservationConfirmation = () => {
         </Container>
       </Box>
 
+      {/* 메인 컨텐츠 */}
       <Box
         flex="1"
         overflowY="auto"
         px={{ base: 4, sm: 0 }}
-        pt="64px"
+        pt={isHeaderVisible ? '64px' : '0px'}
         pb="160px"
         overflowX="hidden"
         css={{
@@ -904,17 +951,67 @@ const ReservationConfirmation = () => {
           </VStack>
         ) : (
           <VStack spacing={4} align="stretch">
-            <Box bg="white" rounded="lg" overflow="hidden" shadow="sm">
-              <Image
-                src={state.roomImage || '/assets/default-room1.jpg'}
-                alt={locState?.roomInfo || '객실 이미지'}
-                objectFit="cover"
-                w="100%"
-                h={{ base: '150px', sm: '180px', md: '250px' }}
-                onError={(e) => (e.target.src = '/assets/default-room1.jpg')}
-              />
+            {/* 객실 사진 섹션 */}
+            <Box position="sticky" top={0} zIndex={1}>
+              {state.roomImages.length === 1 ? (
+                // 사진이 1장일 경우 슬라이더 없이 단일 이미지 표시
+                <LazyImage
+                  src={state.roomImages[0].photoUrl}
+                  alt={locState?.roomInfo || '객실 이미지'}
+                  objectFit="cover"
+                  w="100%"
+                  h={{ base: '200px', sm: '250px', md: '300px' }}
+                  onError={(e) => (e.target.src = '/assets/default-room1.jpg')}
+                  borderRadius="md" // border-radius 추가
+                />
+              ) : state.roomImages.length > 1 ? (
+                // 사진이 2장 이상일 경우 슬라이더 사용
+                <>
+                  <Slider {...sliderSettings}>
+                    {state.roomImages.map((image, index) => (
+                      <Box key={index} position="relative">
+                        <LazyImage
+                          src={image.photoUrl}
+                          alt={`${locState?.roomInfo || '객실 이미지'} ${index + 1}`}
+                          objectFit="cover"
+                          w="100%"
+                          h={{ base: '200px', sm: '250px', md: '300px' }}
+                          onError={(e) =>
+                            (e.target.src = '/assets/default-room1.jpg')
+                          }
+                          borderRadius="md" // border-radius 추가
+                        />
+                      </Box>
+                    ))}
+                  </Slider>
+                  <Text
+                    position="absolute"
+                    bottom="10px"
+                    right="10px"
+                    color="white"
+                    fontSize="sm"
+                    bg="rgba(0, 0, 0, 0.5)"
+                    px={2}
+                    py={1}
+                    borderRadius="md"
+                  >
+                    {currentSlideIndex + 1}/{state.roomImages.length}
+                  </Text>
+                </>
+              ) : (
+                // 사진이 없을 경우 기본 이미지 표시
+                <LazyImage
+                  src="/assets/default-room1.jpg"
+                  alt={locState?.roomInfo || '객실 이미지'}
+                  objectFit="cover"
+                  w="100%"
+                  h={{ base: '200px', sm: '250px', md: '300px' }}
+                  borderRadius="md" // border-radius 추가
+                />
+              )}
             </Box>
 
+            {/* 호텔 정보 */}
             <Box
               bg="white"
               p={{ base: 4, sm: 5 }}
@@ -993,6 +1090,7 @@ const ReservationConfirmation = () => {
               </VStack>
             </Box>
 
+            {/* 예약 정보 */}
             <Box
               bg="white"
               p={{ base: 4, sm: 5 }}
