@@ -7,7 +7,11 @@ import {
   AlertIcon,
   Button,
   useToast,
+  Spinner,
+  Center,
+  Text,
 } from '@chakra-ui/react';
+import { useNavigate } from 'react-router-dom';
 import Home from './pages/Home';
 import HotelList from './pages/HotelList';
 import RoomSelection from './pages/RoomSelection';
@@ -18,6 +22,7 @@ import Register from './pages/Register';
 import KakaoCallback from './components/KakaoCallback';
 import PrivacyConsentPage from './pages/PrivacyConsentModal';
 import PhoneVerification from './pages/PhoneVerification';
+import CompleteProfile from './pages/CompleteProfile';
 import BottomNavigation from './components/BottomNavigation';
 import MyInfo from './pages/MyInfo';
 import Events from './pages/Events';
@@ -27,16 +32,62 @@ import { usePwaInstall } from './hooks/usePwaInstall';
 import { isIos, isInStandaloneMode } from './utils/pwaUtils';
 
 function AppContent() {
-  const { isAuthenticated, customer, logout } = useAuth();
+  const { isAuthenticated, customer, logout, isAuthLoading } = useAuth();
   const [hotelSettings, setHotelSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
   const toast = useToast();
 
-  // PWA 설치 훅
+  // 프로필 완성 여부 체크
+  const profileComplete =
+    Boolean(customer?.name?.trim()) &&
+    Boolean(customer?.nickname?.trim()) &&
+    customer?.nickname !== '카카오 사용자';
+
+  // 전역 가드: 로그인 및 프로필 완료 여부에 따라 리다이렉트
+  useEffect(() => {
+    if (isAuthLoading) {
+      console.log('[AppContent] Waiting for auth to load...');
+      return; // 인증 데이터 로드 중이면 리다이렉트 지연
+    }
+
+    // 로그인하지 않은 경우
+    if (
+      !isAuthenticated &&
+      location.pathname !== '/login' &&
+      location.pathname !== '/auth/kakao/callback' &&
+      !location.pathname.includes('/verify-phone')
+    ) {
+      console.log('[AppContent] Not authenticated, redirecting to /login');
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    // 로그인했지만 프로필 미완료인 경우
+    if (
+      isAuthenticated &&
+      !profileComplete &&
+      location.pathname !== '/complete-profile' &&
+      !location.pathname.includes('/verify-phone')
+    ) {
+      console.log('[AppContent] Profile incomplete, redirecting to /complete-profile');
+      navigate('/complete-profile', { replace: true });
+      return;
+    }
+
+    // 로그인했으며 프로필이 완성된 경우
+    if (
+      isAuthenticated &&
+      profileComplete &&
+      (location.pathname === '/' || location.pathname === '/login')
+    ) {
+      console.log('[AppContent] Authenticated and profile complete, staying or redirecting to home');
+    }
+  }, [isAuthenticated, profileComplete, location.pathname, navigate, isAuthLoading]);
+
   const { canInstall, promptInstall } = usePwaInstall();
 
-  // "설치하기" 버튼 핸들러 (반드시 사용자 클릭 제스처 안에서만 prompt 호출)
   const handlePwaInstall = async () => {
     try {
       const accepted = await promptInstall();
@@ -82,22 +133,16 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    // 로딩 스피너 대체용 임시 딜레이
     const t = setTimeout(() => setIsLoading(false), 1000);
     return () => clearTimeout(t);
   }, []);
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
-      <Box
-        minH="100vh"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        bg="white"
-      >
-        Loading...
-      </Box>
+      <Center height="100vh">
+        <Spinner size="xl" color="blue.500" />
+        <Text ml={4}>로딩 중...</Text>
+      </Center>
     );
   }
 
@@ -120,7 +165,6 @@ function AppContent() {
           scrollBehavior: 'smooth',
         }}
       >
-        {/* Android/Chrome PWA 설치 배너 */}
         {canInstall && (
           <Alert status="info" mb={4} borderRadius="md" mx={4}>
             <AlertIcon />
@@ -131,7 +175,6 @@ function AppContent() {
           </Alert>
         )}
 
-        {/* iOS/Safari 설치 안내 */}
         {isIos() && !isInStandaloneMode() && (
           <Box
             bg="blue.50"
@@ -157,6 +200,7 @@ function AppContent() {
             path="/verify-phone/:customerId"
             element={<PhoneVerification />}
           />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route
             path="/hotels"
             element={
@@ -206,11 +250,10 @@ function AppContent() {
               )
             }
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Box>
 
-      {/* 하단 내비게이션 (로그인 후, 로그인 화면이 아닐 때만 표시) */}
       {isAuthenticated && location.pathname !== '/login' && (
         <BottomNavigation />
       )}

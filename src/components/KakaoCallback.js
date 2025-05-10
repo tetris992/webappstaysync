@@ -50,28 +50,13 @@ const KakaoCallback = () => {
         console.log('[KakaoCallback] Login response:', response);
 
         if (response.token) {
-          if (response.needPhoneVerification) {
-            console.log(
-              '[KakaoCallback] Phone verification required, customerId:',
-              response.customerId
-            );
-            await login(
-              response.customer,
-              response.token,
-              response.refreshToken,
-              response.deviceToken
-            );
-            navigate(`/verify-phone/${response.customerId}`, { replace: true });
-            return;
-          }
-
-          // 로그인 처리 및 리다이렉트
           await login(
             response.customer,
             response.token,
             response.refreshToken,
             response.deviceToken
           );
+
           toast({
             title: '로그인 성공',
             description: '카카오 계정으로 로그인되었습니다.',
@@ -79,7 +64,12 @@ const KakaoCallback = () => {
             duration: 3000,
             isClosable: true,
           });
-          navigate('/', { replace: true });
+
+          const redirectPath = new URL(response.redirectUrl).pathname;
+          navigate(redirectPath, {
+            state: { customer: response.customer },
+            replace: true,
+          });
         } else {
           throw new Error(
             response?.message || '로그인 응답이 유효하지 않습니다.'

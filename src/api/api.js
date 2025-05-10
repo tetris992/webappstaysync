@@ -1,4 +1,4 @@
-// api.js
+// src/api/api.js
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
@@ -15,18 +15,16 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// api.js
+// axios-retry 설정
 axiosRetry(api, {
   retries: 3,
   retryCondition: err => {
-    // 로그인 소셜 kakao 에 대해서는 재시도 금지
     if (err.config.url?.includes('/login/social/kakao')) {
-      return false
+      return false;
     }
-    return axiosRetry.isNetworkError(err) || err.response?.status >= 500
-  }
-})
-
+    return axiosRetry.isNetworkError(err) || err.response?.status >= 500;
+  },
+});
 
 // 에러 핸들링 통일
 const handleApiError = (error, defaultMessage) => {
@@ -49,14 +47,13 @@ const logDebug = (...args) => {
   }
 };
 
+// 요청 인터셉터
 api.interceptors.request.use(
   async (config) => {
-    // 쿼리 스트링 없이 순수 path만 추출
     const requestBaseUrl = config.url.split('?')[0];
     logDebug('[api.js] Request URL:', `${BASE_URL}${config.url}`);
     logDebug('[api.js] Request Body:', config.data);
 
-    // 인증 토큰 설정
     const token = getCustomerToken();
     if (token && token !== 'undefined') {
       config.headers.Authorization = `Bearer ${token}`;
@@ -81,8 +78,7 @@ api.interceptors.request.use(
       }
     }
 
-    // CSRF 토큰 처리
-    const isSafeMethod = ['get', 'head', 'options'].includes(config.method); // GET, HEAD, OPTIONS는 CSRF 토큰 불필요
+    const isSafeMethod = ['get', 'head', 'options'].includes(config.method);
     const isCsrfTokenRequest = config.url === '/api/csrf-token';
     const skipCsrfRoutes = [
       '/api/customer/register',
@@ -313,12 +309,19 @@ export const connectSocialAccount = async (provider, socialData) => {
 };
 
 // 동의 항목 수정 API
-export const updateCustomer = async (agreements) => {
+export const updateCustomer = async ({ name, nickname, agreements } = {}) => {
   try {
-    const response = await api.put('/api/customer/update', { agreements });
+    const payload = {};
+    if (name !== undefined) payload.name = name;
+    if (nickname !== undefined) payload.nickname = nickname;
+    if (agreements !== undefined) payload.agreements = agreements;
+
+    console.log('[api.js] updateCustomer payload:', payload);
+    const response = await api.put('/api/customer/update', payload);
+    console.log('[api.js] updateCustomer response:', response.data);
     return response.data;
   } catch (error) {
-    handleApiError(error, '동의 항목 업데이트 실패');
+    handleApiError(error, '고객 정보 업데이트 실패');
   }
 };
 
@@ -482,7 +485,7 @@ export const cancelReservation = async (reservationId) => {
 
     return {
       ...response.data,
-      updatedCoupons, // 갱신된 쿠폰 목록 반환
+      updatedCoupons,
     };
   } catch (error) {
     logDebug('[api.js] Cancel reservation error:', error);
@@ -573,7 +576,7 @@ export const useCoupon = async ({ couponUuid, reservationId }) => {
 
     return {
       ...response.data,
-      updatedCoupons, // 갱신된 쿠폰 목록 반환
+      updatedCoupons,
     };
   } catch (error) {
     logDebug('[api.js] Use coupon error:', error);
@@ -596,7 +599,7 @@ export const restoreCoupon = async ({ couponUuid }) => {
 
     return {
       ...response.data,
-      updatedCoupons, // 갱신된 쿠폰 목록 반환
+      updatedCoupons,
     };
   } catch (error) {
     logDebug('[api.js] Restore coupon error:', error);

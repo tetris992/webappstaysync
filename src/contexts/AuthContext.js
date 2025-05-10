@@ -1,10 +1,5 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from 'react';
+// src/contexts/AuthContext.js
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@chakra-ui/react';
 import {
   fetchCustomerCoupons,
@@ -14,6 +9,7 @@ import {
   logoutCustomer,
 } from '../api/api';
 import ApiError from '../utils/ApiError';
+import axios from 'axios';
 
 const AuthContext = createContext();
 
@@ -23,6 +19,7 @@ export const AuthProvider = ({ children }) => {
   // 인증 상태
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [customer, setCustomer] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // 로딩 상태 추가
 
   // 호텔 목록 상태
   const [hotelList, setHotelList] = useState([]);
@@ -34,17 +31,36 @@ export const AuthProvider = ({ children }) => {
 
   // 사용 가능 쿠폰 상태
   const [availableCoupons, setAvailableCoupons] = useState([]);
-  const [isAvailableCouponsLoading, setIsAvailableCouponsLoading] =
-    useState(false);
+  const [isAvailableCouponsLoading, setIsAvailableCouponsLoading] = useState(false);
   const [availableCouponsError, setAvailableCouponsError] = useState(null);
 
   // 리프레시 및 디바이스 토큰 상태
   const [refreshToken, setRefreshToken] = useState(null);
   const [deviceToken, setDeviceToken] = useState(null);
 
+  // 서버에서 최신 고객 정보 가져오기
+  const fetchCustomerProfile = async (token) => {
+    try {
+      const response = await axios.get('http://localhost:3004/api/customer/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        withCredentials: true,
+      });
+      return response.data.customer;
+    } catch (error) {
+      console.error('[AuthContext] Failed to fetch customer profile:', error);
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.message || '고객 정보를 가져오지 못했습니다.'
+      );
+    }
+  };
+
   // 로컬 스토리지에서 초기 인증 데이터 로드
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
+      setIsAuthLoading(true); // 로딩 시작
       const token = localStorage.getItem('customerToken');
       const storedCustomer = localStorage.getItem('customer');
       const storedRefreshToken = localStorage.getItem('refreshToken');
@@ -53,20 +69,33 @@ export const AuthProvider = ({ children }) => {
       if (token && storedCustomer) {
         try {
           setIsAuthenticated(true);
-          setCustomer(JSON.parse(storedCustomer));
+          const parsedCustomer = JSON.parse(storedCustomer);
+          setCustomer(parsedCustomer);
           setRefreshToken(storedRefreshToken);
           setDeviceToken(storedDeviceToken);
+
+          // 서버에서 최신 고객 정보 가져오기
+          const latestCustomer = await fetchCustomerProfile(token);
+          setCustomer(latestCustomer);
+          localStorage.setItem('customer', JSON.stringify(latestCustomer));
+          console.log('[AuthContext] Initialized auth with updated customer data:', latestCustomer);
         } catch (error) {
-          console.error(
-            '[AuthContext] Failed to parse stored auth data:',
-            error
-          );
+          console.error('[AuthContext] Failed to initialize auth:', error);
           clearAuthData();
         }
       }
+      setIsAuthLoading(false); // 로딩 완료
     };
     initializeAuth();
   }, []);
+
+  // customer 상태가 변경될 때마다 로컬 스토리지에 저장
+  useEffect(() => {
+    if (customer) {
+      localStorage.setItem('customer', JSON.stringify(customer));
+      console.log('[AuthContext] Customer state synced to localStorage:', customer);
+    }
+  }, [customer]);
 
   // 고객 쿠폰 가져오기
   const loadCustomerCoupons = useCallback(async () => {
@@ -132,12 +161,10 @@ export const AuthProvider = ({ children }) => {
   const clearAuthData = () => {
     localStorage.removeItem('customerToken');
     localStorage.removeItem('refreshToken');
-    localStorage.removeItem('customer');
     localStorage.removeItem('deviceToken');
     localStorage.removeItem('csrfToken');
     localStorage.removeItem('csrfTokenId');
     setIsAuthenticated(false);
-    setCustomer(null);
     setHotelList([]);
     setCustomerCoupons([]);
     setCouponsLoadError(null);
@@ -147,6 +174,7 @@ export const AuthProvider = ({ children }) => {
     setIsAvailableCouponsLoading(false);
     setRefreshToken(null);
     setDeviceToken(null);
+    console.log('[AuthContext] Cleared auth data (customer data preserved)');
   };
 
   // 로그인 처리 및 초기 데이터 로드
@@ -159,19 +187,20 @@ export const AuthProvider = ({ children }) => {
     if (!dataOrCustomer) {
       throw new Error('고객 정보가 제공되지 않았습니다.');
     }
-    const customerData = { ...dataOrCustomer };
     try {
-      // 로컬 스토리지 및 상태 설정
+      setIsAuthLoading(true); // 로딩 시작
       localStorage.setItem('customerToken', token);
       localStorage.setItem('refreshToken', refreshTokenValue);
       localStorage.setItem('deviceToken', deviceTokenValue);
-      localStorage.setItem('customer', JSON.stringify(customerData));
+
+      // 서버에서 최신 고객 정보 가져오기
+      const latestCustomer = await fetchCustomerProfile(token);
+      localStorage.setItem('customer', JSON.stringify(latestCustomer));
       setIsAuthenticated(true);
-      setCustomer(customerData);
+      setCustomer(latestCustomer);
       setRefreshToken(refreshTokenValue);
       setDeviceToken(deviceTokenValue);
 
-      // 초기 데이터 로드
       const [hotels, coupons] = await Promise.all([
         fetchHotelList(),
         fetchCustomerCoupons(),
@@ -179,11 +208,14 @@ export const AuthProvider = ({ children }) => {
       setHotelList(hotels || []);
       setCustomerCoupons(coupons || []);
 
+      console.log('[AuthContext] Login successful with updated customer:', latestCustomer);
+      setIsAuthLoading(false); // 로딩 완료
+
       return {
         token,
         refreshToken: refreshTokenValue,
         deviceToken: deviceTokenValue,
-        customer: customerData,
+        customer: latestCustomer,
       };
     } catch (err) {
       console.error('[AuthContext] login error:', {
@@ -191,6 +223,7 @@ export const AuthProvider = ({ children }) => {
         stack: err.stack,
       });
       clearAuthData();
+      setIsAuthLoading(false);
       throw new Error('인증 정보 저장 또는 초기 데이터 로드에 실패했습니다.');
     }
   };
@@ -282,6 +315,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         isAuthenticated,
         customer,
+        setCustomer,
         hotelList,
         setHotelList,
         customerCoupons,
@@ -291,6 +325,7 @@ export const AuthProvider = ({ children }) => {
         availableCoupons,
         isAvailableCouponsLoading,
         availableCouponsError,
+        isAuthLoading, // 로딩 상태 추가
         login,
         logout,
         refreshAuthToken,

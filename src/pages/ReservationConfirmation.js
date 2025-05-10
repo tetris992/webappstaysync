@@ -48,7 +48,7 @@ const initialState = {
   hotelInfo: null,
   hotelPhoneNumber: null,
   coordinates: null,
-  roomImages: [], // 여러 장의 사진을 저장
+  roomImages: [],
   checkIn: null,
   checkOut: null,
   price: 0,
@@ -138,7 +138,7 @@ const ReservationConfirmation = () => {
     slidesToShow: 1,
     slidesToScroll: 1,
     arrows: true,
-    autoplay: false, // 자동 슬라이드 비활성화
+    autoplay: false,
     afterChange: (current) => setCurrentSlideIndex(current),
   };
 
@@ -952,7 +952,7 @@ const ReservationConfirmation = () => {
         ) : (
           <VStack spacing={4} align="stretch">
             {/* 객실 사진 섹션 */}
-            <Box position="sticky" top={0} zIndex={1}>
+            <Box>
               {state.roomImages.length === 1 ? (
                 // 사진이 1장일 경우 슬라이더 없이 단일 이미지 표시
                 <LazyImage
@@ -962,7 +962,7 @@ const ReservationConfirmation = () => {
                   w="100%"
                   h={{ base: '200px', sm: '250px', md: '300px' }}
                   onError={(e) => (e.target.src = '/assets/default-room1.jpg')}
-                  borderRadius="md" // border-radius 추가
+                  borderRadius="md"
                 />
               ) : state.roomImages.length > 1 ? (
                 // 사진이 2장 이상일 경우 슬라이더 사용
@@ -979,7 +979,7 @@ const ReservationConfirmation = () => {
                           onError={(e) =>
                             (e.target.src = '/assets/default-room1.jpg')
                           }
-                          borderRadius="md" // border-radius 추가
+                          borderRadius="md"
                         />
                       </Box>
                     ))}
@@ -1006,7 +1006,7 @@ const ReservationConfirmation = () => {
                   objectFit="cover"
                   w="100%"
                   h={{ base: '200px', sm: '250px', md: '300px' }}
-                  borderRadius="md" // border-radius 추가
+                  borderRadius="md"
                 />
               )}
             </Box>
