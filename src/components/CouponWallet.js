@@ -19,9 +19,7 @@ import { fetchCustomerCoupons } from '../api/api';
 import { useToast } from '@chakra-ui/react';
 import io from 'socket.io-client';
 
-const SOCKET_URL = `${
-  process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004'
-}/socket.io/`.replace(/^http/, 'ws'); // wss://staysync.org/socket.io/ in production
+const SOCKET_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004'; // https://staysync.org in production
 
 const CouponWallet = () => {
   const navigate = useNavigate();
@@ -33,14 +31,20 @@ const CouponWallet = () => {
   const [sortOption, setSortOption] = useState('expiryDate');
 
   useEffect(() => {
+    if (!customer?._id) return;
+
     const socket = io(SOCKET_URL, {
       path: '/socket.io',
-      withCredentials: true,
       transports: ['websocket', 'polling'],
+      withCredentials: true,
+      query: {
+        customerToken: localStorage.getItem('customerToken'),
+        customerId: customer._id,
+      },
     });
 
     socket.on('connect', () => {
-      console.log('[CouponWallet] Connected to WebSocket');
+      console.log('[CouponWallet] Connected to WebSocket:', socket.id);
     });
 
     socket.on('couponIssued', ({ coupon, message }) => {
@@ -55,19 +59,19 @@ const CouponWallet = () => {
       console.log('[CouponWallet] New coupon received:', coupon);
     });
 
-    socket.on('error', (error) => {
-      console.error('[CouponWallet] WebSocket error:', error);
+    socket.on('connect_error', (error) => {
+      console.error('[CouponWallet] WebSocket connect_error:', error);
     });
 
-    socket.on('connect_error', (error) => {
-      console.error('[CouponWallet] WebSocket connection error:', error);
+    socket.on('error', (error) => {
+      console.error('[CouponWallet] WebSocket error:', error);
     });
 
     return () => {
       socket.disconnect();
       console.log('[CouponWallet] WebSocket disconnected');
     };
-  }, [toast]);
+  }, [toast, customer?._id]);
 
   useEffect(() => {
     const loadCoupons = async () => {
@@ -103,7 +107,7 @@ const CouponWallet = () => {
     };
 
     loadCoupons();
-  }, [customer?._id, navigate, toast]); // 의존성 최적화
+  }, [customer?._id, navigate, toast]);
 
   const filteredCoupons = coupons
     .filter((coupon) => {

@@ -1,3 +1,4 @@
+// src/pages/AuthCallback.js
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
@@ -11,6 +12,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import io from 'socket.io-client';
 
+const SOCKET_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004'; // https://staysync.org in production
+
 const AuthCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,7 +21,18 @@ const AuthCallback = () => {
   const { login } = useAuth();
 
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_API_URL);
+    const socket = io(SOCKET_URL, {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      query: {
+        customerToken: localStorage.getItem('customerToken'),
+      },
+    });
+
+    socket.on('connect', () => {
+      console.log('[AuthCallback] Connected to WebSocket:', socket.id);
+    });
 
     socket.on('couponIssued', ({ message, coupons }) => {
       toast({
@@ -31,10 +45,19 @@ const AuthCallback = () => {
       console.log('[AuthCallback] New coupons received:', coupons);
     });
 
+    socket.on('connect_error', (error) => {
+      console.error('[AuthCallback] WebSocket connect_error:', error);
+    });
+
+    socket.on('error', (error) => {
+      console.error('[AuthCallback] WebSocket error:', error);
+    });
+
     return () => {
       socket.disconnect();
+      console.log('[AuthCallback] WebSocket disconnected');
     };
-  }, [toast]);
+  }, [toast]); // toast만 의존성으로 설정
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -69,7 +92,7 @@ const AuthCallback = () => {
     };
 
     handleCallback();
-  }, [navigate, login, toast, location]);
+  }, [navigate, login, toast, location.search]); // location.search로 최적화
 
   return (
     <Flex

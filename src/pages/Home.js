@@ -92,8 +92,9 @@ const Home = () => {
       .slice(0, 3)
       .flatMap(
         (hotel) =>
-          photosMap[hotel.hotelId]?.slice(0, 2)?.map((photo) => photo.photoUrl) ||
-          []
+          photosMap[hotel.hotelId]
+            ?.slice(0, 2)
+            ?.map((photo) => photo.photoUrl) || []
       ),
     6 // 최대 6장 프리로드 (3개 호텔 x 2장)
   );
@@ -162,7 +163,10 @@ const Home = () => {
 
   // Socket.io 연결 및 쿠폰 이벤트
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_API_URL, {
+    const socket = io(process.env.REACT_APP_API_BASE_URL, {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
@@ -579,10 +583,10 @@ const Home = () => {
                 </InputLeftElement>
                 <Input
                   placeholder="날짜"
-                  value={`${format(dateRange[0].startDate, 'yyyy.MM.dd')} - ${format(
-                    dateRange[0].endDate,
+                  value={`${format(
+                    dateRange[0].startDate,
                     'yyyy.MM.dd'
-                  )}`}
+                  )} - ${format(dateRange[0].endDate, 'yyyy.MM.dd')}`}
                   readOnly
                   onClick={() => setIsCalendarOpen(true)}
                   borderRadius="lg"

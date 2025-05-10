@@ -1,3 +1,4 @@
+# .github/workflows/main.yml
 name: Deploy DanJam-In to GitHub Pages
 
 on:
@@ -29,7 +30,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        continue-on-error: false
 
       - name: Build
         run: npm run build
@@ -39,7 +39,9 @@ jobs:
 
       - name: Verify build output
         run: |
+          # Ensure our production API URL is in the bundle...
           grep -r "staysync.org" build/
+          # ...and that no fallback localhost:3004 remains
           ! grep -r "localhost:3004" build/
 
       - name: Create 404.html
@@ -48,8 +50,7 @@ jobs:
           echo "<base href=\"/\" />" >> build/404.html
 
       - name: Create CNAME file
-        run: |
-          echo "danjam.in" > build/CNAME
+        run: echo "danjam.in" > build/CNAME
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
