@@ -9,7 +9,7 @@ import {
   logoutCustomer,
 } from '../api/api';
 import ApiError from '../utils/ApiError';
-import axios from 'axios';
+import api from '../api/api'
 
 const AuthContext = createContext();
 
@@ -39,14 +39,9 @@ export const AuthProvider = ({ children }) => {
   const [deviceToken, setDeviceToken] = useState(null);
 
   // 서버에서 최신 고객 정보 가져오기
-  const fetchCustomerProfile = async (token) => {
+  const fetchCustomerProfile = async () => {
     try {
-      const response = await axios.get('http://localhost:3004/api/customer/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        withCredentials: true,
-      });
+      const response = await api.get('/api/customer/me');
       return response.data.customer;
     } catch (error) {
       console.error('[AuthContext] Failed to fetch customer profile:', error);
