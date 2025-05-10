@@ -16,13 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Node 18
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
+
+      - name: Clear npm cache
+        run: npm cache clean --force
 
       - name: Install dependencies
         run: npm ci
@@ -33,7 +36,9 @@ jobs:
         env:
           REACT_APP_API_BASE_URL: https://staysync.org
           NODE_ENV: production
-          CORS_ORIGIN: https://danjam.in,http://localhost:3000,http://localhost:3001
+
+      - name: Verify build output
+        run: grep -r "staysync.org" build/
 
       - name: Create 404.html
         run: |
@@ -42,11 +47,11 @@ jobs:
 
       - name: Create CNAME file
         run: |
-          echo "DanJam.in" > build/CNAME
+          echo "danjam.in" > build/CNAME
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
-          cname: DanJam.in
+          cname: danjam.in
