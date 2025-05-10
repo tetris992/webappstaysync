@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast, Spinner, Center, Box, Text } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
 import { customerLoginSocial } from '../api/api';
+import io from 'socket.io-client';
 
 const KakaoCallback = () => {
   const navigate = useNavigate();
@@ -14,9 +15,28 @@ const KakaoCallback = () => {
   const processingRef = useRef(false);
 
   useEffect(() => {
+    const socket = io(process.env.REACT_APP_API_URL);
+
+    socket.on('couponIssued', ({ message, coupons }) => {
+      toast({
+        title: '새 쿠폰 발행',
+        description: message,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      console.log('[KakaoCallback] New coupons received:', coupons);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [toast]);
+
+  useEffect(() => {
     if (isAuthenticated) {
       console.log('[KakaoCallback] Already authenticated, redirecting to home');
-      navigate('/', { replace: true });
+      navigate('/');
       return;
     }
 
@@ -49,14 +69,26 @@ const KakaoCallback = () => {
         const response = await customerLoginSocial('kakao', { code });
         console.log('[KakaoCallback] Login response:', response);
 
-        if (response.token) {
-          await login(
-            response.customer,
-            response.token,
-            response.refreshToken,
-            response.deviceToken
-          );
+        if (response && response.success) {
+          if (response.needPhoneVerification) {
+            console.log('[KakaoCallback] Phone verification required, customerId:', response.customerId);
+            localStorage.setItem('customerToken', response.token);
+            localStorage.setItem('refreshToken', response.refreshToken);
+            console.log('[KakaoCallback] Stored tokens:', {
+              customerToken: response.token,
+              refreshToken: response.refreshToken,
+            });
+            navigate(`/verify-phone/${response.customerId}`, { replace: true });
+            return;
+          }
 
+          await login(response.customer, response.token);
+          localStorage.setItem('customerToken', response.token);
+          localStorage.setItem('refreshToken', response.refreshToken);
+          console.log('[KakaoCallback] Stored tokens for successful login:', {
+            customerToken: response.token,
+            refreshToken: response.refreshToken,
+          });
           toast({
             title: '로그인 성공',
             description: '카카오 계정으로 로그인되었습니다.',
@@ -64,22 +96,12 @@ const KakaoCallback = () => {
             duration: 3000,
             isClosable: true,
           });
-
-          const redirectPath = new URL(response.redirectUrl).pathname;
-          navigate(redirectPath, {
-            state: { customer: response.customer },
-            replace: true,
-          });
+          navigate('/', { replace: true });
         } else {
-          throw new Error(
-            response?.message || '로그인 응답이 유효하지 않습니다.'
-          );
+          throw new Error(response?.message || '로그인 응답이 유효하지 않습니다.');
         }
       } catch (error) {
-        console.error('[KakaoCallback] Error:', {
-          message: error.message,
-          stack: error.stack,
-        });
+        console.error('[KakaoCallback] Error:', error);
         setError(error.message);
 
         let userMessage = error.message;
@@ -126,9 +148,7 @@ const KakaoCallback = () => {
     return (
       <Center height="100vh">
         <Box textAlign="center" p={5}>
-          <Text color="red.500" fontSize="lg">
-            {error}
-          </Text>
+          <Text color="red.500" fontSize="lg">{error}</Text>
           <Text mt={2}>잠시 후 로그인 페이지로 이동합니다...</Text>
         </Box>
       </Center>
