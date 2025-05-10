@@ -1,8 +1,10 @@
+// src/hooks/useSocket.js
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004';
+const socketUrl = `${BASE_URL.replace(/^http/, 'ws')}/socket.io/`; // wss://staysync.org/socket.io/ in production
 
 const useSocket = () => {
   const { customer } = useAuth();
@@ -13,19 +15,21 @@ const useSocket = () => {
     const token = localStorage.getItem('customerToken');
     if (!token || !customer?._id) return;
 
-    // 기본 hotelId 설정 (필요에 따라 동적으로 변경)
-    const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630'; // 첫 번째 예약의 hotelId 사용
+    const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630';
 
-    const socketInstance = io(BASE_URL, {
+    const socketInstance = io(socketUrl, {
       query: {
         customerToken: token,
         type: 'customer',
-        hotelId: defaultHotelId, // hotelId 추가
+        hotelId: defaultHotelId,
         customerId: customer._id,
       },
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
+      transports: ['websocket', 'polling'],
+      path: '/socket.io',
+      withCredentials: true,
     });
 
     socketInstance.on('connect', () => {

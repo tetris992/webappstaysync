@@ -1,3 +1,4 @@
+// src/pages/CouponWallet.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -18,6 +19,10 @@ import { fetchCustomerCoupons } from '../api/api';
 import { useToast } from '@chakra-ui/react';
 import io from 'socket.io-client';
 
+const SOCKET_URL = `${
+  process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004'
+}/socket.io/`.replace(/^http/, 'ws'); // wss://staysync.org/socket.io/ in production
+
 const CouponWallet = () => {
   const navigate = useNavigate();
   const toast = useToast();
@@ -28,7 +33,16 @@ const CouponWallet = () => {
   const [sortOption, setSortOption] = useState('expiryDate');
 
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_API_URL);
+    const socket = io(SOCKET_URL, {
+      path: '/socket.io',
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+    });
+
+    socket.on('connect', () => {
+      console.log('[CouponWallet] Connected to WebSocket');
+    });
+
     socket.on('couponIssued', ({ coupon, message }) => {
       setCoupons((prev) => [...prev, coupon]);
       toast({
@@ -41,8 +55,17 @@ const CouponWallet = () => {
       console.log('[CouponWallet] New coupon received:', coupon);
     });
 
+    socket.on('error', (error) => {
+      console.error('[CouponWallet] WebSocket error:', error);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('[CouponWallet] WebSocket connection error:', error);
+    });
+
     return () => {
       socket.disconnect();
+      console.log('[CouponWallet] WebSocket disconnected');
     };
   }, [toast]);
 
@@ -80,7 +103,7 @@ const CouponWallet = () => {
     };
 
     loadCoupons();
-  }, [customer, navigate, toast]);
+  }, [customer?._id, navigate, toast]); // 의존성 최적화
 
   const filteredCoupons = coupons
     .filter((coupon) => {

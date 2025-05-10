@@ -38,7 +38,9 @@ jobs:
           NODE_ENV: production
 
       - name: Verify build output
-        run: grep -r "staysync.org" build/
+        run: |
+          grep -r "staysync.org" build/
+          ! grep -r "localhost:3004" build/
 
       - name: Create 404.html
         run: |
