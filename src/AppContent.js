@@ -42,8 +42,9 @@ function AppContent() {
   // 프로필 완성 여부 체크
   const profileComplete =
     Boolean(customer?.name?.trim()) &&
-    Boolean(customer?.nickname?.trim()) &&
-    customer?.nickname !== '카카오 사용자';
+    (customer?.isSocialLogin ||
+      (Boolean(customer?.nickname?.trim()) &&
+        customer.nickname !== '카카오 사용자'));
 
   // 전역 가드: 로그인 및 프로필 완료 여부에 따라 리다이렉트
   useEffect(() => {
@@ -71,7 +72,9 @@ function AppContent() {
       location.pathname !== '/complete-profile' &&
       !location.pathname.includes('/verify-phone')
     ) {
-      console.log('[AppContent] Profile incomplete, redirecting to /complete-profile');
+      console.log(
+        '[AppContent] Profile incomplete, redirecting to /complete-profile'
+      );
       navigate('/complete-profile', { replace: true });
       return;
     }
@@ -82,9 +85,17 @@ function AppContent() {
       profileComplete &&
       (location.pathname === '/' || location.pathname === '/login')
     ) {
-      console.log('[AppContent] Authenticated and profile complete, staying or redirecting to home');
+      console.log(
+        '[AppContent] Authenticated and profile complete, staying or redirecting to home'
+      );
     }
-  }, [isAuthenticated, profileComplete, location.pathname, navigate, isAuthLoading]);
+  }, [
+    isAuthenticated,
+    profileComplete,
+    location.pathname,
+    navigate,
+    isAuthLoading,
+  ]);
 
   const { canInstall, promptInstall } = usePwaInstall();
 
