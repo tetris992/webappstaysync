@@ -33,6 +33,7 @@ import {
   fetchHotelList,
 } from '../api/api';
 import { differenceInCalendarDays, format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz'
 import Map from '../components/HotelMap';
 import BottomNavigation from '../components/BottomNavigation';
 import { resolveCouponMetadata } from '../utils/coupon';
@@ -1153,9 +1154,13 @@ const ReservationConfirmation = () => {
                   <Text color="gray.600" fontSize="sm">
                     예약 일시
                   </Text>
-                  <Text fontSize="sm" color="gray.400">
-                    {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
-                  </Text>
+ <Text fontSize="sm" color="gray.400">
+   {formatInTimeZone(
+     new Date(),            // 현재 클라이언트 시간
+     'Asia/Seoul',          // 한국 표준시 고정
+     'yyyy-MM-dd HH:mm:ss'  // 원하는 출력 포맷
+   )}
+ </Text>
                   {state.eventName && (
                     <>
                       <Text color="gray.600" fontSize="sm">
