@@ -56,7 +56,26 @@ import LazyImage from '../components/LazyImage';
 // HTML <head>에 추가 권장 (프로젝트 설정에서 별도 처리)
 // <link rel="preload" as="image" href="/assets/low-res-placeholder.jpg">
 
+// ──────────────────────────────────────────────────────
+// 사진 캐시 헬퍼 (localStorage 에 저장/재사용)
+const fetchHotelPhotosCached = async (hotelId, category) => {
+  const key = `hotelPhotos_${hotelId}_${category}`;
+  const cached = localStorage.getItem(key);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+  const data = await fetchHotelPhotos(hotelId, category);
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    // 만약 저장 용량 초과 등 에러 나면 무시
+  }
+  return data;
+};
+// ──────────────────────────────────────────────────────
+
 const Home = () => {
+  const [hotelMinPrices, setHotelMinPrices] = useState({});
   const navigate = useNavigate();
   const toast = useToast();
   const {
@@ -192,20 +211,43 @@ const Home = () => {
       try {
         const list = await fetchHotelList();
         setHotels(list || []);
-
         const limit = pLimit(3);
+
+        const pricePromises = list.map((hotel) =>
+          limit(async () => {
+            try {
+              const checkIn = format(dateRange[0].startDate, 'yyyy-MM-dd');
+              const checkOut = format(dateRange[0].endDate, 'yyyy-MM-dd');
+              const settings = await fetchCustomerHotelSettings(hotel.hotelId, {
+                checkIn,
+                checkOut,
+              });
+              const prices = (settings.roomTypes || []).map(
+                (rt) => Number(rt.price) || Infinity
+              );
+              const minPrice = prices.length ? Math.min(...prices) : null;
+              return { id: hotel.hotelId, minPrice };
+            } catch {
+              return { id: hotel.hotelId, minPrice: null };
+            }
+          })
+        );
+        const priceResults = await Promise.all(pricePromises);
+        setHotelMinPrices(
+          priceResults.reduce((acc, { id, minPrice }) => {
+            if (minPrice != null && isFinite(minPrice)) acc[id] = minPrice;
+            return acc;
+          }, {})
+        );
+
         const photoPromises = list.map((h) =>
           limit(async () => {
             try {
-              const data = await fetchHotelPhotos(h.hotelId, 'exterior');
+              // 캐시 헬퍼 사용
+              const data = await fetchHotelPhotosCached(h.hotelId, 'exterior');
               return { id: h.hotelId, photos: data.commonPhotos || [] };
             } catch {
-              toast({
-                title: '사진 로드 실패',
-                description: `${h.hotelName} 사진을 표시할 수 없습니다.`,
-                status: 'warning',
-                duration: 3000,
-              });
+              /* 생략 */
               return { id: h.hotelId, photos: [] };
             }
           })
@@ -231,7 +273,7 @@ const Home = () => {
       }
     };
     fetchHotels();
-  }, [toast]);
+  }, [toast, dateRange]);
 
   // 이벤트 데이터 불러오기 및 사진 매핑
   useEffect(() => {
@@ -767,6 +809,12 @@ const Home = () => {
                     photosMap[hotel.hotelId]?.[0]?.photoUrl ||
                     '/assets/default-hotel.jpg';
                   const evt = events.find((e) => e.hotelId === hotel.hotelId);
+                  // ① 계산된 최소가가 있으면 그 값을, 없으면 기존 hotel.price 또는 랜덤 fallback
+                  const displayPrice =
+                    hotelMinPrices[hotel.hotelId] != null
+                      ? hotelMinPrices[hotel.hotelId]
+                      : hotel.price ||
+                        Math.floor(Math.random() * 100000) + 50000;
 
                   return (
                     <Box
@@ -830,12 +878,7 @@ const Home = () => {
                             : hotel.address}
                         </Text>
                         <Text fontWeight="bold">
-                          ₩
-                          {(
-                            hotel.price ||
-                            Math.floor(Math.random() * 100000) + 50000
-                          ).toLocaleString()}{' '}
-                          / 박
+                          ₩{displayPrice.toLocaleString()} / 박
                         </Text>
                       </VStack>
                     </Box>
