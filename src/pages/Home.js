@@ -48,11 +48,10 @@ import {
 } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
-import io from 'socket.io-client';
 import pLimit from 'p-limit';
 import useImagePreloader from '../hooks/useImagePreloader';
 import LazyImage from '../components/LazyImage';
-
+import useSocket from '../hooks/useSocket';
 // HTML <head>에 추가 권장 (프로젝트 설정에서 별도 처리)
 // <link rel="preload" as="image" href="/assets/low-res-placeholder.jpg">
 
@@ -104,6 +103,8 @@ const Home = () => {
   const [error, setError] = useState(null);
   const [isCouponPanelOpen, setIsCouponPanelOpen] = useState(false);
   const [currentEventIdx, setCurrentEventIdx] = useState(0);
+
+  const socket = useSocket();
 
   // 사진 미리 로드
   useImagePreloader(
@@ -180,28 +181,17 @@ const Home = () => {
     setIsCalendarOpen(false); // 달력은 클릭 시 열림
   };
 
-  // Socket.io 연결 및 쿠폰 이벤트
+  // Socket.io 구독먄하면됨
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_API_BASE_URL, {
-      path: '/socket.io',
-      transports: ['websocket', 'polling'],
-      withCredentials: true,
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-    });
-    socket.on('couponIssued', ({ message }) => {
-      toast({
-        title: '새 쿠폰 발행',
-        description: message,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-    });
-    return () => socket.disconnect();
-  }, [toast]);
+    if (!socket) return;
+    const onCoupon = ({ message }) => {
+      toast({ title: '새 쿠폰', description: message, status: 'success' });
+    };
+    socket.on('couponIssued', onCoupon);
+    return () => {
+      socket.off('couponIssued', onCoupon);
+    };
+  }, [socket, toast]);
 
   // 호텔 데이터 및 사진 불러오기
   useEffect(() => {

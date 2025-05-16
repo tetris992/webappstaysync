@@ -1,5 +1,5 @@
-// src/utils/dateUtils.js
-import { parse, isValid, format } from 'date-fns';
+import { parse, isValid } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { ko, enUS } from 'date-fns/locale';
 
 const parsedDateCache = {};
@@ -117,7 +117,7 @@ export const parseDate = (dateString, hotelSettings = null, isCheckIn = true) =>
 };
 
 /**
- * 날짜를 지정된 형식으로 포맷
+ * 날짜를 지정된 형식으로 포맷 (KST 기준)
  * @param {Date|string} date - 포맷할 날짜
  * @param {string} formatString - 포맷 문자열
  * @returns {string} - 포맷된 날짜 문자열
@@ -125,7 +125,7 @@ export const parseDate = (dateString, hotelSettings = null, isCheckIn = true) =>
 export const formatDate = (date, formatString = 'yyyy-MM-dd HH:mm:ss') => {
   if (!date || !isValid(new Date(date))) return '정보 없음';
   try {
-    return format(new Date(date), formatString);
+    return formatInTimeZone(new Date(date), 'Asia/Seoul', formatString);
   } catch (error) {
     console.error(`Error formatting date: ${date}`, error);
     return '정보 없음';
