@@ -1,5 +1,12 @@
-import React, { useEffect, useCallback, useReducer, useMemo, useState } from 'react';
+import React, {
+  useEffect,
+  useCallback,
+  useReducer,
+  useMemo,
+  useState,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { parseDate } from '../utils/dateUtils';
 import {
   Container,
   VStack,
@@ -33,7 +40,7 @@ import {
   fetchHotelList,
 } from '../api/api';
 import { differenceInCalendarDays, format } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz'
+import { formatInTimeZone } from 'date-fns-tz';
 import Map from '../components/HotelMap';
 import BottomNavigation from '../components/BottomNavigation';
 import { resolveCouponMetadata } from '../utils/coupon';
@@ -121,7 +128,9 @@ const ReservationConfirmation = () => {
       differenceInCalendarDays(
         new Date(locState?.checkOut),
         new Date(locState?.checkIn)
-      ) || locState?.numNights || 1
+      ) ||
+      locState?.numNights ||
+      1
     );
   }, [locState]);
 
@@ -275,15 +284,34 @@ const ReservationConfirmation = () => {
         ]);
 
         const hotelData = hotelList.find((h) => h.hotelId === initHotelId);
-        const inTime = settings.checkInTime || '15:00';
+        const inTime = settings.checkInTime || '16:00';
         const outTime = settings.checkOutTime || '11:00';
         const inDt = stateCheckIn
-          ? new Date(`${stateCheckIn}T${inTime}:00+09:00`)
+          ? await parseDate(
+              `${stateCheckIn}T${inTime}:00+09:00`,
+              initHotelId,
+              true
+            )
           : null;
         const outDt = stateCheckOut
-          ? new Date(`${stateCheckOut}T${outTime}:00+09:00`)
+          ? await parseDate(
+              `${stateCheckOut}T${outTime}:00+09:00`,
+              initHotelId,
+              false
+            )
           : null;
-
+        logger.debug('[ReservationConfirmation] Parsed checkIn/checkOut', {
+          stateCheckIn,
+          inTime,
+          checkIn: inDt,
+          stateCheckOut,
+          outTime,
+          checkOut: outDt,
+          isString: {
+            checkIn: typeof inDt === 'string',
+            checkOut: typeof outDt === 'string',
+          },
+        });
         dispatch({
           type: 'INIT_STATE',
           payload: {
@@ -294,8 +322,8 @@ const ReservationConfirmation = () => {
                 ? { lat: settings.latitude, lng: settings.longitude }
                 : null,
             roomImages: photosData?.roomPhotos || [],
-            checkIn: inDt,
-            checkOut: outDt,
+            checkIn: inDt, // 문자열: "2025-05-16T16:00:00+09:00"
+            checkOut: outDt, // 문자열: "2025-05-17T11:00:00+09:00"
             isHotelInfoLoading: false,
             hotelInfoError: null,
           },
@@ -616,7 +644,10 @@ const ReservationConfirmation = () => {
     }
 
     // couponUuid 유효성 검증
-    if (couponUuid && (typeof couponUuid !== 'string' || couponUuid.trim() === '')) {
+    if (
+      couponUuid &&
+      (typeof couponUuid !== 'string' || couponUuid.trim() === '')
+    ) {
       logger.warn('[handleConfirm] Invalid couponUuid:', couponUuid);
       toast({
         title: '쿠폰 오류',
@@ -638,7 +669,8 @@ const ReservationConfirmation = () => {
     dispatch({ type: 'INIT_STATE', payload: { isLoading: true } });
 
     // 이미지 처리
-    let finalPhotoUrl = state.roomImages.length > 0 ? state.roomImages[0].photoUrl : null;
+    let finalPhotoUrl =
+      state.roomImages.length > 0 ? state.roomImages[0].photoUrl : null;
     if (!finalPhotoUrl) {
       try {
         const photosData = await fetchHotelPhotos(hotelId, 'room', roomInfo);
@@ -661,8 +693,10 @@ const ReservationConfirmation = () => {
         (c) => c.couponUuid === couponUuid
       );
       if (selectedCoupon) {
-        finalCouponCode = selectedCoupon.code || `COUPON-${couponUuid.slice(0, 8)}`;
-        finalCouponName = selectedCoupon.name || `쿠폰-${couponUuid.slice(0, 8)}`;
+        finalCouponCode =
+          selectedCoupon.code || `COUPON-${couponUuid.slice(0, 8)}`;
+        finalCouponName =
+          selectedCoupon.name || `쿠폰-${couponUuid.slice(0, 8)}`;
         finalCouponDiscountType = selectedCoupon.discountType || 'percentage';
         finalCouponDiscount = Number(selectedCoupon.discountValue) || 0;
         finalCouponTotalFixedDiscount =
@@ -673,7 +707,8 @@ const ReservationConfirmation = () => {
         logger.warn(`[handleConfirm] Coupon not found for UUID: ${couponUuid}`);
         toast({
           title: '쿠폰 오류',
-          description: '쿠폰 정보를 찾을 수 없습니다. 쿠폰 없이 예약을 진행합니다.',
+          description:
+            '쿠폰 정보를 찾을 수 없습니다. 쿠폰 없이 예약을 진행합니다.',
           status: 'warning',
           duration: 3000,
           isClosable: true,
@@ -687,16 +722,17 @@ const ReservationConfirmation = () => {
     }
 
     // couponInfo 구성
-    const couponInfo = couponUuid && finalCouponCode
-      ? {
-          couponUuid,
-          code: finalCouponCode,
-          name: finalCouponName,
-          discountType: finalCouponDiscountType,
-          discountValue: finalCouponDiscount,
-          discountAmount: finalCouponTotalFixedDiscount,
-        }
-      : null;
+    const couponInfo =
+      couponUuid && finalCouponCode
+        ? {
+            couponUuid,
+            code: finalCouponCode,
+            name: finalCouponName,
+            discountType: finalCouponDiscountType,
+            discountValue: finalCouponDiscount,
+            discountAmount: finalCouponTotalFixedDiscount,
+          }
+        : null;
 
     logger.debug('[handleConfirm] Constructed couponInfo:', couponInfo);
 
@@ -708,12 +744,18 @@ const ReservationConfirmation = () => {
       phoneNumber: customer?.phoneNumber || '',
       hotelPhoneNumber,
       roomInfo,
-      checkIn: checkIn
-        ? format(checkIn, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
-        : null,
-      checkOut: checkOut
-        ? format(checkOut, "yyyy-MM-dd'T'HH:mm:ss'+09:00'")
-        : null,
+     checkIn: checkIn
+       ? formatInTimeZone(checkIn, 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ssXXX")
+       : null,
+     checkOut: checkOut
+       ? formatInTimeZone(checkOut, 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ssXXX")
+       : null,
+     // 예약 생성 시각도 똑같이 포맷
+     reservationDate: formatInTimeZone(
+       new Date(),
+       'Asia/Seoul',
+       "yyyy-MM-dd'T'HH:mm:ssXXX"
+     ),
       reservationStatus: '예약완료',
       price,
       originalPrice,
@@ -788,9 +830,11 @@ const ReservationConfirmation = () => {
     } catch (err) {
       let errorMessage = '예약을 완료하지 못했습니다.';
       if (err.message === '호텔 설정 정보를 찾을 수 없습니다.') {
-        errorMessage = '호텔 정보를 불러올 수 없습니다. 다른 호텔을 선택해 주세요.';
+        errorMessage =
+          '호텔 정보를 불러올 수 없습니다. 다른 호텔을 선택해 주세요.';
       } else if (err.message === '예약을 찾을 수 없습니다.') {
-        errorMessage = '예약 정보를 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.';
+        errorMessage =
+          '예약 정보를 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.';
       } else if (err.message === '이미 발행된 쿠폰입니다.') {
         errorMessage = '이미 사용된 쿠폰입니다. 다른 쿠폰을 선택해 주세요.';
       }
@@ -973,7 +1017,9 @@ const ReservationConfirmation = () => {
                       <Box key={index} position="relative">
                         <LazyImage
                           src={image.photoUrl}
-                          alt={`${locState?.roomInfo || '객실 이미지'} ${index + 1}`}
+                          alt={`${locState?.roomInfo || '객실 이미지'} ${
+                            index + 1
+                          }`}
                           objectFit="cover"
                           w="100%"
                           h={{ base: '200px', sm: '250px', md: '300px' }}
@@ -1154,13 +1200,13 @@ const ReservationConfirmation = () => {
                   <Text color="gray.600" fontSize="sm">
                     예약 일시
                   </Text>
- <Text fontSize="sm" color="gray.400">
-   {formatInTimeZone(
-     new Date(),            // 현재 클라이언트 시간
-     'Asia/Seoul',          // 한국 표준시 고정
-     'yyyy-MM-dd HH:mm:ss'  // 원하는 출력 포맷
-   )}
- </Text>
+                  <Text fontSize="sm" color="gray.400">
+                    {formatInTimeZone(
+                      new Date(), // 현재 클라이언트 시간
+                      'Asia/Seoul', // 한국 표준시 고정
+                      'yyyy-MM-dd HH:mm:ss' // 원하는 출력 포맷
+                    )}
+                  </Text>
                   {state.eventName && (
                     <>
                       <Text color="gray.600" fontSize="sm">
