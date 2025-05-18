@@ -507,7 +507,7 @@ const Home = () => {
     slidesToScroll: 1,
     arrows: false,
     centerMode: true,
-    centerPadding: '16px',
+    centerPadding: '10px',
   };
 
   const eventSliderSettings = {
@@ -777,6 +777,7 @@ const Home = () => {
 
           {/* 추천 호텔 */}
           <Box
+            ml={-1}
             px={0}
             overflow="hidden"
             css={{

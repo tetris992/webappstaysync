@@ -15,7 +15,16 @@ const KakaoCallback = () => {
   const processingRef = useRef(false);
 
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_API_URL);
+    const API_URL = process.env.REACT_APP_API_URL; // e.g. https://staysync.org/api
+    const socket = io(API_URL, {
+      path: '/api/socket.io', // 백엔드에 마운트된 socket.io 경로에 맞춰주세요
+      transports: ['websocket'], // 폴링 대신 오직 WebSocket 만 사용
+      withCredentials: true, // 쿠키/헤더 전달이 필요하면
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+      timeout: 20000,
+    });
 
     socket.on('couponIssued', ({ message, coupons }) => {
       toast({
@@ -71,7 +80,10 @@ const KakaoCallback = () => {
 
         if (response && response.success) {
           if (response.needPhoneVerification) {
-            console.log('[KakaoCallback] Phone verification required, customerId:', response.customerId);
+            console.log(
+              '[KakaoCallback] Phone verification required, customerId:',
+              response.customerId
+            );
             localStorage.setItem('customerToken', response.token);
             localStorage.setItem('refreshToken', response.refreshToken);
             console.log('[KakaoCallback] Stored tokens:', {
@@ -98,7 +110,9 @@ const KakaoCallback = () => {
           });
           navigate('/', { replace: true });
         } else {
-          throw new Error(response?.message || '로그인 응답이 유효하지 않습니다.');
+          throw new Error(
+            response?.message || '로그인 응답이 유효하지 않습니다.'
+          );
         }
       } catch (error) {
         console.error('[KakaoCallback] Error:', error);
@@ -148,7 +162,9 @@ const KakaoCallback = () => {
     return (
       <Center height="100vh">
         <Box textAlign="center" p={5}>
-          <Text color="red.500" fontSize="lg">{error}</Text>
+          <Text color="red.500" fontSize="lg">
+            {error}
+          </Text>
           <Text mt={2}>잠시 후 로그인 페이지로 이동합니다...</Text>
         </Box>
       </Center>

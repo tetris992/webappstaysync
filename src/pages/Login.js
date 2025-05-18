@@ -51,8 +51,7 @@ const Login = () => {
         try {
           const hotelList = await fetchHotelList();
           setHotelList(hotelList);
-
-          const coupons = await fetchCustomerCoupons(); // 인자 제거
+          const coupons = await fetchCustomerCoupons();
           setCustomerCoupons(coupons);
         } catch (error) {
           console.error('Initial data load failed:', {
@@ -133,16 +132,19 @@ const Login = () => {
       overflow="auto"
     >
       <Container
-        maxW={{ base: '100%', sm: '390px' }}
-        w="100%"
+        maxW="390px"
+        w="390px"
+        centerContent
+        p={4}
         position="relative"
         zIndex="1"
       >
         <Box
           bg="white"
           p={6}
-          borderRadius="md"
-          boxShadow="sm"
+          borderRadius={0}
+          boxShadow="none"
+          border="none"
         >
           <VStack spacing={0} align="stretch">
             <VStack spacing="16px" align="center">
