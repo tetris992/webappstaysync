@@ -55,7 +55,7 @@ const BottomNavigation = () => {
     },
     {
       icon: FaHeart,
-      label: '찜 숙소',
+      label: '주변 숙소',
       onClick: () => navigate('/hotels'),
       path: '/hotels',
     },

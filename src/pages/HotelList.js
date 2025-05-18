@@ -81,7 +81,6 @@ const HotelList = ({ loadHotelSettings }) => {
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [currentPhotoIndices, setCurrentPhotoIndices] = useState({});
   const [mapVisible, setMapVisible] = useState({});
-  const mainRef = React.useRef(null);
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -135,8 +134,14 @@ const HotelList = ({ loadHotelSettings }) => {
           const photoPromises = enriched.map((h) =>
             limit(async () => {
               try {
-                const data = await fetchHotelPhotos(h.hotelId, 'exterior');
-                return { id: h.hotelId, photos: data.commonPhotos || [] };
+                // Fetch both exterior and facility photos
+                const exteriorData = await fetchHotelPhotos(h.hotelId, 'exterior');
+                const facilityData = await fetchHotelPhotos(h.hotelId, 'facility');
+                const combinedPhotos = [
+                  ...(exteriorData.commonPhotos || []),
+                  ...(facilityData.commonPhotos || []),
+                ];
+                return { id: h.hotelId, photos: combinedPhotos };
               } catch {
                 toast({
                   title: '사진 로드 실패',
@@ -200,6 +205,13 @@ const HotelList = ({ loadHotelSettings }) => {
     };
     load();
   }, [isAuthenticated, customer, toast]);
+
+  const setPhotoIndex = (hotelId, newIndex) => {
+    setCurrentPhotoIndices((prev) => ({
+      ...prev,
+      [hotelId]: newIndex,
+    }));
+  };
 
   // Filtering & sorting
   useEffect(() => {
@@ -298,24 +310,6 @@ const HotelList = ({ loadHotelSettings }) => {
     }));
   };
 
-  const handlePrevPhoto = (hotelId) => {
-    setCurrentPhotoIndices((prev) => {
-      const photos = photosMap[hotelId] || [];
-      const currentIndex = prev[hotelId] || 0;
-      const newIndex = currentIndex === 0 ? photos.length - 1 : currentIndex - 1;
-      return { ...prev, [hotelId]: newIndex };
-    });
-  };
-
-  const handleNextPhoto = (hotelId) => {
-    setCurrentPhotoIndices((prev) => {
-      const photos = photosMap[hotelId] || [];
-      const currentIndex = prev[hotelId] || 0;
-      const newIndex = currentIndex === photos.length - 1 ? 0 : currentIndex + 1;
-      return { ...prev, [hotelId]: newIndex };
-    });
-  };
-
   const handleCopyAddress = (address) => {
     if (address) {
       navigator.clipboard
@@ -370,7 +364,7 @@ const HotelList = ({ loadHotelSettings }) => {
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    const el = mainRef.current;
+    const el = document.documentElement;
     if (!el) return;
     const onScroll = () => isOpen && onClose();
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -568,8 +562,7 @@ const HotelList = ({ loadHotelSettings }) => {
                   onViewCoupons={openCoupons}
                   onOpenGallery={openGallery}
                   currentPhotoIndex={currentPhotoIndices[h.hotelId] || 0}
-                  handlePrevPhoto={handlePrevPhoto}
-                  handleNextPhoto={handleNextPhoto}
+                  setPhotoIndex={setPhotoIndex}
                   photoCount={(photosMap[h.hotelId] || []).length}
                   toggleMap={toggleMap}
                   isMapVisible={mapVisible[h.hotelId] || false}

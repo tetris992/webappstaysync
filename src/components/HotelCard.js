@@ -6,22 +6,14 @@ import {
   Button,
   Flex,
   IconButton,
-  // Icon,
   Badge,
   Collapse,
   AspectRatio,
   Divider,
 } from '@chakra-ui/react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
-import {
-  FaHeart,
-  FaRegHeart,
-  // FaMapMarkerAlt,
-  FaCopy,
-  FaRoute,
-} from 'react-icons/fa';
-import { useSwipeable } from 'react-swipeable'; // 스와이프 제스처 라이브러리
-import Map from './HotelMap'; // Map 컴포넌트 임포트
+import { FaHeart, FaRegHeart, FaCopy, FaRoute } from 'react-icons/fa';
+import { useSwipeable } from 'react-swipeable';
+import Map from './HotelMap';
 
 const HotelCard = ({
   hotel,
@@ -31,9 +23,6 @@ const HotelCard = ({
   onViewCoupons,
   onOpenGallery,
   currentPhotoIndex,
-  handlePrevPhoto,
-  handleNextPhoto,
-  photoCount,
   toggleMap,
   isMapVisible,
   handleCopyAddress,
@@ -41,8 +30,8 @@ const HotelCard = ({
   index,
   totalHotels,
 }) => {
-  // 스와이프 핸들러 설정
-  const swipeHandlers = useSwipeable({
+  // Swipe handlers for map visibility only
+  const photoSwipeHandlers = useSwipeable({
     onSwipedUp: () => {
       if (!isMapVisible) {
         toggleMap(hotel.hotelId);
@@ -53,7 +42,7 @@ const HotelCard = ({
         toggleMap(hotel.hotelId);
       }
     },
-    delta: 10, // 스와이프 감지 거리
+    delta: 10,
     trackTouch: true,
     trackMouse: false,
   });
@@ -62,7 +51,7 @@ const HotelCard = ({
     <Box w="100%">
       {/* 사진 영역 */}
       <AspectRatio ratio={16 / 9}>
-        <Box position="relative">
+        <Box position="relative" {...photoSwipeHandlers}>
           <Image
             src={
               hotel.photos[currentPhotoIndex]?.photoUrl ||
@@ -76,59 +65,10 @@ const HotelCard = ({
               console.log(
                 `[HotelCard] Image clicked for hotel ID: ${hotel.hotelId}`
               );
-              onSelect(hotel.hotelId);
+              onOpenGallery(hotel.photos);
             }}
             cursor="pointer"
           />
-          {photoCount > 1 && (
-            <>
-              <IconButton
-                icon={<ChevronLeftIcon />}
-                position="absolute"
-                top="50%"
-                left="12px"
-                transform="translateY(-50%)"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePrevPhoto(hotel.hotelId);
-                }}
-                aria-label="이전 사진"
-                bg="whiteAlpha.800"
-                _hover={{ bg: 'white' }}
-                size="sm"
-                borderRadius="full"
-              />
-              <IconButton
-                icon={<ChevronRightIcon />}
-                position="absolute"
-                top="50%"
-                right="12px"
-                transform="translateY(-50%)"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleNextPhoto(hotel.hotelId);
-                }}
-                aria-label="다음 사진"
-                bg="whiteAlpha.800"
-                _hover={{ bg: 'white' }}
-                size="sm"
-                borderRadius="full"
-              />
-              <Text
-                position="absolute"
-                bottom="8px"
-                right="8px"
-                bg="blackAlpha.600"
-                color="white"
-                px={2}
-                py={1}
-                borderRadius="md"
-                fontSize="xs"
-              >
-                {currentPhotoIndex + 1}/{photoCount}
-              </Text>
-            </>
-          )}
           <IconButton
             icon={isFavorite ? <FaHeart /> : <FaRegHeart />}
             onClick={(e) => {
@@ -189,7 +129,6 @@ const HotelCard = ({
           </Flex>
 
           <Flex align="center" gap={2}>
-            {/* <Icon as={FaMapMarkerAlt} color="gray.500" boxSize={4} /> */}
             <Text
               fontSize="sm"
               color="gray.600"
@@ -233,7 +172,7 @@ const HotelCard = ({
               w="100%"
               mt={2}
               boxShadow="0 2px 8px rgba(0, 0, 0, 0.1)"
-              {...swipeHandlers} // 스와이프 제스처 적용
+              {...photoSwipeHandlers} // Reuse swipe handlers for map visibility
             >
               {isMapVisible && hotel.latitude && hotel.longitude ? (
                 <Map
@@ -259,9 +198,9 @@ const HotelCard = ({
               colorScheme="blue"
               borderRadius="full"
               flex="2"
-              onClick={() => onOpenGallery(hotel.photos)}
+              onClick={() => onSelect(hotel.hotelId)}
             >
-              호텔 사진 더보기
+              호텔 객실 보기
             </Button>
           </Flex>
         </Flex>

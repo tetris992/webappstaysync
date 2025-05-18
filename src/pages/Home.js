@@ -931,7 +931,7 @@ const Home = () => {
                             colorScheme="red"
                             fontSize="md"
                             px={3}
-                            py={1.5}
+                            py={1}
                             borderRadius="full"
                             bg="rgba(255,255,255,0.9)"
                             boxShadow="md"
