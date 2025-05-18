@@ -571,9 +571,13 @@ const HotelList = ({ loadHotelSettings }) => {
                   index={index}
                   totalHotels={filteredHotels.length}
                 />
-                {index < filteredHotels.length - 1 && (
-                  <Divider borderColor="gray.200" borderWidth="0.3px" mb={2} />
-                )}
+ {index < filteredHotels.length - 1 && (
+   <Divider
+     borderColor="gray.300"   // 좀 더 연한 색
+     borderWidth="0.5px"      // 아주 가는 선
+     mb={2}
+   />
+ )}
               </Box>
             ))}
           </VStack>

@@ -51,7 +51,14 @@ const HotelCard = ({
     <Box w="100%">
       {/* 사진 영역 */}
       <AspectRatio ratio={16 / 9}>
-        <Box position="relative" {...photoSwipeHandlers}>
+        <Box
+          position="relative"
+          {...photoSwipeHandlers}
+          borderRadius="lg" /* 모서리 둥글게 */
+          overflow="hidden" /* 자식 이미지가 라운드 밖으로 나가지 않도록 */
+          boxShadow="sm" /* 은은한 그림자 */
+          _hover={{ boxShadow: 'md' }} /* 호버 시 그림자 강화 */
+        >
           <Image
             src={
               hotel.photos[currentPhotoIndex]?.photoUrl ||
@@ -59,6 +66,7 @@ const HotelCard = ({
             }
             alt={`${hotel.hotelName} 이미지`}
             objectFit="cover"
+            borderRadius="lg"
             onError={(e) => (e.target.src = '/assets/default-hotel.jpg')}
             onClick={(e) => {
               e.stopPropagation();
@@ -208,7 +216,7 @@ const HotelCard = ({
 
       {/* 구분선 */}
       {index < totalHotels - 1 && (
-        <Divider borderColor="gray.600" borderWidth="1px" />
+        <Divider borderColor="gray.200" borderWidth="0.5px" />
       )}
     </Box>
   );
