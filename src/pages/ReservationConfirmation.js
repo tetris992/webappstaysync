@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { parseDate, formatDate } from '../utils/dateUtils'; // formatDate 추가
+import { parseDate, formatDate } from '../utils/dateParser'; // formatDate 추가
 import {
   Container,
   VStack,
@@ -1190,7 +1190,7 @@ const ReservationConfirmation = () => {
                     예약 일시
                   </Text>
                   <Text fontSize="sm" color="gray.400">
-                    {formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss')} 
+                    {formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss')}
                   </Text>
                   {state.eventName && (
                     <>

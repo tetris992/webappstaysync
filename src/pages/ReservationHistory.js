@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate } from '../utils/dateParser';
 import {
   Container,
   Text,
