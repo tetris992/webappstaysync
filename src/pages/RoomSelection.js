@@ -1583,7 +1583,7 @@ const handleApplyCoupon = (roomInfo, coupon) => {
                           )}
                         </Flex>
                         <Text fontSize="sm" color="gray.600">
-                          대실 3시간 | 숙박{' '}
+                          숙박{' '}
                           {hotelSettings?.checkInTime || '17:00'} 체크인
                         </Text>
                         <Flex justify="space-between" w="100%" align="center">
