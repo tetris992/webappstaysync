@@ -58,6 +58,7 @@ const initialState = {
   roomImages: [],
   checkIn: null,
   checkOut: null,
+  reservationDate: null,
   price: 0,
   originalPrice: 0,
   discount: 0,
@@ -789,6 +790,18 @@ const ReservationConfirmation = () => {
       const res = await createReservation(payload);
       logger.info(`[handleConfirm] Reservation created: ${res.reservationId}`);
 
+      // 여기에 아래처럼 추가해 주세요
+      const createdAt = res.reservationDate
+        ? new Date(res.reservationDate)
+        : new Date();
+      dispatch({
+        type: 'INIT_STATE',
+        payload: {
+          reservationId: res.reservationId,
+          reservationDate: createdAt, // ← 이 줄이 필요합니다
+        },
+      });
+
       // 쿠폰 처리 알림
       if (couponUuid && finalCouponCode) {
         logger.info(
@@ -1190,7 +1203,9 @@ const ReservationConfirmation = () => {
                     예약 일시
                   </Text>
                   <Text fontSize="sm" color="gray.400">
-                    {formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss')}
+                    {state.reservationDate
+                      ? formatDate(state.reservationDate, 'yyyy-MM-dd HH:mm:ss')
+                      : '생성 중...'}
                   </Text>
                   {state.eventName && (
                     <>
