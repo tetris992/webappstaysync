@@ -24,13 +24,13 @@ import {
   Image,
   Divider,
 } from '@chakra-ui/react';
-import {
-  SearchIcon,
-  ArrowBackIcon,
-  ChevronDownIcon,
-} from '@chakra-ui/icons';
+import { SearchIcon, ArrowBackIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchHotelList, fetchHotelPhotos, fetchCustomerHotelSettings } from '../api/api';
+import {
+  fetchHotelList,
+  fetchHotelPhotos,
+  fetchCustomerHotelSettings,
+} from '../api/api';
 import BottomNavigation from '../components/BottomNavigation';
 import pLimit from 'p-limit';
 import { format, addDays } from 'date-fns';
@@ -129,14 +129,24 @@ const HotelList = ({ loadHotelSettings }) => {
         setHotels(enriched);
         setFilteredHotels(enriched);
 
-        if (isAuthenticated && customer && localStorage.getItem('customerToken')) {
+        if (
+          isAuthenticated &&
+          customer &&
+          localStorage.getItem('customerToken')
+        ) {
           const limit = pLimit(3);
           const photoPromises = enriched.map((h) =>
             limit(async () => {
               try {
                 // Fetch both exterior and facility photos
-                const exteriorData = await fetchHotelPhotos(h.hotelId, 'exterior');
-                const facilityData = await fetchHotelPhotos(h.hotelId, 'facility');
+                const exteriorData = await fetchHotelPhotos(
+                  h.hotelId,
+                  'exterior'
+                );
+                const facilityData = await fetchHotelPhotos(
+                  h.hotelId,
+                  'facility'
+                );
                 const combinedPhotos = [
                   ...(exteriorData.commonPhotos || []),
                   ...(facilityData.commonPhotos || []),
@@ -273,7 +283,9 @@ const HotelList = ({ loadHotelSettings }) => {
 
   const handleNav = async (id) => {
     try {
-      console.log(`[HotelList] Attempting to navigate to room selection for hotel ID: ${id}`);
+      console.log(
+        `[HotelList] Attempting to navigate to room selection for hotel ID: ${id}`
+      );
       console.log('[HotelList] Calling loadHotelSettings...');
       await loadHotelSettings(id);
       console.log('[HotelList] loadHotelSettings completed successfully');
@@ -346,7 +358,9 @@ const HotelList = ({ loadHotelSettings }) => {
       });
       return;
     }
-    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${hotel.latitude}&name=${encodeURIComponent(hotel.hotelName)}`;
+    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${
+      hotel.latitude
+    }&name=${encodeURIComponent(hotel.hotelName)}`;
     window.location.href = tmapUrl;
     setTimeout(() => {
       toast({
@@ -421,7 +435,7 @@ const HotelList = ({ loadHotelSettings }) => {
             size="lg"
           />
           <Text fontSize="lg" fontWeight="semibold" color="gray.800">
-            찜한 호텔
+            주변 숙소
           </Text>
           <IconButton
             icon={<SearchIcon />}
@@ -571,13 +585,13 @@ const HotelList = ({ loadHotelSettings }) => {
                   index={index}
                   totalHotels={filteredHotels.length}
                 />
- {index < filteredHotels.length - 1 && (
-   <Divider
-     borderColor="gray.300"   // 좀 더 연한 색
-     borderWidth="0.5px"      // 아주 가는 선
-     mb={2}
-   />
- )}
+                {index < filteredHotels.length - 1 && (
+                  <Divider
+                    borderColor="gray.300" // 좀 더 연한 색
+                    borderWidth="0.5px" // 아주 가는 선
+                    mb={2}
+                  />
+                )}
               </Box>
             ))}
           </VStack>

@@ -787,7 +787,7 @@ const Home = () => {
             }}
           >
             <Text fontWeight="bold" mb={2}>
-              추천 호텔
+              찜한 숙소
             </Text>
             {loadingHotels ? (
               <Flex justify="center" py={8}>
@@ -886,7 +886,7 @@ const Home = () => {
           {/* 이벤트 섹션 */}
           <Box w="100%" mb={4}>
             <Text fontWeight="bold" mb={2}>
-              이벤트
+              단골 이벤트
             </Text>
             <Box position="relative">
               {loadingEvents ? (
