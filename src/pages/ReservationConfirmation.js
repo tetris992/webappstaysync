@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { parseDate } from '../utils/dateUtils';
+import { parseDate, formatDate } from '../utils/dateUtils'; // formatDate 추가
 import {
   Container,
   VStack,
@@ -39,8 +39,7 @@ import {
   fetchHotelPhotos,
   fetchHotelList,
 } from '../api/api';
-import { differenceInCalendarDays, format } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
+import { differenceInCalendarDays } from 'date-fns';
 import Map from '../components/HotelMap';
 import BottomNavigation from '../components/BottomNavigation';
 import { resolveCouponMetadata } from '../utils/coupon';
@@ -121,7 +120,7 @@ const ReservationConfirmation = () => {
 
   const { state: locState } = location;
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayStr = formatDate(new Date(), 'yyyy-MM-dd'); // format -> formatDate
 
   const numNights = useMemo(() => {
     return (
@@ -160,10 +159,8 @@ const ReservationConfirmation = () => {
       const currentScrollY = window.scrollY;
 
       if (currentScrollY > lastScrollY && currentScrollY > 50) {
-        // 스크롤 다운: 헤더 숨김
         setIsHeaderVisible(false);
       } else if (currentScrollY < lastScrollY) {
-        // 스크롤 업: 헤더 표시
         setIsHeaderVisible(true);
       }
 
@@ -196,7 +193,7 @@ const ReservationConfirmation = () => {
     });
   }, [customerCoupons, state.hotelId, locState?.roomInfo, todayStr]);
 
-  // 1) 초기 데이터 로딩 (한 번만 실행)
+  // 초기 데이터 로딩 (한 번만 실행)
   useEffect(() => {
     if (!locState) {
       toast({
@@ -289,14 +286,14 @@ const ReservationConfirmation = () => {
         const inDt = stateCheckIn
           ? await parseDate(
               `${stateCheckIn}T${inTime}:00+09:00`,
-              initHotelId,
+              settings,
               true
             )
           : null;
         const outDt = stateCheckOut
           ? await parseDate(
               `${stateCheckOut}T${outTime}:00+09:00`,
-              initHotelId,
+              settings,
               false
             )
           : null;
@@ -322,8 +319,8 @@ const ReservationConfirmation = () => {
                 ? { lat: settings.latitude, lng: settings.longitude }
                 : null,
             roomImages: photosData?.roomPhotos || [],
-            checkIn: inDt, // 문자열: "2025-05-16T16:00:00+09:00"
-            checkOut: outDt, // 문자열: "2025-05-17T11:00:00+09:00"
+            checkIn: inDt,
+            checkOut: outDt,
             isHotelInfoLoading: false,
             hotelInfoError: null,
           },
@@ -744,18 +741,13 @@ const ReservationConfirmation = () => {
       phoneNumber: customer?.phoneNumber || '',
       hotelPhoneNumber,
       roomInfo,
-     checkIn: checkIn
-       ? formatInTimeZone(checkIn, 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ssXXX")
-       : null,
-     checkOut: checkOut
-       ? formatInTimeZone(checkOut, 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ssXXX")
-       : null,
-     // 예약 생성 시각도 똑같이 포맷
-     reservationDate: formatInTimeZone(
-       new Date(),
-       'Asia/Seoul',
-       "yyyy-MM-dd'T'HH:mm:ssXXX"
-     ),
+      checkIn: checkIn
+        ? formatDate(checkIn, "yyyy-MM-dd'T'HH:mm:ssXXX") // formatInTimeZone -> formatDate
+        : null,
+      checkOut: checkOut
+        ? formatDate(checkOut, "yyyy-MM-dd'T'HH:mm:ssXXX") // formatInTimeZone -> formatDate
+        : null,
+      reservationDate: formatDate(new Date(), "yyyy-MM-dd'T'HH:mm:ssXXX"), // formatInTimeZone -> formatDate
       reservationStatus: '예약완료',
       price,
       originalPrice,
@@ -999,7 +991,6 @@ const ReservationConfirmation = () => {
             {/* 객실 사진 섹션 */}
             <Box>
               {state.roomImages.length === 1 ? (
-                // 사진이 1장일 경우 슬라이더 없이 단일 이미지 표시
                 <LazyImage
                   src={state.roomImages[0].photoUrl}
                   alt={locState?.roomInfo || '객실 이미지'}
@@ -1010,7 +1001,6 @@ const ReservationConfirmation = () => {
                   borderRadius="md"
                 />
               ) : state.roomImages.length > 1 ? (
-                // 사진이 2장 이상일 경우 슬라이더 사용
                 <>
                   <Slider {...sliderSettings}>
                     {state.roomImages.map((image, index) => (
@@ -1046,7 +1036,6 @@ const ReservationConfirmation = () => {
                   </Text>
                 </>
               ) : (
-                // 사진이 없을 경우 기본 이미지 표시
                 <LazyImage
                   src="/assets/default-room1.jpg"
                   alt={locState?.roomInfo || '객실 이미지'}
@@ -1178,7 +1167,7 @@ const ReservationConfirmation = () => {
                   </Text>
                   <Text fontSize="sm">
                     {state.checkIn
-                      ? format(state.checkIn, 'yyyy-MM-dd HH:mm')
+                      ? formatDate(state.checkIn, 'yyyy-MM-dd HH:mm') // format -> formatDate
                       : 'N/A'}
                   </Text>
                   <Text color="gray.600" fontSize="sm">
@@ -1186,7 +1175,7 @@ const ReservationConfirmation = () => {
                   </Text>
                   <Text fontSize="sm">
                     {state.checkOut
-                      ? format(state.checkOut, 'yyyy-MM-dd HH:mm')
+                      ? formatDate(state.checkOut, 'yyyy-MM-dd HH:mm') // format -> formatDate
                       : 'N/A'}
                   </Text>
                   <Text color="gray.600" fontSize="sm">
@@ -1201,11 +1190,7 @@ const ReservationConfirmation = () => {
                     예약 일시
                   </Text>
                   <Text fontSize="sm" color="gray.400">
-                    {formatInTimeZone(
-                      new Date(), // 현재 클라이언트 시간
-                      'Asia/Seoul', // 한국 표준시 고정
-                      'yyyy-MM-dd HH:mm:ss' // 원하는 출력 포맷
-                    )}
+                    {formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss')} 
                   </Text>
                   {state.eventName && (
                     <>
