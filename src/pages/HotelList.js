@@ -88,21 +88,37 @@ const HotelList = ({ loadHotelSettings }) => {
     setFavorites(fav);
   }, []);
 
-  // Fetch hotel list, photos, coupons
+  // Fetch hotel list, photos, coupons, and prices
   useEffect(() => {
     const load = async () => {
       try {
         setIsLoading(true);
         const list = await fetchHotelList();
+        const limit = pLimit(3);
+
+        // Enrich hotel data with settings, including min/max prices
         const enriched = await Promise.all(
           list.map(async (h) => {
             try {
-              const settings = await fetchCustomerHotelSettings(h.hotelId);
+              // Fetch settings with checkIn/checkOut dates for accurate pricing
+              const settings = await fetchCustomerHotelSettings(h.hotelId, {
+                checkIn,
+                checkOut,
+              });
+              // Calculate min and max prices from room types
+              const prices = (settings.roomTypes || [])
+                .map((rt) => Number(rt.price) || Infinity)
+                .filter((p) => isFinite(p));
+              const minPrice = prices.length ? Math.min(...prices) : null;
+              const maxPrice = prices.length ? Math.max(...prices) : null;
+
               return {
                 ...h,
+                minPrice,
+                maxPrice,
                 rating: Math.random() * 2 + 3,
                 reviewCount: Math.floor(Math.random() * 100) + 10,
-                price: Math.floor(Math.random() * 100000) + 50000,
+                price: Math.floor(Math.random() * 100000) + 50000, // Fallback price
                 address: normalizeAddress(h.address),
                 checkInTime: settings.checkInTime || '15:00',
                 checkOutTime: settings.checkOutTime || '11:00',
@@ -113,9 +129,11 @@ const HotelList = ({ loadHotelSettings }) => {
             } catch {
               return {
                 ...h,
+                minPrice: null,
+                maxPrice: null,
                 rating: Math.random() * 2 + 3,
                 reviewCount: Math.floor(Math.random() * 100) + 10,
-                price: Math.floor(Math.random() * 100000) + 50_000,
+                price: Math.floor(Math.random() * 100000) + 50000,
                 address: normalizeAddress(h.address),
                 checkInTime: '15:00',
                 checkOutTime: '11:00',
@@ -134,19 +152,12 @@ const HotelList = ({ loadHotelSettings }) => {
           customer &&
           localStorage.getItem('customerToken')
         ) {
-          const limit = pLimit(3);
+          // Fetch photos
           const photoPromises = enriched.map((h) =>
             limit(async () => {
               try {
-                // Fetch both exterior and facility photos
-                const exteriorData = await fetchHotelPhotos(
-                  h.hotelId,
-                  'exterior'
-                );
-                const facilityData = await fetchHotelPhotos(
-                  h.hotelId,
-                  'facility'
-                );
+                const exteriorData = await fetchHotelPhotos(h.hotelId, 'exterior');
+                const facilityData = await fetchHotelPhotos(h.hotelId, 'facility');
                 const combinedPhotos = [
                   ...(exteriorData.commonPhotos || []),
                   ...(facilityData.commonPhotos || []),
@@ -176,10 +187,14 @@ const HotelList = ({ loadHotelSettings }) => {
             }, {})
           );
 
+          // Fetch coupons
           const couponPromises = enriched.map((h) =>
             limit(async () => {
               try {
-                const settings = await fetchCustomerHotelSettings(h.hotelId);
+                const settings = await fetchCustomerHotelSettings(h.hotelId, {
+                  checkIn,
+                  checkOut,
+                });
                 const now = format(new Date(), 'yyyy-MM-dd');
                 const avail = (settings.coupons || []).filter(
                   (c) =>
@@ -214,7 +229,7 @@ const HotelList = ({ loadHotelSettings }) => {
       }
     };
     load();
-  }, [isAuthenticated, customer, toast]);
+  }, [isAuthenticated, customer, toast, checkIn, checkOut]);
 
   const setPhotoIndex = (hotelId, newIndex) => {
     setCurrentPhotoIndices((prev) => ({
@@ -243,7 +258,8 @@ const HotelList = ({ loadHotelSettings }) => {
     if (priceFilter !== 'all') {
       const [min, max] = priceFilter.split('-').map(Number);
       list = list.filter(
-        (h) => h.price >= min && (max ? h.price <= max : true)
+        (h) =>
+          h.minPrice >= min && (max ? h.maxPrice <= max : true)
       );
     }
 
@@ -260,9 +276,9 @@ const HotelList = ({ loadHotelSettings }) => {
         case 'name':
           return a.hotelName.localeCompare(b.hotelName);
         case 'priceAsc':
-          return a.price - b.price;
+          return (a.minPrice || a.price) - (b.minPrice || b.price);
         case 'priceDesc':
-          return b.price - a.price;
+          return (b.minPrice || b.price) - (a.minPrice || a.price);
         case 'ratingDesc':
           return b.rating - a.rating;
         default:
@@ -536,8 +552,8 @@ const HotelList = ({ loadHotelSettings }) => {
         flex="1"
         overflowY="auto"
         overflowX="hidden"
-        pt={isOpen ? '180px' : '80px'} // 상단바 높이 고려
-        pb="200px" // 하단 네비게이션 바 높이 + 여유분
+        pt={isOpen ? '180px' : '80px'}
+        pb="200px"
         css={{
           WebkitOverflowScrolling: 'touch',
           '&::-webkit-scrollbar': {
@@ -587,8 +603,8 @@ const HotelList = ({ loadHotelSettings }) => {
                 />
                 {index < filteredHotels.length - 1 && (
                   <Divider
-                    borderColor="gray.300" // 좀 더 연한 색
-                    borderWidth="0.5px" // 아주 가는 선
+                    borderColor="gray.300"
+                    borderWidth="0.5px"
                     mb={2}
                   />
                 )}

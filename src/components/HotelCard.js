@@ -54,10 +54,10 @@ const HotelCard = ({
         <Box
           position="relative"
           {...photoSwipeHandlers}
-          borderRadius="lg" /* 모서리 둥글게 */
-          overflow="hidden" /* 자식 이미지가 라운드 밖으로 나가지 않도록 */
-          boxShadow="sm" /* 은은한 그림자 */
-          _hover={{ boxShadow: 'md' }} /* 호버 시 그림자 강화 */
+          borderRadius="lg"
+          overflow="hidden"
+          boxShadow="sm"
+          _hover={{ boxShadow: 'md' }}
         >
           <Image
             src={
@@ -180,7 +180,7 @@ const HotelCard = ({
               w="100%"
               mt={2}
               boxShadow="0 2px 8px rgba(0, 0, 0, 0.1)"
-              {...photoSwipeHandlers} // Reuse swipe handlers for map visibility
+              {...photoSwipeHandlers}
             >
               {isMapVisible && hotel.latitude && hotel.longitude ? (
                 <Map
@@ -195,9 +195,26 @@ const HotelCard = ({
           </Collapse>
 
           <Flex justify="space-between" align="center">
-            <Text fontSize="md" fontWeight="bold" color="blue.600">
-              ₩{(hotel.price || 0).toLocaleString()} / 박
-            </Text>
+            <Flex align="baseline" gap={1}>
+              <Text
+                fontSize="md"
+                fontWeight="bold"
+                color="blue.600"
+              >
+                {hotel.minPrice != null && hotel.maxPrice != null
+                  ? `₩${hotel.minPrice.toLocaleString()} ~ ₩${hotel.maxPrice.toLocaleString()}`
+                  : hotel.minPrice != null
+                  ? `₩${hotel.minPrice.toLocaleString()}`
+                  : `₩${(hotel.price || 0).toLocaleString()}`}
+              </Text>
+              <Text
+                fontSize="sm"
+                color="gray.500"
+                fontWeight="normal"
+              >
+                1N
+              </Text>
+            </Flex>
           </Flex>
 
           <Flex justify="space-between" align="center" gap={2} mt={2}>
