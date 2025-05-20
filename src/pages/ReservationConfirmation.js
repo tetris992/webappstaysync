@@ -1284,13 +1284,13 @@ const ReservationConfirmation = () => {
                           state.couponTotalFixedDiscount > 0)) && (
                         <>
                           {/* 1) 할인 전 원가 */}
- <Text
-   fontSize="sm"
-   color="gray.500"
-   textDecoration="line-through"
- >
-   ₩{state.originalPrice.toLocaleString()}원
- </Text>
+                          <Text
+                            fontSize="sm"
+                            color="gray.500"
+                            textDecoration="line-through"
+                          >
+                            ₩{state.originalPrice.toLocaleString()}원
+                          </Text>
                           {/* 2) 이벤트 할인 */}
                           {state.discountType === 'percentage' &&
                             state.discount > 0 && (

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast, Spinner, Center, Box, Text } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
 import { customerLoginSocial } from '../api/api';
-import io from 'socket.io-client';
+// import io from 'socket.io-client';
 
 const KakaoCallback = () => {
   const navigate = useNavigate();
@@ -14,33 +14,33 @@ const KakaoCallback = () => {
   const [error, setError] = useState(null);
   const processingRef = useRef(false);
 
-  useEffect(() => {
-    const API_URL = process.env.REACT_APP_API_URL; // e.g. https://staysync.org/api
-    const socket = io(API_URL, {
-      path: '/api/socket.io', // 백엔드에 마운트된 socket.io 경로에 맞춰주세요
-      transports: ['websocket'], // 폴링 대신 오직 WebSocket 만 사용
-      withCredentials: true, // 쿠키/헤더 전달이 필요하면
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
-      timeout: 20000,
-    });
+  // useEffect(() => {
+  //   const API_URL = process.env.REACT_APP_API_URL; // e.g. https://staysync.org/api
+  //   const socket = io(API_URL, {
+  //     path: '/api/socket.io', // 백엔드에 마운트된 socket.io 경로에 맞춰주세요
+  //     transports: ['websocket'], // 폴링 대신 오직 WebSocket 만 사용
+  //     withCredentials: true, // 쿠키/헤더 전달이 필요하면
+  //     reconnection: true,
+  //     reconnectionAttempts: 5,
+  //     reconnectionDelay: 2000,
+  //     timeout: 20000,
+  //   });
 
-    socket.on('couponIssued', ({ message, coupons }) => {
-      toast({
-        title: '새 쿠폰 발행',
-        description: message,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-      console.log('[KakaoCallback] New coupons received:', coupons);
-    });
+  //   socket.on('couponIssued', ({ message, coupons }) => {
+  //     toast({
+  //       title: '새 쿠폰 발행',
+  //       description: message,
+  //       status: 'success',
+  //       duration: 5000,
+  //       isClosable: true,
+  //     });
+  //     console.log('[KakaoCallback] New coupons received:', coupons);
+  //   });
 
-    return () => {
-      socket.disconnect();
-    };
-  }, [toast]);
+  //   return () => {
+  //     socket.disconnect();
+  //   };
+  // }, [toast]);
 
   useEffect(() => {
     if (isAuthenticated) {

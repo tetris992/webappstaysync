@@ -427,7 +427,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                 {/* 2) 이벤트 할인 */}
                 {discountType === 'percentage' && safeDiscount > 0 && (
                   <Text fontSize="xs" color="red.500">
-                    이벤트 {safeDiscount}% 할인 (총 ₩
+                    이벤트 {safeDiscount}% 할인 (₩
                     {eventDiscountAmount.toLocaleString()}원)
                   </Text>
                 )}
@@ -440,7 +440,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                 {/* 3) 쿠폰 할인 */}
                 {safeCouponDiscount > 0 && (
                   <Text fontSize="xs" color="red.500">
-                    쿠폰 {safeCouponDiscount}% 할인 (총 ₩
+                    쿠폰 {safeCouponDiscount}% 할인 (₩
                     {couponDiscountAmount.toLocaleString()}원)
                   </Text>
                 )}
@@ -455,7 +455,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
             {/* 4) 최종 결제 금액 (줄바꿈) */}
             <Box gridColumn="1 / -1">
               <Text fontSize="sm" fontWeight="semibold" color="blue.500" mt={0}>
-                결제 금액: ₩{safePrice.toLocaleString()}원
+                최종 금액: ₩{safePrice.toLocaleString()}원
               </Text>
             </Box>
           </Grid>
