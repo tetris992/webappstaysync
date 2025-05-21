@@ -156,8 +156,14 @@ const HotelList = ({ loadHotelSettings }) => {
           const photoPromises = enriched.map((h) =>
             limit(async () => {
               try {
-                const exteriorData = await fetchHotelPhotos(h.hotelId, 'exterior');
-                const facilityData = await fetchHotelPhotos(h.hotelId, 'facility');
+                const exteriorData = await fetchHotelPhotos(
+                  h.hotelId,
+                  'exterior'
+                );
+                const facilityData = await fetchHotelPhotos(
+                  h.hotelId,
+                  'facility'
+                );
                 const combinedPhotos = [
                   ...(exteriorData.commonPhotos || []),
                   ...(facilityData.commonPhotos || []),
@@ -258,8 +264,7 @@ const HotelList = ({ loadHotelSettings }) => {
     if (priceFilter !== 'all') {
       const [min, max] = priceFilter.split('-').map(Number);
       list = list.filter(
-        (h) =>
-          h.minPrice >= min && (max ? h.maxPrice <= max : true)
+        (h) => h.minPrice >= min && (max ? h.maxPrice <= max : true)
       );
     }
 
@@ -269,9 +274,13 @@ const HotelList = ({ loadHotelSettings }) => {
     }
 
     list.sort((a, b) => {
-      const fa = favorites[a.hotelId] ? 0 : 1;
-      const fb = favorites[b.hotelId] ? 0 : 1;
-      if (fa !== fb) return fa - fb;
+      // 1) 찜한 호텔을 맨 앞으로
+      const favA = favorites[a.hotelId] ? 1 : 0;
+      const favB = favorites[b.hotelId] ? 1 : 0;
+      if (favA !== favB) {
+        return favB - favA; // favA=1,favB=0 일 때 음수 → a가 앞
+      }
+      // 2) 그 다음 sortOption
       switch (sortOption) {
         case 'name':
           return a.hotelName.localeCompare(b.hotelName);
@@ -602,11 +611,7 @@ const HotelList = ({ loadHotelSettings }) => {
                   totalHotels={filteredHotels.length}
                 />
                 {index < filteredHotels.length - 1 && (
-                  <Divider
-                    borderColor="gray.300"
-                    borderWidth="0.5px"
-                    mb={2}
-                  />
+                  <Divider borderColor="gray.300" borderWidth="0.5px" mb={2} />
                 )}
               </Box>
             ))}
