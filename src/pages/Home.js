@@ -868,9 +868,14 @@ const Home = () => {
                             ? hotel.address.slice(0, 10) + '…'
                             : hotel.address}
                         </Text>
-                        <Text fontWeight="bold">
-                          ₩{displayPrice.toLocaleString()} / 박
-                        </Text>
+                        <Flex align="baseline" gap={1}>
+                          <Text fontWeight="bold" color="blue.600">
+                            ₩{displayPrice.toLocaleString()}
+                          </Text>
+                          <Text fontSize="sm" color="gray.500">
+                            1박
+                          </Text>
+                        </Flex>
                       </VStack>
                     </Box>
                   );

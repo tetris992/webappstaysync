@@ -209,10 +209,10 @@ const HotelCard = ({
               </Text>
               <Text
                 fontSize="sm"
-                color="gray.500"
+      color="blue.600"  
                 fontWeight="normal"
               >
-                1N
+                1박
               </Text>
             </Flex>
           </Flex>
