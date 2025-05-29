@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -48,15 +49,29 @@ import {
 } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
-import io from 'socket.io-client';
 import pLimit from 'p-limit';
 import useImagePreloader from '../hooks/useImagePreloader';
 import LazyImage from '../components/LazyImage';
+import useSocket from '../hooks/useSocket';
 
-// HTML <head>에 추가 권장 (프로젝트 설정에서 별도 처리)
-// <link rel="preload" as="image" href="/assets/low-res-placeholder.jpg">
+// 사진 캐시 헬퍼
+const fetchHotelPhotosCached = async (hotelId, category) => {
+  const key = `hotelPhotos_${hotelId}_${category}`;
+  const cached = localStorage.getItem(key);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+  const data = await fetchHotelPhotos(hotelId, category);
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    // 저장 용량 초과 등 에러 무시
+  }
+  return data;
+};
 
 const Home = () => {
+  const [hotelMinPrices, setHotelMinPrices] = useState({});
   const navigate = useNavigate();
   const toast = useToast();
   const {
@@ -70,12 +85,12 @@ const Home = () => {
   const [dateRange, setDateRange] = useState([
     {
       startDate: startOfDay(new Date()),
-      endDate: addDays(startOfDay(new Date()), 1), // 기본 1박 설정
+      endDate: addDays(startOfDay(new Date()), 1),
       key: 'selection',
     },
   ]);
   const [guestCount, setGuestCount] = useState(1);
-  const [isModalOpen, setIsModalOpen] = useState(false); // 모달 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [hotels, setHotels] = useState([]);
   const [events, setEvents] = useState([]);
@@ -85,7 +100,31 @@ const Home = () => {
   const [error, setError] = useState(null);
   const [isCouponPanelOpen, setIsCouponPanelOpen] = useState(false);
   const [currentEventIdx, setCurrentEventIdx] = useState(0);
+  const [hasNewReservation, setHasNewReservation] = useState(false);
+  const hasNewCoupon =
+    Array.isArray(customerCoupons) && customerCoupons.length > 0;
+  const hasAlert = hasNewCoupon || hasNewReservation;
 
+  const socket = useSocket();
+  // useMemo 내부에서만 localStorage를 읽도록!
+  const sortedHotels = useMemo(() => {
+    const favs = [];
+    const rest = [];
+    // 여기에 한 번만 읽어 옵니다
+    const favorites = JSON.parse(localStorage.getItem('favorites')) || {};
+    hotels.forEach((h) => {
+      if (favorites[String(h.hotelId)]) favs.push(h);
+      else rest.push(h);
+    });
+    console.log(
+      '[Home] Sorted hotels:',
+      [...favs, ...rest].map((h) => ({
+        hotelId: h.hotelId,
+        isFav: !!favorites[String(h.hotelId)],
+      }))
+    );
+    return [...favs, ...rest];
+  }, [hotels]);
   // 사진 미리 로드
   useImagePreloader(
     hotels
@@ -96,7 +135,7 @@ const Home = () => {
             ?.slice(0, 2)
             ?.map((photo) => photo.photoUrl) || []
       ),
-    6 // 최대 6장 프리로드 (3개 호텔 x 2장)
+    6
   );
 
   // "단골 숙소예약" 클릭 시
@@ -144,45 +183,49 @@ const Home = () => {
     }
   };
 
-  // "다른 숙소 예약하기" 및 "돋보기" 클릭 시 검색창 열기 + 기본값 설정
+  // "다른 숙소 예약하기" 및 "돋보기" 클릭 시 검색창 열기
   const handleOpenSearch = () => {
-    console.log('handleOpenSearch called'); // 이벤트 호출 확인
+    console.log('handleOpenSearch called');
     const today = startOfDay(new Date());
     const tomorrow = addDays(today, 1);
     setDateRange([
       {
         startDate: today,
-        endDate: tomorrow, // 기본 1박 설정
+        endDate: tomorrow,
         key: 'selection',
       },
     ]);
     setGuestCount(2);
-    setIsModalOpen(true); // 모달 열기
-    setIsCalendarOpen(false); // 달력은 클릭 시 열림
+    setIsModalOpen(true);
+    setIsCalendarOpen(false);
   };
 
-  // Socket.io 연결 및 쿠폰 이벤트
+  // Socket.io 구독
   useEffect(() => {
-    const socket = io(process.env.REACT_APP_API_BASE_URL, {
-      path: '/socket.io',
-      transports: ['websocket', 'polling'],
-      withCredentials: true,
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-    });
-    socket.on('couponIssued', ({ message }) => {
-      toast({
-        title: '새 쿠폰 발행',
-        description: message,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-    });
-    return () => socket.disconnect();
-  }, [toast]);
+    if (!socket) return;
+    const onCoupon = ({ message }) => {
+      toast({ title: '새 쿠폰', description: message, status: 'success' });
+    };
+    socket.on('couponIssued', onCoupon);
+    return () => {
+      socket.off('couponIssued', onCoupon);
+    };
+  }, [socket, toast]);
+
+  // 다가오는(새) 예약이 있는지 체크
+  useEffect(() => {
+    (async () => {
+      try {
+        const { history } = await getReservationHistory();
+        // 예: checkIn이 오늘 이후인 예약이 있으면 신규 예약으로 간주
+        const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
+        const upcoming = history.some((r) => r.checkIn > today);
+        setHasNewReservation(upcoming);
+      } catch (e) {
+        console.error('예약 이력 조회 실패', e);
+      }
+    })();
+  }, []);
 
   // 호텔 데이터 및 사진 불러오기
   useEffect(() => {
@@ -192,20 +235,41 @@ const Home = () => {
       try {
         const list = await fetchHotelList();
         setHotels(list || []);
-
         const limit = pLimit(3);
+
+        const pricePromises = list.map((hotel) =>
+          limit(async () => {
+            try {
+              const checkIn = format(dateRange[0].startDate, 'yyyy-MM-dd');
+              const checkOut = format(dateRange[0].endDate, 'yyyy-MM-dd');
+              const settings = await fetchCustomerHotelSettings(hotel.hotelId, {
+                checkIn,
+                checkOut,
+              });
+              const prices = (settings.roomTypes || []).map(
+                (rt) => Number(rt.price) || Infinity
+              );
+              const minPrice = prices.length ? Math.min(...prices) : null;
+              return { id: hotel.hotelId, minPrice };
+            } catch {
+              return { id: hotel.hotelId, minPrice: null };
+            }
+          })
+        );
+        const priceResults = await Promise.all(pricePromises);
+        setHotelMinPrices(
+          priceResults.reduce((acc, { id, minPrice }) => {
+            if (minPrice != null && isFinite(minPrice)) acc[id] = minPrice;
+            return acc;
+          }, {})
+        );
+
         const photoPromises = list.map((h) =>
           limit(async () => {
             try {
-              const data = await fetchHotelPhotos(h.hotelId, 'exterior');
+              const data = await fetchHotelPhotosCached(h.hotelId, 'exterior');
               return { id: h.hotelId, photos: data.commonPhotos || [] };
             } catch {
-              toast({
-                title: '사진 로드 실패',
-                description: `${h.hotelName} 사진을 표시할 수 없습니다.`,
-                status: 'warning',
-                duration: 3000,
-              });
               return { id: h.hotelId, photos: [] };
             }
           })
@@ -231,9 +295,9 @@ const Home = () => {
       }
     };
     fetchHotels();
-  }, [toast]);
+  }, [toast, dateRange]);
 
-  // 이벤트 데이터 불러오기 및 사진 매핑
+  // 이벤트 데이터 불러오기
   useEffect(() => {
     const fetchEvents = async () => {
       try {
@@ -389,10 +453,8 @@ const Home = () => {
   const handleDateChange = ({ selection }) => {
     let { startDate, endDate } = selection;
 
-    // 항상 작은 날짜가 체크인, 큰 날짜가 체크아웃
     if (startDate > endDate) [startDate, endDate] = [endDate, startDate];
 
-    // 같은 날짜 선택 방지: 체크아웃을 체크인 다음 날로 설정
     if (isSameDay(startDate, endDate)) {
       endDate = addDays(startDate, 1);
     }
@@ -432,7 +494,7 @@ const Home = () => {
       },
     });
     setIsModalOpen(false);
-    setIsCalendarOpen(false); // 검색 후 달력 닫기
+    setIsCalendarOpen(false);
   };
 
   // 이벤트 클릭 핸들러
@@ -475,7 +537,7 @@ const Home = () => {
     slidesToScroll: 1,
     arrows: false,
     centerMode: true,
-    centerPadding: '16px',
+    centerPadding: '10px',
   };
 
   const eventSliderSettings = {
@@ -523,40 +585,47 @@ const Home = () => {
             <Box
               position="relative"
               cursor="pointer"
-              onClick={() => setIsCouponPanelOpen((o) => !o)}
+              onClick={() => {
+                if (customerCoupons.length > 0) {
+                  // 쿠폰이 있으면 쿠폰 패널 열기/닫기
+                  setIsCouponPanelOpen((o) => !o);
+                } else {
+                  // 쿠폰이 없으면 신규 예약 화면으로 이동
+                  // (경로는 실제 앱에 맞게 바꿔주세요)
+                  navigate('/history');
+                }
+              }}
             >
               <Image src="/assets/Notification.svg" boxSize={8} />
-              <Box
-                position="absolute"
-                top="1"
-                right="1"
-                w="2"
-                h="2"
-                bg="red.500"
-                border="1px solid white"
-                borderRadius="full"
-              />
+              {hasAlert && (
+                <Box
+                  position="absolute"
+                  top="1"
+                  right="1"
+                  w="2"
+                  h="2"
+                  bg="red.500"
+                  border="1px solid white"
+                  borderRadius="full"
+                />
+              )}
             </Box>
-            <Box
-              cursor="pointer"
-              onClick={handleOpenSearch} // 돋보기 클릭 시 handleOpenSearch 호출
-            >
+            <Box cursor="pointer" onClick={handleOpenSearch}>
               <Image src="/assets/Search.svg" boxSize={8} />
             </Box>
           </HStack>
         </Flex>
       </Box>
 
-      {/* 검색창 모달 ("다른 숙소 예약하기" 또는 "돋보기" 클릭 시) */}
+      {/* 검색창 모달 */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
-          /* 검색 버튼 누르기 전에는 닫히지 않게 오버레이·ESC 클릭 막기 */
           setIsModalOpen(false);
           setIsCalendarOpen(false);
         }}
-        closeOnEsc={false} // ESC 키로 닫히지 않도록
-        closeOnOverlayClick={false} // 오버레이 클릭으로 닫히지 않도록
+        closeOnEsc={false}
+        closeOnOverlayClick={false}
         isCentered
       >
         <ModalOverlay />
@@ -610,7 +679,7 @@ const Home = () => {
                   <DateRange
                     ranges={dateRange}
                     onChange={handleDateChange}
-                    minDate={startOfDay(new Date())} // 과거 날짜 선택 방지
+                    minDate={startOfDay(new Date())}
                     maxDate={addMonths(startOfDay(new Date()), 3)}
                     locale={ko}
                     months={1}
@@ -630,7 +699,6 @@ const Home = () => {
 
                       return (
                         <Box position="relative" w="100%" h="56px">
-                          {/* 1) 날짜 숫자 */}
                           <Text
                             position="absolute"
                             top="4px"
@@ -642,8 +710,6 @@ const Home = () => {
                           >
                             {date.getDate()}
                           </Text>
-
-                          {/* 2) 라벨: 동일일이면 통합, 아니면 각각 */}
                           {sameDaySel && isStart ? (
                             <Text
                               position="absolute"
@@ -745,28 +811,34 @@ const Home = () => {
 
           {/* 추천 호텔 */}
           <Box
+            ml={-1}
             px={0}
             overflow="hidden"
-            css={{
-              '.slick-list': {
-                paddingLeft: 0,
-              },
+            touchAction="pan-x" // 가로 제스처만 잡고
+            sx={{
+              overscrollBehaviorX: 'contain', // 가로 오버스크롤 차단
+              overscrollBehaviorY: 'auto', // 세로는 기본 스크롤로 넘김
             }}
           >
             <Text fontWeight="bold" mb={2}>
-              추천 호텔
+              찜한 숙소
             </Text>
             {loadingHotels ? (
               <Flex justify="center" py={8}>
                 <Spinner size="xl" />
               </Flex>
-            ) : hotels.length > 0 ? (
+            ) : sortedHotels.length > 0 ? (
               <Slider {...hotelSliderSettings}>
-                {hotels.map((hotel) => {
+                {sortedHotels.map((hotel) => {
                   const photo =
                     photosMap[hotel.hotelId]?.[0]?.photoUrl ||
                     '/assets/default-hotel.jpg';
                   const evt = events.find((e) => e.hotelId === hotel.hotelId);
+                  const displayPrice =
+                    hotelMinPrices[hotel.hotelId] != null
+                      ? hotelMinPrices[hotel.hotelId]
+                      : hotel.price ||
+                        Math.floor(Math.random() * 100000) + 50000;
 
                   return (
                     <Box
@@ -829,14 +901,14 @@ const Home = () => {
                             ? hotel.address.slice(0, 10) + '…'
                             : hotel.address}
                         </Text>
-                        <Text fontWeight="bold">
-                          ₩
-                          {(
-                            hotel.price ||
-                            Math.floor(Math.random() * 100000) + 50000
-                          ).toLocaleString()}{' '}
-                          / 박
-                        </Text>
+                        <Flex align="baseline" gap={1}>
+                          <Text fontWeight="bold" color="blue.600">
+                            ₩{displayPrice.toLocaleString()}
+                          </Text>
+                          <Text fontSize="sm" color="gray.500">
+                            1박
+                          </Text>
+                        </Flex>
                       </VStack>
                     </Box>
                   );
@@ -850,9 +922,21 @@ const Home = () => {
           </Box>
 
           {/* 이벤트 섹션 */}
-          <Box w="100%" mb={4}>
+          <Box
+            w="100%"
+            mb={4}
+            // 오른쪽 여백 살짝
+            /* 슬라이더는 수평 제스처만 가로 스와이프로, */
+            touchAction="pan-x"
+            /* 가로 오버스크롤 체인만 끊고, */
+            sx={{
+              overscrollBehaviorX: 'contain',
+              /* 세로는 기본(페이지 스크롤)으로 넘겨줍니다 */
+              overscrollBehaviorY: 'auto',
+            }}
+          >
             <Text fontWeight="bold" mb={2}>
-              이벤트
+              단골 이벤트
             </Text>
             <Box position="relative">
               {loadingEvents ? (
@@ -897,7 +981,7 @@ const Home = () => {
                             colorScheme="red"
                             fontSize="md"
                             px={3}
-                            py={1.5}
+                            py={1}
                             borderRadius="full"
                             bg="rgba(255,255,255,0.9)"
                             boxShadow="md"

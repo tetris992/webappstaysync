@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   VStack,
@@ -13,10 +13,11 @@ import {
   Badge,
   Image,
   HStack,
+  Spinner,
 } from '@chakra-ui/react';
 import { BellIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchCustomerCoupons } from '../api/api';
+import { fetchCustomerCoupons, getReservationHistory } from '../api/api';
 import BottomNavigation from '../components/BottomNavigation';
 
 const MyInfo = () => {
@@ -24,25 +25,28 @@ const MyInfo = () => {
   const { customer, logout } = useAuth();
   const toast = useToast();
   const [coupons, setCoupons] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loadingCoupons, setLoadingCoupons] = useState(true);
+  const [couponError, setCouponError] = useState(null);
   const [isCouponPanelOpen, setIsCouponPanelOpen] = useState(false);
+  const [activeCount, setActiveCount] = useState(0);
+  const [loadingReservations, setLoadingReservations] = useState(true);
+  const [reservationError, setReservationError] = useState(null);
 
   useEffect(() => {
     const fetchCoupons = async () => {
       if (!customer) {
         console.log('[MyInfo] Customer not available, skipping fetchCoupons');
-        setLoading(false);
+        setLoadingCoupons(false);
         return;
       }
       try {
-        setError(null);
+        setCouponError(null);
         const customerCoupons = await fetchCustomerCoupons();
         console.log('[MyInfo] Fetched customer coupons:', customerCoupons);
         setCoupons(customerCoupons || []);
       } catch (error) {
         console.error('쿠폰 데이터 가져오기 실패:', error);
-        setError(error.message || '쿠폰을 불러오지 못했습니다.');
+        setCouponError(error.message || '쿠폰을 불러오지 못했습니다.');
         toast({
           title: '쿠폰 로드 실패',
           description: error.message || '쿠폰을 불러오지 못했습니다.',
@@ -51,12 +55,49 @@ const MyInfo = () => {
           isClosable: true,
         });
       } finally {
-        setLoading(false);
+        setLoadingCoupons(false);
       }
     };
 
     fetchCoupons();
   }, [customer, toast]);
+
+  const isActiveReservation = useCallback((r) => {
+    const checkout = new Date(r.checkOut.replace('+09:00', ''));
+    checkout.setHours(11, 0, 0, 0);
+    return new Date() < checkout && !r.isCancelled;
+  }, []);
+
+  useEffect(() => {
+    const fetchActiveReservations = async () => {
+      if (!customer) {
+        setLoadingReservations(false);
+        return;
+      }
+
+      try {
+        setReservationError(null);
+        const resp = await getReservationHistory();
+        const history = resp.history || [];
+        const active = history.filter(isActiveReservation);
+        setActiveCount(active.length);
+      } catch (error) {
+        console.error('예약 내역 가져오기 실패:', error);
+        setReservationError(error.message || '예약 내역을 불러오지 못했습니다.');
+        toast({
+          title: '예약 로드 실패',
+          description: error.message || '예약 내역을 불러오지 못했습니다.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        setLoadingReservations(false);
+      }
+    };
+
+    fetchActiveReservations();
+  }, [customer, isActiveReservation, toast]);
 
   const handleLogout = async () => {
     try {
@@ -246,21 +287,36 @@ const MyInfo = () => {
             <Heading fontSize="16px" mb={4}>
               예약 요약
             </Heading>
-            <Text fontSize="sm" color="gray.600">
-              최근 예약 건수: 0건 (상세 데이터는 나의 예약에서 확인)
-            </Text>
-            <Button
-              mt={2}
-              w="100%"
-              colorScheme="green"
-              size="sm"
-              onClick={() => navigate('/history')}
-              borderRadius="lg"
-              bg="blue.600"
-              _hover={{ bg: 'blue.700' }}
-            >
-              예약 내역 보기
-            </Button>
+            {loadingReservations ? (
+              <Flex align="center" justify="center" py={6}>
+                <Spinner />
+              </Flex>
+            ) : reservationError ? (
+              <Text fontSize="sm" color="red.500">
+                {reservationError}
+              </Text>
+            ) : (
+              <>
+                <Text fontSize="sm" color="gray.600">
+                  최근 예약 건수: {activeCount}건{' '}
+                  <Text as="span" color="gray.400">
+                    (상세 내역 확인)
+                  </Text>
+                </Text>
+                <Button
+                  mt={2}
+                  w="100%"
+                  colorScheme="green"
+                  size="sm"
+                  onClick={() => navigate('/history')}
+                  borderRadius="lg"
+                  bg="blue.600"
+                  _hover={{ bg: 'blue.700' }}
+                >
+                  예약 내역 보기
+                </Button>
+              </>
+            )}
           </Box>
 
           {/* 고객센터 */}
@@ -269,10 +325,10 @@ const MyInfo = () => {
               고객센터
             </Heading>
             <Text fontSize="sm" color="gray.600">
-              문의: help@danjam.com
+              문의: since25@zerotoone.com
             </Text>
             <Text fontSize="sm" color="gray.600">
-              전화: 123-456-7890 (평일 09:00 - 18:00)
+              전화: 010-8065-1554 (평일 09:00 - 23:00)
             </Text>
           </Box>
 
@@ -300,8 +356,7 @@ const MyInfo = () => {
                   h="14px"
                 />
                 <Text fontSize="10px" color="gray.600">
-                  주소: 경상남도 창원시 성산구 마디미로 61, 601호(상남동,
-                  위드빌딩)
+                  주소: 경상남도 창원시 성산구 마디미로 61, 601호(상남동, 위드빌딩)
                   <br />
                   대표이사: 최정환 | 사업자등록번호: 835-87-03326
                 </Text>
@@ -311,9 +366,7 @@ const MyInfo = () => {
                       이용약관
                     </Text>
                   </Link>
-                  <Text fontSize="11px" color="gray.600">
-                    │
-                  </Text>
+                  <Text fontSize="11px" color="gray.600">│</Text>
                   <Link to="/consent">
                     <Text fontSize="11px" color="gray.600" cursor="pointer">
                       개인정보 처리방침
@@ -323,8 +376,7 @@ const MyInfo = () => {
                 <Text fontSize="10px" color="gray.600">
                   (주) 제로투원은 통신판매중개자로서 통신판매의 당사자가 아니며,
                   <br />
-                  상품의 예약, 이용 및 환불 등과 관련한 의무와 책임은 각
-                  판매자에게 있습니다.
+                  상품의 예약, 이용 및 환불 등과 관련한 의무와 책임은 각 판매자에게 있습니다.
                 </Text>
               </VStack>
             </Box>
@@ -373,13 +425,13 @@ const MyInfo = () => {
               닫기
             </Button>
           </Flex>
-          {loading ? (
+          {loadingCoupons ? (
             <Text textAlign="center" color="gray.500">
               쿠폰을 불러오는 중입니다...
             </Text>
-          ) : error ? (
+          ) : couponError ? (
             <Text textAlign="center" color="red.500">
-              {error}
+              {couponError}
             </Text>
           ) : coupons.length === 0 ? (
             <Text color="gray.500" textAlign="center">

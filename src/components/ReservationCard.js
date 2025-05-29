@@ -21,11 +21,11 @@ import {
   IconButton,
 } from '@chakra-ui/react';
 import { FaMapMarkerAlt, FaMapSigns, FaCopy, FaPhone } from 'react-icons/fa';
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { useToast } from '@chakra-ui/react';
 import Map from './HotelMap';
 
-// 기본 이미지 경로 수정
+// 기본 이미지 경로
 const defaultRoomImage = '/assets/default-room1.jpg';
 
 // 한국 시간으로 Date 객체 생성하는 함수
@@ -43,7 +43,6 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     roomInfo = '정보 없음',
     checkIn,
     checkOut,
-    numDays,
     price,
     paymentMethod = '현장결제',
     address,
@@ -62,6 +61,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     couponDiscount = 0,
     couponFixedDiscount = 0,
     couponCode = null,
+    numDays, // 백엔드에서 저장된 numDays 활용
   } = reservation || {};
 
   console.log(
@@ -70,7 +70,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
 
   const safePrice = typeof price === 'number' ? price : 0;
   const safeOriginalPrice =
-    typeof originalPrice === 'number' ? originalPrice : safePrice;
+    typeof originalPrice === 'number' ? originalPrice : safePrice; // 총액
   const safeDiscount = typeof discount === 'number' ? discount : 0;
   const safeFixedDiscount =
     typeof fixedDiscount === 'number' ? fixedDiscount : 0;
@@ -78,31 +78,44 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     typeof couponDiscount === 'number' ? couponDiscount : 0;
   const safeCouponFixedDiscount =
     typeof couponFixedDiscount === 'number' ? couponFixedDiscount : 0;
-  const safeCouponTotalFixedDiscount =
-    safeCouponFixedDiscount *
-    (typeof numDays === 'number' && numDays > 0 ? numDays : 1);
-  const safeNumDays = typeof numDays === 'number' && numDays > 0 ? numDays : 1;
+  // 숙박일: 백엔드에서 저장된 numDays 사용, 없으면 계산
+  const safeNumDays =
+    numDays ||
+    (checkIn && checkOut
+      ? Math.max(
+          differenceInCalendarDays(new Date(checkOut), new Date(checkIn)),
+          1
+        )
+      : 1);
+  // 총 원본 금액: originalPrice는 이미 총액이므로 numDays 곱셈 제거
+  const totalOriginalPrice = safeOriginalPrice;
   const thumbnail = photoUrl || defaultRoomImage;
   const cardBg = useColorModeValue('white', 'gray.700');
   const toast = useToast();
   const [isMapOpen, setIsMapOpen] = useState(false);
 
   // 할인 금액 계산 (소수점 버림)
-  const eventDiscountAmount =
-    discountType === 'percentage' && safeDiscount > 0
-      ? Math.floor(safeOriginalPrice * (safeDiscount / 100))
-      : discountType === 'fixed' && safeFixedDiscount > 0
-      ? safeFixedDiscount
-      : 0;
+  const eventDiscountAmount = (() => {
+    if (discountType === 'fixed' && safeFixedDiscount > 0) {
+      return safeFixedDiscount;
+    }
+    if (discountType === 'percentage' && safeDiscount > 0) {
+      return Math.floor(totalOriginalPrice * (safeDiscount / 100));
+    }
+    return 0;
+  })();
 
-  const couponDiscountAmount =
-    couponDiscount > 0
-      ? Math.floor(
-          (safeOriginalPrice - eventDiscountAmount) * (safeCouponDiscount / 100)
-        )
-      : safeCouponFixedDiscount > 0
-      ? safeCouponTotalFixedDiscount
-      : 0;
+  const couponDiscountAmount = (() => {
+    if (safeCouponFixedDiscount > 0) {
+      return safeCouponFixedDiscount;
+    }
+    if (safeCouponDiscount > 0) {
+      return Math.floor(
+        (totalOriginalPrice - eventDiscountAmount) * (safeCouponDiscount / 100)
+      );
+    }
+    return 0;
+  })();
 
   console.log('[ReservationCard] Discount info:', {
     eventDiscount: safeDiscount,
@@ -111,10 +124,11 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
     eventDiscountAmount,
     couponDiscount: safeCouponDiscount,
     couponFixedDiscount: safeCouponFixedDiscount,
-    couponTotalFixedDiscount: safeCouponTotalFixedDiscount,
     couponDiscountAmount,
     eventName,
     couponCode,
+    safeNumDays,
+    totalOriginalPrice,
   });
 
   const getCancellationStatus = () => {
@@ -314,12 +328,15 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
           borderRadius="md"
           onError={(e) => (e.target.src = defaultRoomImage)}
         />
+
         <VStack align="start" spacing={2}>
           <Text fontWeight="bold" fontSize="lg">
             {hotelName} ({hotelId})
           </Text>
           <Divider />
+
           <Grid templateColumns="auto 1fr" gap={2} width="100%" pl={4}>
+            {/* ───────────── 기본 예약 정보 ───────────── */}
             <Text fontSize="sm" color="gray.600">
               예약 번호:
             </Text>
@@ -392,11 +409,10 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
               </>
             )}
 
-            {(safeDiscount > 0 ||
-              safeFixedDiscount > 0 ||
-              safeCouponDiscount > 0 ||
-              safeCouponFixedDiscount > 0) && (
+            {/* ───────────── 할인 전/후 가격 & 할인 내역 ───────────── */}
+            {totalOriginalPrice > safePrice && (
               <>
+                {/* 1) 할인 전 원가 */}
                 <Text fontSize="sm" color="gray.600">
                   할인 전 금액:
                 </Text>
@@ -405,64 +421,50 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
                   color="gray.600"
                   textDecoration="line-through"
                 >
-                  {safeOriginalPrice.toLocaleString()}원
+                  ₩{totalOriginalPrice.toLocaleString()}원
                 </Text>
-                {(safeDiscount > 0 || safeFixedDiscount > 0) && (
-                  <>
-                    <Text fontSize="sm" color="gray.600">
-                      이벤트 할인:
-                    </Text>
-                    <Flex direction="column" align="start">
-                      <Text fontSize="sm" fontWeight="medium" color="red.600">
-                        {discountType === 'fixed' && safeFixedDiscount > 0 ? (
-                          <>
-                            총 {safeFixedDiscount.toLocaleString()}원 (
-                            {safeNumDays}박)
-                          </>
-                        ) : discountType === 'percentage' &&
-                          safeDiscount > 0 ? (
-                          <>총 {eventDiscountAmount.toLocaleString()}원</>
-                        ) : (
-                          '할인 정보 없음'
-                        )}
-                      </Text>
-                    </Flex>
-                  </>
+
+                {/* 2) 이벤트 할인 */}
+                {discountType === 'percentage' && safeDiscount > 0 && (
+                  <Text fontSize="xs" color="red.500">
+                    이벤트 {safeDiscount}% 할인 (₩
+                    {eventDiscountAmount.toLocaleString()}원)
+                  </Text>
                 )}
-                {(safeCouponDiscount > 0 || safeCouponFixedDiscount > 0) && (
-                  <>
-                    <Text fontSize="sm" color="gray.600">
-                      쿠폰 할인:
-                    </Text>
-                    <Flex direction="column" align="start">
-                      <Text fontSize="sm" fontWeight="medium" color="red.600">
-                        {safeCouponFixedDiscount > 0 ? (
-                          <>
-                            총 {safeCouponTotalFixedDiscount.toLocaleString()}원
-                            ({safeNumDays}박)
-                          </>
-                        ) : safeCouponDiscount > 0 ? (
-                          <>총 {couponDiscountAmount.toLocaleString()}원</>
-                        ) : (
-                          '할인 정보 없음'
-                        )}
-                      </Text>
-                    </Flex>
-                  </>
+                {discountType === 'fixed' && safeFixedDiscount > 0 && (
+                  <Text fontSize="xs" color="red.500">
+                    이벤트 할인: ₩{safeFixedDiscount.toLocaleString()}원
+                  </Text>
+                )}
+
+                {/* 3) 쿠폰 할인 */}
+                {safeCouponDiscount > 0 && (
+                  <Text fontSize="xs" color="red.500">
+                    쿠폰 {safeCouponDiscount}% 할인 (₩
+                    {couponDiscountAmount.toLocaleString()}원)
+                  </Text>
+                )}
+                {safeCouponFixedDiscount > 0 && (
+                  <Text fontSize="xs" color="red.500">
+                    쿠폰 할인: ₩{safeCouponFixedDiscount.toLocaleString()}원
+                  </Text>
                 )}
               </>
             )}
 
-            <Text fontSize="sm" color="gray.600">
-              총 가격:
-            </Text>
-            <Text fontSize="sm" fontWeight="semibold" color="blue.500">
-              {safePrice.toLocaleString()}원
-            </Text>
+            {/* 4) 최종 결제 금액 (줄바꿈) */}
+            <Box gridColumn="1 / -1">
+              <Text fontSize="sm" fontWeight="semibold" color="blue.500" mt={0}>
+                최종 금액: ₩{safePrice.toLocaleString()}원
+              </Text>
+            </Box>
           </Grid>
         </VStack>
+
         <Divider />
+
         <VStack align="start" spacing={2} w="100%">
+          {/* cancellationStatus & address/phone 섹션은 원본 그대로 */}
           {!cancellationStatus.canCancel ? (
             <Text
               fontSize="md"
@@ -488,6 +490,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
               </Button>
             </>
           )}
+
           {address && (
             <Flex align="center" w="100%">
               <Icon as={FaMapMarkerAlt} color="teal.500" boxSize={4} mr={2} />
@@ -512,6 +515,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
               />
             </Flex>
           )}
+
           {hotelPhoneNumber && (
             <Flex align="center" w="100%">
               <Icon as={FaPhone} color="blue.500" boxSize={4} mr={2} />
@@ -535,6 +539,7 @@ const ReservationCard = ({ reservation, onCancelReservation, isConfirmed }) => {
         </VStack>
       </VStack>
 
+      {/* 지도 모달 역시 원본 그대로 */}
       <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} size="lg">
         <ModalOverlay />
         <ModalContent>

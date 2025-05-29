@@ -24,13 +24,13 @@ import {
   Image,
   Divider,
 } from '@chakra-ui/react';
-import {
-  SearchIcon,
-  ArrowBackIcon,
-  ChevronDownIcon,
-} from '@chakra-ui/icons';
+import { SearchIcon, ArrowBackIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchHotelList, fetchHotelPhotos, fetchCustomerHotelSettings } from '../api/api';
+import {
+  fetchHotelList,
+  fetchHotelPhotos,
+  fetchCustomerHotelSettings,
+} from '../api/api';
 import BottomNavigation from '../components/BottomNavigation';
 import pLimit from 'p-limit';
 import { format, addDays } from 'date-fns';
@@ -81,7 +81,6 @@ const HotelList = ({ loadHotelSettings }) => {
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [currentPhotoIndices, setCurrentPhotoIndices] = useState({});
   const [mapVisible, setMapVisible] = useState({});
-  const mainRef = React.useRef(null);
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -89,21 +88,37 @@ const HotelList = ({ loadHotelSettings }) => {
     setFavorites(fav);
   }, []);
 
-  // Fetch hotel list, photos, coupons
+  // Fetch hotel list, photos, coupons, and prices
   useEffect(() => {
     const load = async () => {
       try {
         setIsLoading(true);
         const list = await fetchHotelList();
+        const limit = pLimit(3);
+
+        // Enrich hotel data with settings, including min/max prices
         const enriched = await Promise.all(
           list.map(async (h) => {
             try {
-              const settings = await fetchCustomerHotelSettings(h.hotelId);
+              // Fetch settings with checkIn/checkOut dates for accurate pricing
+              const settings = await fetchCustomerHotelSettings(h.hotelId, {
+                checkIn,
+                checkOut,
+              });
+              // Calculate min and max prices from room types
+              const prices = (settings.roomTypes || [])
+                .map((rt) => Number(rt.price) || Infinity)
+                .filter((p) => isFinite(p));
+              const minPrice = prices.length ? Math.min(...prices) : null;
+              const maxPrice = prices.length ? Math.max(...prices) : null;
+
               return {
                 ...h,
+                minPrice,
+                maxPrice,
                 rating: Math.random() * 2 + 3,
                 reviewCount: Math.floor(Math.random() * 100) + 10,
-                price: Math.floor(Math.random() * 100000) + 50000,
+                price: Math.floor(Math.random() * 100000) + 50000, // Fallback price
                 address: normalizeAddress(h.address),
                 checkInTime: settings.checkInTime || '15:00',
                 checkOutTime: settings.checkOutTime || '11:00',
@@ -114,9 +129,11 @@ const HotelList = ({ loadHotelSettings }) => {
             } catch {
               return {
                 ...h,
+                minPrice: null,
+                maxPrice: null,
                 rating: Math.random() * 2 + 3,
                 reviewCount: Math.floor(Math.random() * 100) + 10,
-                price: Math.floor(Math.random() * 100000) + 50_000,
+                price: Math.floor(Math.random() * 100000) + 50000,
                 address: normalizeAddress(h.address),
                 checkInTime: '15:00',
                 checkOutTime: '11:00',
@@ -130,13 +147,28 @@ const HotelList = ({ loadHotelSettings }) => {
         setHotels(enriched);
         setFilteredHotels(enriched);
 
-        if (isAuthenticated && customer && localStorage.getItem('customerToken')) {
-          const limit = pLimit(3);
+        if (
+          isAuthenticated &&
+          customer &&
+          localStorage.getItem('customerToken')
+        ) {
+          // Fetch photos
           const photoPromises = enriched.map((h) =>
             limit(async () => {
               try {
-                const data = await fetchHotelPhotos(h.hotelId, 'exterior');
-                return { id: h.hotelId, photos: data.commonPhotos || [] };
+                const exteriorData = await fetchHotelPhotos(
+                  h.hotelId,
+                  'exterior'
+                );
+                const facilityData = await fetchHotelPhotos(
+                  h.hotelId,
+                  'facility'
+                );
+                const combinedPhotos = [
+                  ...(exteriorData.commonPhotos || []),
+                  ...(facilityData.commonPhotos || []),
+                ];
+                return { id: h.hotelId, photos: combinedPhotos };
               } catch {
                 toast({
                   title: '사진 로드 실패',
@@ -161,10 +193,14 @@ const HotelList = ({ loadHotelSettings }) => {
             }, {})
           );
 
+          // Fetch coupons
           const couponPromises = enriched.map((h) =>
             limit(async () => {
               try {
-                const settings = await fetchCustomerHotelSettings(h.hotelId);
+                const settings = await fetchCustomerHotelSettings(h.hotelId, {
+                  checkIn,
+                  checkOut,
+                });
                 const now = format(new Date(), 'yyyy-MM-dd');
                 const avail = (settings.coupons || []).filter(
                   (c) =>
@@ -199,7 +235,14 @@ const HotelList = ({ loadHotelSettings }) => {
       }
     };
     load();
-  }, [isAuthenticated, customer, toast]);
+  }, [isAuthenticated, customer, toast, checkIn, checkOut]);
+
+  const setPhotoIndex = (hotelId, newIndex) => {
+    setCurrentPhotoIndices((prev) => ({
+      ...prev,
+      [hotelId]: newIndex,
+    }));
+  };
 
   // Filtering & sorting
   useEffect(() => {
@@ -221,7 +264,7 @@ const HotelList = ({ loadHotelSettings }) => {
     if (priceFilter !== 'all') {
       const [min, max] = priceFilter.split('-').map(Number);
       list = list.filter(
-        (h) => h.price >= min && (max ? h.price <= max : true)
+        (h) => h.minPrice >= min && (max ? h.maxPrice <= max : true)
       );
     }
 
@@ -231,16 +274,20 @@ const HotelList = ({ loadHotelSettings }) => {
     }
 
     list.sort((a, b) => {
-      const fa = favorites[a.hotelId] ? 0 : 1;
-      const fb = favorites[b.hotelId] ? 0 : 1;
-      if (fa !== fb) return fa - fb;
+      // 1) 찜한 호텔을 맨 앞으로
+      const favA = favorites[a.hotelId] ? 1 : 0;
+      const favB = favorites[b.hotelId] ? 1 : 0;
+      if (favA !== favB) {
+        return favB - favA; // favA=1,favB=0 일 때 음수 → a가 앞
+      }
+      // 2) 그 다음 sortOption
       switch (sortOption) {
         case 'name':
           return a.hotelName.localeCompare(b.hotelName);
         case 'priceAsc':
-          return a.price - b.price;
+          return (a.minPrice || a.price) - (b.minPrice || b.price);
         case 'priceDesc':
-          return b.price - a.price;
+          return (b.minPrice || b.price) - (a.minPrice || a.price);
         case 'ratingDesc':
           return b.rating - a.rating;
         default:
@@ -261,7 +308,9 @@ const HotelList = ({ loadHotelSettings }) => {
 
   const handleNav = async (id) => {
     try {
-      console.log(`[HotelList] Attempting to navigate to room selection for hotel ID: ${id}`);
+      console.log(
+        `[HotelList] Attempting to navigate to room selection for hotel ID: ${id}`
+      );
       console.log('[HotelList] Calling loadHotelSettings...');
       await loadHotelSettings(id);
       console.log('[HotelList] loadHotelSettings completed successfully');
@@ -296,24 +345,6 @@ const HotelList = ({ loadHotelSettings }) => {
       ...prev,
       [hotelId]: !prev[hotelId],
     }));
-  };
-
-  const handlePrevPhoto = (hotelId) => {
-    setCurrentPhotoIndices((prev) => {
-      const photos = photosMap[hotelId] || [];
-      const currentIndex = prev[hotelId] || 0;
-      const newIndex = currentIndex === 0 ? photos.length - 1 : currentIndex - 1;
-      return { ...prev, [hotelId]: newIndex };
-    });
-  };
-
-  const handleNextPhoto = (hotelId) => {
-    setCurrentPhotoIndices((prev) => {
-      const photos = photosMap[hotelId] || [];
-      const currentIndex = prev[hotelId] || 0;
-      const newIndex = currentIndex === photos.length - 1 ? 0 : currentIndex + 1;
-      return { ...prev, [hotelId]: newIndex };
-    });
   };
 
   const handleCopyAddress = (address) => {
@@ -352,7 +383,9 @@ const HotelList = ({ loadHotelSettings }) => {
       });
       return;
     }
-    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${hotel.latitude}&name=${encodeURIComponent(hotel.hotelName)}`;
+    const tmapUrl = `tmap://route?goalx=${hotel.longitude}&goaly=${
+      hotel.latitude
+    }&name=${encodeURIComponent(hotel.hotelName)}`;
     window.location.href = tmapUrl;
     setTimeout(() => {
       toast({
@@ -370,7 +403,7 @@ const HotelList = ({ loadHotelSettings }) => {
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    const el = mainRef.current;
+    const el = document.documentElement;
     if (!el) return;
     const onScroll = () => isOpen && onClose();
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -427,7 +460,7 @@ const HotelList = ({ loadHotelSettings }) => {
             size="lg"
           />
           <Text fontSize="lg" fontWeight="semibold" color="gray.800">
-            찜한 호텔
+            주변 숙소
           </Text>
           <IconButton
             icon={<SearchIcon />}
@@ -528,8 +561,8 @@ const HotelList = ({ loadHotelSettings }) => {
         flex="1"
         overflowY="auto"
         overflowX="hidden"
-        pt={isOpen ? '180px' : '80px'} // 상단바 높이 고려
-        pb="200px" // 하단 네비게이션 바 높이 + 여유분
+        pt={isOpen ? '180px' : '80px'}
+        pb="200px"
         css={{
           WebkitOverflowScrolling: 'touch',
           '&::-webkit-scrollbar': {
@@ -568,8 +601,7 @@ const HotelList = ({ loadHotelSettings }) => {
                   onViewCoupons={openCoupons}
                   onOpenGallery={openGallery}
                   currentPhotoIndex={currentPhotoIndices[h.hotelId] || 0}
-                  handlePrevPhoto={handlePrevPhoto}
-                  handleNextPhoto={handleNextPhoto}
+                  setPhotoIndex={setPhotoIndex}
                   photoCount={(photosMap[h.hotelId] || []).length}
                   toggleMap={toggleMap}
                   isMapVisible={mapVisible[h.hotelId] || false}
@@ -579,7 +611,7 @@ const HotelList = ({ loadHotelSettings }) => {
                   totalHotels={filteredHotels.length}
                 />
                 {index < filteredHotels.length - 1 && (
-                  <Divider borderColor="gray.200" borderWidth="0.3px" mb={2} />
+                  <Divider borderColor="gray.300" borderWidth="0.5px" mb={2} />
                 )}
               </Box>
             ))}

@@ -2,6 +2,7 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import ApiError from '../utils/ApiError';
+import { getDeviceToken } from '../utils/device';
 
 // 환경별 API 기본 URL 설정
 const BASE_URL =
@@ -18,7 +19,7 @@ const api = axios.create({
 // axios-retry 설정
 axiosRetry(api, {
   retries: 3,
-  retryCondition: err => {
+  retryCondition: (err) => {
     if (err.config.url?.includes('/login/social/kakao')) {
       return false;
     }
@@ -160,34 +161,37 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = getRefreshToken();
-        const deviceToken = localStorage.getItem('deviceToken');
-        if (!refreshToken || !deviceToken) {
+        // 없으면 새로 만들어서 로컬에 저장까지 해줍니다
+        const deviceToken = getDeviceToken();
+
+        // 이제 deviceToken 유무는 체크하지 않고, refreshToken만 검사
+        if (!refreshToken) {
           localStorage.removeItem('customerToken');
           localStorage.removeItem('refreshToken');
-          localStorage.removeItem('deviceToken');
+          // deviceToken은 남겨둡니다!
           localStorage.removeItem('phoneNumber');
           localStorage.removeItem('csrfToken');
           localStorage.removeItem('csrfTokenId');
           window.location.href = '/login';
-          throw new ApiError(
-            401,
-            '리프레시 토큰 또는 디바이스 토큰이 없습니다.'
-          );
+          throw new ApiError(401, '리프레시 토큰이 없습니다.');
         }
+
         const response = await api.post(
           '/api/customer/refresh-token',
           { refreshToken, deviceToken },
           { headers: { Authorization: undefined }, skipCsrf: true }
         );
         const { token } = response.data;
+
         localStorage.setItem('customerToken', token);
         originalRequest.headers.Authorization = `Bearer ${token}`;
+
         processQueue(null, token);
         return api(originalRequest);
       } catch (err) {
         localStorage.removeItem('customerToken');
         localStorage.removeItem('refreshToken');
-        localStorage.removeItem('deviceToken');
+        // deviceToken은 남겨둡니다!
         localStorage.removeItem('phoneNumber');
         localStorage.removeItem('csrfToken');
         localStorage.removeItem('csrfTokenId');
@@ -196,25 +200,9 @@ api.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
-    } else if (error.response?.status === 403 && !originalRequest._csrfRetry) {
-      originalRequest._csrfRetry = true;
-      try {
-        logDebug('[api.js] Fetching CSRF token due to 403 error');
-        const startTime = Date.now();
-        const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
-        const endTime = Date.now();
-        logDebug(`[api.js] CSRF token fetched in ${endTime - startTime}ms`);
-        localStorage.setItem('csrfToken', data.csrfToken);
-        localStorage.setItem('csrfTokenId', data.tokenId);
-        originalRequest.headers['X-CSRF-Token'] = data.csrfToken;
-        originalRequest.headers['X-CSRF-Token-Id'] = data.tokenId;
-        return api(originalRequest);
-      } catch (retryError) {
-        localStorage.removeItem('csrfToken');
-        localStorage.removeItem('csrfTokenId');
-        throw new ApiError(403, 'CSRF 토큰 갱신 실패');
-      }
     }
+
+    // 401 외에는 그냥 에러 던져줍니다
     throw new ApiError(
       error.response?.status || 500,
       error.response?.data?.message || '서버 오류',
@@ -563,7 +551,9 @@ export const fetchCustomerCoupons = async () => {
 // 쿠폰 사용 API
 export const useCoupon = async ({ couponUuid, reservationId }) => {
   try {
-    logDebug(`[api.js] Using coupon: ${couponUuid} for reservation: ${reservationId}`);
+    logDebug(
+      `[api.js] Using coupon: ${couponUuid} for reservation: ${reservationId}`
+    );
     const response = await api.post('/api/customer/coupons/use', {
       couponUuid,
       reservationId,

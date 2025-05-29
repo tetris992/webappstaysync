@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast, Spinner, Center, Box, Text } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
 import { customerLoginSocial } from '../api/api';
-import io from 'socket.io-client';
+// import io from 'socket.io-client';
 
 const KakaoCallback = () => {
   const navigate = useNavigate();
@@ -13,25 +13,6 @@ const KakaoCallback = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const processingRef = useRef(false);
-
-  useEffect(() => {
-    const socket = io(process.env.REACT_APP_API_URL);
-
-    socket.on('couponIssued', ({ message, coupons }) => {
-      toast({
-        title: '새 쿠폰 발행',
-        description: message,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-      console.log('[KakaoCallback] New coupons received:', coupons);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [toast]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -71,7 +52,10 @@ const KakaoCallback = () => {
 
         if (response && response.success) {
           if (response.needPhoneVerification) {
-            console.log('[KakaoCallback] Phone verification required, customerId:', response.customerId);
+            console.log(
+              '[KakaoCallback] Phone verification required, customerId:',
+              response.customerId
+            );
             localStorage.setItem('customerToken', response.token);
             localStorage.setItem('refreshToken', response.refreshToken);
             console.log('[KakaoCallback] Stored tokens:', {
@@ -98,7 +82,9 @@ const KakaoCallback = () => {
           });
           navigate('/', { replace: true });
         } else {
-          throw new Error(response?.message || '로그인 응답이 유효하지 않습니다.');
+          throw new Error(
+            response?.message || '로그인 응답이 유효하지 않습니다.'
+          );
         }
       } catch (error) {
         console.error('[KakaoCallback] Error:', error);
@@ -148,7 +134,9 @@ const KakaoCallback = () => {
     return (
       <Center height="100vh">
         <Box textAlign="center" p={5}>
-          <Text color="red.500" fontSize="lg">{error}</Text>
+          <Text color="red.500" fontSize="lg">
+            {error}
+          </Text>
           <Text mt={2}>잠시 후 로그인 페이지로 이동합니다...</Text>
         </Box>
       </Center>
