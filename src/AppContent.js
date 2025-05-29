@@ -51,7 +51,7 @@ function AppContent() {
 
     socketRef.current = io(SOCKET_URL, {
       path: '/socket.io',
-    transports: ['polling', 'websocket'],
+    transports: ['websocket'],
       withCredentials: true,
       secure: process.env.NODE_ENV === 'production',
     });
