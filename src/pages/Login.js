@@ -51,8 +51,7 @@ const Login = () => {
         try {
           const hotelList = await fetchHotelList();
           setHotelList(hotelList);
-
-          const coupons = await fetchCustomerCoupons(); // 인자 제거
+          const coupons = await fetchCustomerCoupons();
           setCustomerCoupons(coupons);
         } catch (error) {
           console.error('Initial data load failed:', {
@@ -62,7 +61,8 @@ const Login = () => {
           });
           toast({
             title: '데이터 로드 실패',
-            description: error.message || '호텔 목록 및 쿠폰을 불러오지 못했습니다.',
+            description:
+              error.message || '호텔 목록 및 쿠폰을 불러오지 못했습니다.',
             status: 'error',
             duration: 3000,
             isClosable: true,
@@ -133,17 +133,14 @@ const Login = () => {
       overflow="auto"
     >
       <Container
-        maxW={{ base: '100%', sm: '390px' }}
-        w="100%"
+        maxW="450px"
+        w="400px"
+        centerContent
+        p={4}
         position="relative"
         zIndex="1"
       >
-        <Box
-          bg="white"
-          p={6}
-          borderRadius="md"
-          boxShadow="sm"
-        >
+        <Box bg="white" p={6} borderRadius={0} boxShadow="none" border="none">
           <VStack spacing={0} align="stretch">
             <VStack spacing="16px" align="center">
               <Image
@@ -166,11 +163,7 @@ const Login = () => {
               </Text>
             </VStack>
             <Box h="80px" />
-            <VStack
-              spacing="16px"
-              w="100%"
-              align="stretch"
-            >
+            <VStack spacing="16px" w="100%" align="stretch">
               <Button
                 leftIcon={
                   <Box mr="6px">
@@ -183,7 +176,7 @@ const Login = () => {
                   </Box>
                 }
                 w="100%"
-                maxW="346px"
+                maxW="360px"
                 h="56px"
                 mx="auto"
                 bg="#FEE500"
@@ -215,7 +208,12 @@ const Login = () => {
               >
                 로그인하시면 아래 내용에 동의하는 것으로 간주됩니다.
               </Text>
-              <HStack justify="center" spacing={2} fontSize="xs" color="blue.600">
+              <HStack
+                justify="center"
+                spacing={2}
+                fontSize="xs"
+                color="blue.600"
+              >
                 <Text
                   as="a"
                   href="/consent"

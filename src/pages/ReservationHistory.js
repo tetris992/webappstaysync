@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { formatDate } from '../utils/dateParser';
 import {
   Container,
   Text,
@@ -77,19 +78,19 @@ const ReservationHistory = () => {
   };
 
   const isReservationConfirmed = useCallback((res) => {
-    const chkIn = new Date(res.checkIn);
+    const chkIn = new Date(res.checkIn.replace('+09:00', ''));
     chkIn.setHours(14, 0, 0, 0);
     return new Date() >= chkIn;
   }, []);
 
   const isActiveReservation = useCallback((res) => {
-    const checkOutDate = new Date(res.checkOut);
+    const checkOutDate = new Date(res.checkOut.replace('+09:00', ''));
     checkOutDate.setHours(11, 0, 0, 0);
     return new Date() < checkOutDate && !res.isCancelled;
   }, []);
 
   const isPastReservation = useCallback((res) => {
-    const checkOutDate = new Date(res.checkOut);
+    const checkOutDate = new Date(res.checkOut.replace('+09:00', ''));
     checkOutDate.setHours(11, 0, 0, 0);
     return new Date() >= checkOutDate || res.isCancelled;
   }, []);
@@ -191,7 +192,10 @@ const ReservationHistory = () => {
           }
 
           const numNights = Math.max(
-            differenceInCalendarDays(new Date(r.checkOut), new Date(r.checkIn)),
+            differenceInCalendarDays(
+              new Date(r.checkOut.replace('+09:00', '')),
+              new Date(r.checkIn.replace('+09:00', ''))
+            ),
             1
           );
 
@@ -202,6 +206,10 @@ const ReservationHistory = () => {
             hotelPhoneNumber:
               settings?.phoneNumber || r.hotelPhoneNumber || '연락처 준비중',
             isConfirmed: isReservationConfirmed(r),
+            checkIn: r.checkIn, // KST ISO 문자열 유지
+            checkOut: r.checkOut, // KST ISO 문자열 유지
+            checkInFormatted: formatDate(r.checkIn, 'yyyy-MM-dd HH:mm'), // 표시용 KST 포맷
+            checkOutFormatted: formatDate(r.checkOut, 'yyyy-MM-dd HH:mm'), // 표시용 KST 포맷
             discount: r.discount || 0,
             fixedDiscount: r.fixedDiscount || 0,
             discountType: r.discountType || null,
@@ -622,7 +630,11 @@ const ReservationHistory = () => {
                   {activeReservations.map((r) => (
                     <ReservationCard
                       key={r._id}
-                      reservation={r}
+                      reservation={{
+                        ...r,
+                        checkIn: r.checkInFormatted, // KST 포맷된 시간
+                        checkOut: r.checkOutFormatted, // KST 포맷된 시간
+                      }}
                       onCancelReservation={handleCancel}
                       isConfirmed={r.isConfirmed}
                       useLazyImage // LazyImage 사용 플래그 추가

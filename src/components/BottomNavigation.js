@@ -8,7 +8,7 @@ import {
   Badge,
   Button,
 } from '@chakra-ui/react';
-import { FaHome, FaHistory, FaHeart, FaUser } from 'react-icons/fa';
+import { FaHome, FaHistory, FaSearch, FaUser } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchCustomerCoupons } from '../api/api';
@@ -54,8 +54,8 @@ const BottomNavigation = () => {
       path: '/',
     },
     {
-      icon: FaHeart,
-      label: '찜 숙소',
+    icon: FaSearch,
+    label: '숙소 검색',
       onClick: () => navigate('/hotels'),
       path: '/hotels',
     },
