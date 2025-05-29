@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 
-const socketUrl = process.env.NODE_ENV === 'production' ? 'wss://staysync.org/socket.io' : 'ws://localhost:3004/socket.io';
+const socketUrl =
+  process.env.NODE_ENV === 'production'
+    ? 'wss://staysync.org'
+    : 'ws://localhost:3004';
 
 const useSocket = () => {
   const { customer } = useAuth();
