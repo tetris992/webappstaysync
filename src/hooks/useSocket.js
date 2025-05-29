@@ -1,10 +1,8 @@
-// src/hooks/useSocket.js
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004';
-const socketUrl = `${BASE_URL.replace(/^http/, 'ws')}/socket.io/`; // wss://staysync.org/socket.io/ in production
+const socketUrl = process.env.NODE_ENV === 'production' ? 'wss://staysync.org/socket.io' : 'ws://localhost:3004/socket.io';
 
 const useSocket = () => {
   const { customer } = useAuth();
@@ -12,10 +10,14 @@ const useSocket = () => {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('customerToken');
-    if (!token || !customer?._id) return;
+    const token = localStorage.getItem('userToken');
+    console.log('[WebSocket] userToken:', token); // 디버깅
+    if (!token || !customer?._id) {
+      console.log('[WebSocket] Missing token or customerId');
+      return;
+    }
 
-    const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630';
+    const defaultHotelId = customer?.properties?.[0]?.id || '740630';
 
     const socketInstance = io(socketUrl, {
       query: {
@@ -38,12 +40,12 @@ const useSocket = () => {
     });
 
     socketInstance.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+      console.error('WebSocket connection error:', error.message);
       setIsConnected(false);
     });
 
     socketInstance.on('error', (error) => {
-      console.error('WebSocket error:', error);
+      console.error('WebSocket error:', error.message);
     });
 
     socketInstance.on('reconnect', (attempt) => {
