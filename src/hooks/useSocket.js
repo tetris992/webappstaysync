@@ -4,9 +4,8 @@ import { io } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004';
-const socketUrl = `${BASE_URL.replace(/^http/, 'ws')}/socket.io/`; // wss://staysync.org/socket.io/ in production
 
-const useSocket = () => {
+export default function useSocket() {
   const { customer } = useAuth();
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -15,57 +14,42 @@ const useSocket = () => {
     const token = localStorage.getItem('customerToken');
     if (!token || !customer?._id) return;
 
-    const defaultHotelId = customer?.reservations?.[0]?.hotelId || '740630';
+    const hotelId = customer.reservations?.[0]?.hotelId || '740630';
 
-    const socketInstance = io(socketUrl, {
-      query: {
+    // 1) 호스트에는 프로토콜+도메인만 넣고
+    // 2) path 옵션으로 /socket.io 만 지정
+    const socketInstance = io(BASE_URL, {
+      path: '/socket.io',
+      transports: ['websocket'],       // websocket 전용
+      withCredentials: true,
+      auth: {                          // v4부터 권장되는 방식
         customerToken: token,
         type: 'customer',
-        hotelId: defaultHotelId,
+        hotelId,
         customerId: customer._id,
       },
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      transports: ['websocket', 'polling'],
-      path: '/socket.io',
-      withCredentials: true,
+      secure: BASE_URL.startsWith('https'),
     });
 
     socketInstance.on('connect', () => {
-      console.log('WebSocket connected:', socketInstance.id);
+      console.log('[Socket] connected, id=', socketInstance.id);
       setIsConnected(true);
     });
-
-    socketInstance.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+    socketInstance.on('connect_error', (err) => {
+      console.error('[Socket] connection error:', err.message);
       setIsConnected(false);
     });
-
-    socketInstance.on('error', (error) => {
-      console.error('WebSocket error:', error);
-    });
-
-    socketInstance.on('reconnect', (attempt) => {
-      console.log(`WebSocket reconnected after ${attempt} attempts`);
-      setIsConnected(true);
-    });
-
-    socketInstance.on('reconnect_failed', () => {
-      console.error('WebSocket reconnection failed');
+    socketInstance.on('disconnect', (reason) => {
+      console.log('[Socket] disconnected:', reason);
       setIsConnected(false);
     });
 
     setSocket(socketInstance);
-
-    return () => {
-      socketInstance.disconnect();
-      console.log('WebSocket disconnected');
-      setIsConnected(false);
-    };
+    return () => socketInstance.disconnect();
   }, [customer]);
 
   return { socket, isConnected };
-};
-
-export default useSocket;
+}
