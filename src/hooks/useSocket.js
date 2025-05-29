@@ -17,9 +17,9 @@ export default function useSocket() {
 
     const sock = io(API_BASE, {
       path: '/socket.io',
-      transports: ['websocket','polling'],
+      transports: ['websocket'],
       withCredentials: true,
-      auth: { token },            // JWT를 auth에 전달
+      auth: { token }, // JWT를 auth에 전달
       query: { customerId: customer._id, hotelId },
       reconnection: true,
       reconnectionAttempts: 10,
@@ -32,7 +32,9 @@ export default function useSocket() {
     sock.on('connect_error', (err) => console.error('WS error:', err));
 
     setSocket(sock);
-    return () => { sock.disconnect(); };
+    return () => {
+      sock.disconnect();
+    };
   }, [customer]);
 
   return socket;
