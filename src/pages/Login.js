@@ -198,7 +198,7 @@ const Login = () => {
                 pl="16px"
                 justifyContent="center"
               >
-                카카오로 로그인
+                카카오 로그인
               </Button>
               <Text
                 fontSize="xs"
