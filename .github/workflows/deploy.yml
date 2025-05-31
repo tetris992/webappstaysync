@@ -3,8 +3,6 @@ name: Deploy Danjam Frontend to Lightsail
 on:
   push:
     branches: [main]
-    paths:
-      - 'frontend/**'
 
 concurrency:
   group: deploy-danjam

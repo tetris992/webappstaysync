@@ -24,6 +24,7 @@
     "dayzed": "^3.2.3",
     "framer-motion": "^10.18.0",
     "leaflet": "^1",
+    "nano": "^10.1.4",
     "react": "^18",
     "react-date-range": "^2",
     "react-datepicker": "^8.3.0",
