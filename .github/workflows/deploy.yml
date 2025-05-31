@@ -1,23 +1,25 @@
-# Danjam Frontend Deployment Workflow!!!
-
-name: Deploy Danjam Frontend to Lightsail
+# .github/workflows/main.yml
+name: Deploy DanJam-In to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
-concurrency:
-  group: deploy-danjam
-  cancel-in-progress: true
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
-  deploy-frontend:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Check out
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Use Node 18
         uses: actions/setup-node@v4
         with:
           node-version: 18
@@ -29,45 +31,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build React app
+      - name: Build
         run: npm run build
         env:
           REACT_APP_API_BASE_URL: https://staysync.org
           NODE_ENV: production
 
-      - name: Clean up /var/www/danjam
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 3.38.232.169 # 실제 서버 IP로 변경
-          username: bitnami
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            sudo rm -rf /var/www/danjam/*
-            sudo mkdir -p /var/www/danjam
-            sudo chown bitnami:bitnami /var/www/danjam
-            sudo chmod u+w /var/www/danjam
-
-      - name: Copy build files to Lightsail
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: 3.38.232.169 # 실제 서버 IP로 변경
-          username: bitnami
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: 'build/*'
-          target: '/var/www/danjam'
-          strip_components: 1
-          overwrite: true
-
-      - name: Restart Nginx
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 3.38.232.169 # 실제 서버 IP로 변경
-          username: bitnami
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            sudo nginx -t
-            sudo systemctl restart nginx
-
-      - name: Test frontend deployment
+      - name: Verify build contains production API URL
         run: |
-          curl -f https://danjam.in || exit 1
+          echo "🔍 Checking for staysync.org in build artifacts…"
+          grep -R "staysync.org" build/ || (echo "❌ staysync.org not found!" && exit 1)
+
+      - name: Create 404.html for SPA routing
+        run: |
+          cp build/index.html build/404.html
+          echo "<base href='/' />" >> build/404.html
+
+      - name: Create CNAME file
+        run: echo "danjam.in" > build/CNAME
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          cname: danjam.in
