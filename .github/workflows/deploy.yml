@@ -36,7 +36,7 @@ jobs:
       - name: Clean up /var/www/danjam
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 3.34.50.68
+          host: 3.38.232.169    # 실제 서버 IP로 변경
           username: bitnami
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
@@ -48,7 +48,7 @@ jobs:
       - name: Copy build files to Lightsail
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: 3.34.50.68
+          host: 3.38.232.169    # 실제 서버 IP로 변경
           username: bitnami
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: 'build/*'
@@ -59,7 +59,7 @@ jobs:
       - name: Restart Nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 3.34.50.68
+          host: 3.38.232.169    # 실제 서버 IP로 변경
           username: bitnami
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
