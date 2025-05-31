@@ -1,23 +1,20 @@
-# .github/workflows/main.yml
+name: Deploy Danjam Frontend to Lightsail
 
-name: Deploy to S3 & CloudFront
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+    paths:
+      - 'frontend/**'
 
-permissions:
-  contents: read   # id-token 권한 불필요
+concurrency:
+  group: deploy-danjam
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  deploy-frontend:
     runs-on: ubuntu-latest
-    env:
-      AWS_REGION: ap-northeast-2
-      S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
-      CF_DISTRIBUTION_ID: ${{ secrets.CF_DISTRIBUTION_ID }}
-
     steps:
-      - name: Check out code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -38,22 +35,39 @@ jobs:
           REACT_APP_API_BASE_URL: https://staysync.org
           NODE_ENV: production
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Clean up /var/www/danjam
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          host: 3.34.50.68
+          username: bitnami
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo rm -rf /var/www/danjam/*
+            sudo mkdir -p /var/www/danjam
+            sudo chown bitnami:bitnami /var/www/danjam
+            sudo chmod u+w /var/www/danjam
 
-      - name: Sync to S3
-        run: |
-          aws s3 sync build/ s3://${{ env.S3_BUCKET }}/ \
-            --cache-control "public, max-age=31536000, immutable" \
-            --delete \
-            --no-progress
+      - name: Copy build files to Lightsail
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 3.34.50.68
+          username: bitnami
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: 'build/*'
+          target: '/var/www/danjam'
+          strip_components: 1
+          overwrite: true
 
-      - name: Invalidate CloudFront
+      - name: Restart Nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 3.34.50.68
+          username: bitnami
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo nginx -t
+            sudo systemctl restart nginx
+
+      - name: Test frontend deployment
         run: |
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ env.CF_DISTRIBUTION_ID }} \
-            --paths "/*"
+          curl -f https://danjam.in || exit 1
